@@ -1,0 +1,103 @@
+version: "3"
+
+vars:
+  BENCH_PG_CONTAINER: go-luca-bench-pg
+  BENCH_PG_PORT: 15432
+  BENCH_PG_PASSWORD: benchpass
+
+tasks:
+  fmt:
+    desc: Format code
+    cmds:
+      - go fmt ./...
+
+  vet:
+    desc: Vet code
+    cmds:
+      - go vet ./...
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test ./...
+
+  check:
+    desc: Format, vet, and test
+    cmds:
+      - task: fmt
+      - task: vet
+      - task: test
+
+  deps:tidy:
+    desc: Tidy go modules
+    cmds:
+      - go mod tidy
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - go clean ./...
+
+  release:
+    desc: 'Release a new version, eg: task release VERSION=v0.1.0 COMMENT="initial release"'
+    requires:
+      vars: [VERSION, COMMENT]
+    cmds:
+      - task: check
+      - git add .
+      - git commit -am "{{.COMMENT}}"
+      - git tag "{{.VERSION}}"
+      - git push origin "{{.VERSION}}"
+      - git push
+
+  benchmark:
+    aliases: [bm]
+    desc: Run Go benchmarks (pglike/SQLite)
+    cmds:
+      - go test -bench=. -benchmem ./...
+
+  bench:pg:start:
+    desc: Start PostgreSQL in podman for benchmarks
+    cmds:
+      - |
+        podman run --rm -d \
+          --name {{.BENCH_PG_CONTAINER}} \
+          -e POSTGRES_USER=bench \
+          -e POSTGRES_PASSWORD={{.BENCH_PG_PASSWORD}} \
+          -e POSTGRES_DB=bench \
+          -p {{.BENCH_PG_PORT}}:5432 \
+          docker.io/library/postgres:16-alpine
+      - echo "Waiting for PG to be ready..."
+      - |
+        for i in $(seq 1 30); do
+          podman exec {{.BENCH_PG_CONTAINER}} pg_isready -U bench -d bench 2>/dev/null && break
+          sleep 0.5
+        done
+      - echo "PostgreSQL ready on port {{.BENCH_PG_PORT}}"
+
+  bench:pg:stop:
+    desc: Stop PostgreSQL podman container
+    cmds:
+      - podman stop {{.BENCH_PG_CONTAINER}} || true
+
+  bench:balance-types:
+    desc: Run balance type comparison benchmark
+    env:
+      BENCH_PG_DSN: "postgres://bench:{{.BENCH_PG_PASSWORD}}@localhost:{{.BENCH_PG_PORT}}/bench?sslmode=disable"
+    cmds:
+      - go run ./cmd/bench-balance-types
+
+  bench:compound-movements:
+    desc: Run compound movement benchmark
+    env:
+      BENCH_PG_DSN: "postgres://bench:{{.BENCH_PG_PASSWORD}}@localhost:{{.BENCH_PG_PORT}}/bench?sslmode=disable"
+    cmds:
+      - go run ./cmd/bench-compound-movements
+
+  testBenchmark:
+    desc: Start PG, run all benchmarks, stop PG
+    cmds:
+      - task: bench:pg:start
+      - defer: { task: bench:pg:stop }
+      - task: bench:balance-types
+      - task: bench:compound-movements
