@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>balance-types-analysis - go-luca</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        pre {
+            background-color: #2b2b2b;
+            color: #f8f8f2;
+            padding: 1.25em 1.5em;
+            overflow-x: auto;
+        }
+        pre code {
+            color: inherit;
+            background: none;
+            padding: 0;
+            font-size: 0.875em;
+        }
+        code {
+            background-color: #f5f5f5;
+            color: #e83e8c;
+            padding: 0.125em 0.375em;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <section class="section">
+        <div class="container">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+                <ul>
+                    <li><a href="../../index.html">go-luca</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">Benchmark Analysis</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">balance-types-analysis</a></li>
+                </ul>
+            </nav>
+
+            <div class="content">
+                <p>This shows that future date timing has marginal effect on accessing balance information
+for millions of accounts so it  is practical from this point of view.</p>
+<p>With the (account_id, value_time DESC) index, all three types deliver sub-millisecond
+point-in-time lookups even at 36.5M rows. The data type choice has negligible impact
+on indexed single-row retrieval.</p>
+<p>Use BIGINT (integer cents/pence) for balance storage. It matches go-luca's existing
+int64 amount model, avoids floating-point rounding (DOUBLE), and has no NUMERIC
+overhead. Reserve NUMERIC for external reporting views where decimal display formatting
+is needed.</p>
+
+            </div>
+        </div>
+    </section>
+</body>
+</html>

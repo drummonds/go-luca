@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>scv-analysis - go-luca</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        pre {
+            background-color: #2b2b2b;
+            color: #f8f8f2;
+            padding: 1.25em 1.5em;
+            overflow-x: auto;
+        }
+        pre code {
+            color: inherit;
+            background: none;
+            padding: 0;
+            font-size: 0.875em;
+        }
+        code {
+            background-color: #f5f5f5;
+            color: #e83e8c;
+            padding: 0.125em 0.375em;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <section class="section">
+        <div class="container">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+                <ul>
+                    <li><a href="../../index.html">go-luca</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">Benchmark Analysis</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">scv-analysis</a></li>
+                </ul>
+            </nav>
+
+            <div class="content">
+                <h2 id="query-optimisation-or-join-vs-cte">Query Optimisation: OR Join vs CTE</h2>
+<p>The initial implementation used a single OR join to compute balances:</p>
+<pre><code class="language-sql">SELECT a.id, a.account_id, a.product, a.currency,
+    COALESCE(SUM(CASE WHEN m.to_account_id = a.id THEN m.amount ELSE 0 END), 0)
+  - COALESCE(SUM(CASE WHEN m.from_account_id = a.id THEN m.amount ELSE 0 END), 0) AS balance
+FROM accounts a
+LEFT JOIN movements m ON m.to_account_id = a.id OR m.from_account_id = a.id
+WHERE a.account_type = 'Liability'
+GROUP BY a.id, a.account_id, a.product, a.currency
+</code></pre>
+<p>This was replaced with a CTE-based approach that pre-aggregates credits and debits
+separately, then joins the summaries:</p>
+<pre><code class="language-sql">WITH credits AS (
+    SELECT to_account_id AS account_id, SUM(amount) AS total
+    FROM movements GROUP BY to_account_id
+),
+debits AS (
+    SELECT from_account_id AS account_id, SUM(amount) AS total
+    FROM movements GROUP BY from_account_id
+)
+SELECT a.id, a.account_id, a.product, a.currency,
+    COALESCE(c.total, 0) - COALESCE(d.total, 0) AS balance
+FROM accounts a
+LEFT JOIN credits c ON c.account_id = a.id
+LEFT JOIN debits d ON d.account_id = a.id
+WHERE a.account_type = 'Liability'
+</code></pre>
+<h3 id="results">Results</h3>
+<table>
+<thead>
+<tr>
+<th>Accounts</th>
+<th>OR Join (mean)</th>
+<th>CTE (mean)</th>
+<th>Speedup</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1K</td>
+<td>56.5ms</td>
+<td>3.2ms</td>
+<td>~18x</td>
+</tr>
+<tr>
+<td>10K</td>
+<td>4,598ms</td>
+<td>33ms</td>
+<td>~139x</td>
+</tr>
+<tr>
+<td>100K</td>
+<td>did not complete</td>
+<td>338ms</td>
+<td>—</td>
+</tr>
+<tr>
+<td>1M</td>
+<td>did not complete</td>
+<td>3.5s</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h3 id="why">Why</h3>
+<p>The OR join (<code>ON m.to_account_id = a.id OR m.from_account_id = a.id</code>) prevents
+PostgreSQL from using a single index scan. The planner falls back to nested loops
+or bitmap OR scans, giving roughly O(n * m) behaviour where n = accounts and
+m = movements.</p>
+<p>The CTE approach scans the movements table exactly twice (once per CTE), aggregates
+with hash aggregation using the existing indexes, then hash-joins the two small
+summary tables to accounts. This scales linearly — doubling the data roughly
+doubles the time.</p>
+<h3 id="takeaway">Takeaway</h3>
+<p>For SCV generation at scale, always pre-aggregate movements into credit/debit
+summaries before joining to accounts. The OR join pattern is only viable for
+small datasets (&lt; 1K accounts).</p>
+
+            </div>
+        </div>
+    </section>
+</body>
+</html>

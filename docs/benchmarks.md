@@ -51,9 +51,4 @@ Reports in `benchmarks/reports/` include full SQL queries, schema, raw output, a
 | `bench-balance-types` | BIGINT vs DOUBLE vs NUMERIC for point-in-time lookup | `benchmarks/analysis/balance-types-*` |
 | `bench-compound-movements` | Simple vs compound movement throughput | `benchmarks/analysis/compound-movements-*` |
 
-## Analysis Reports
-
-| Topic | Question | Finding |
-|-------|----------|---------|
-| [Balance types](../benchmarks/analysis/balance-types-analysis.md) | Which PG type for balance storage? | BIGINT — sub-ms lookups at 36M rows, all types equivalent |
-| [Compound movements](../benchmarks/analysis/compound-movements-analysis.md) | Is write-time projection fast enough? | ~586 TPS, 2.2x overhead vs simple — eliminates batch processing |
+See [front page](index.html) for links to individual analysis reports.

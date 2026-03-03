@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>balance-types-purpose - go-luca</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        pre {
+            background-color: #2b2b2b;
+            color: #f8f8f2;
+            padding: 1.25em 1.5em;
+            overflow-x: auto;
+        }
+        pre code {
+            color: inherit;
+            background: none;
+            padding: 0;
+            font-size: 0.875em;
+        }
+        code {
+            background-color: #f5f5f5;
+            color: #e83e8c;
+            padding: 0.125em 0.375em;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <section class="section">
+        <div class="container">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+                <ul>
+                    <li><a href="../../index.html">go-luca</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">Benchmark Analysis</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">balance-types-purpose</a></li>
+                </ul>
+            </nav>
+
+            <div class="content">
+                <p>This is a simulation of realtime balance lookup without caching. In a bank the most
+time critical element is movement in of money and then movement out of money. This is
+where this query starts to be realistic.</p>
+<p>This started out testing summing  three PostgreSQL data types (BIGINT, DOUBLE PRECISION, NUMERIC) for calculated balances or sums.  However it is clear that sum is about 40-50% slower for NUMERIC and the other two are about the same speed.</p>
+<p>This is a test of how much it slows down a calculation if you have live balances with only a single row or you have to query with a date.  The idea is that there will be a balance with todays date and balance with tomorrows date.  As the query rolls over midnight you will return different data due to future dated postings.   I want a realistic test with up to a million accounts in the table.</p>
+
+            </div>
+        </div>
+    </section>
+</body>
+</html>

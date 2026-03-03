@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>compound-movements-purpose - go-luca</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        pre {
+            background-color: #2b2b2b;
+            color: #f8f8f2;
+            padding: 1.25em 1.5em;
+            overflow-x: auto;
+        }
+        pre code {
+            color: inherit;
+            background: none;
+            padding: 0;
+            font-size: 0.875em;
+        }
+        code {
+            background-color: #f5f5f5;
+            color: #e83e8c;
+            padding: 0.125em 0.375em;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <section class="section">
+        <div class="container">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+                <ul>
+                    <li><a href="../../index.html">go-luca</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">Benchmark Analysis</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">compound-movements-purpose</a></li>
+                </ul>
+            </nav>
+
+            <div class="content">
+                <p>When funds arrive, two approaches exist:</p>
+<ol>
+<li>
+<p><strong>Simple</strong>: Record the movement, compute balances and interest on demand (or in
+batch at end of day via <code>RunDailyInterest</code>). End-of-day processing must recalculate
+everything.</p>
+</li>
+<li>
+<p><strong>Compound</strong>: At write time, in a single transaction, also pre-compute the interest
+accrual and live balance for end of day. Rollover is seamless — everything is
+already projected.</p>
+</li>
+</ol>
+<p>The benchmark compares throughput of both approaches on real PostgreSQL to quantify the
+write-time cost of eagerly projecting interest and balances. The question: is the
+compound approach fast enough to use on the hot path?</p>
+
+            </div>
+        </div>
+    </section>
+</body>
+</html>

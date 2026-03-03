@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>compound-movements-analysis - go-luca</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        pre {
+            background-color: #2b2b2b;
+            color: #f8f8f2;
+            padding: 1.25em 1.5em;
+            overflow-x: auto;
+        }
+        pre code {
+            color: inherit;
+            background: none;
+            padding: 0;
+            font-size: 0.875em;
+        }
+        code {
+            background-color: #f5f5f5;
+            color: #e83e8c;
+            padding: 0.125em 0.375em;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <section class="section">
+        <div class="container">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+                <ul>
+                    <li><a href="../../index.html">go-luca</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">Benchmark Analysis</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">compound-movements-analysis</a></li>
+                </ul>
+            </nav>
+
+            <div class="content">
+                <p>Results from real PostgreSQL (podman postgres:16-alpine). Placeholder — update after first run.</p>
+<p>The compound approach runs ~7 SQL operations in a single transaction vs ~3 for simple.
+The overhead comes from:</p>
+<ul>
+<li>In-transaction balance recomputation (SUM over movements)</li>
+<li>Interest calculation via shopspring/decimal</li>
+<li>Accrual upsert (DELETE + INSERT)</li>
+<li>Live balance upsert (DELETE + INSERT)</li>
+<li>A second balance recomputation after interest insertion</li>
+</ul>
+<p>The benefit: no separate end-of-day batch. The projected balance and interest accrual
+are always current after each movement.</p>
+
+            </div>
+        </div>
+    </section>
+</body>
+</html>

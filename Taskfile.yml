@@ -99,9 +99,10 @@ tasks:
           -package golucagrammar -name goluca
 
   docs:md2html:
-    desc: Convert docs/*.md to Bulma-styled HTML
+    desc: Convert docs/*.md and benchmark analysis to Bulma-styled HTML
     cmds:
       - task-plus md2html -src docs -dst docs -label "go-luca docs"
+      - task-plus md2html -src benchmarks/analysis -dst docs/benchmarks/analysis -label "Benchmark Analysis"
 
   testBenchmark:
     desc: Start PG, run all benchmarks, stop PG
