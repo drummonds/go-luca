@@ -38,21 +38,6 @@ tasks:
     cmds:
       - go clean ./...
 
-  release:
-    desc: 'Release a new version, eg: task release VERSION=v0.1.0 COMMENT="initial release"'
-    requires:
-      vars: [VERSION, COMMENT]
-    preconditions:
-      - sh: '[[ "{{.VERSION}}" == v* ]]'
-        msg: "VERSION must start with 'v' (e.g. v0.1.0)"
-    cmds:
-      - task: check
-      - git add .
-      - git commit -am "{{.COMMENT}}"
-      - git tag -a "{{.VERSION}}" -m "{{.COMMENT}}"
-      - git push origin "{{.VERSION}}"
-      - git push
-
   benchmark:
     aliases: [bm]
     desc: Run Go benchmarks (pglike/SQLite)
@@ -103,6 +88,15 @@ tasks:
       BENCH_PG_DSN: "postgres://bench:{{.BENCH_PG_PASSWORD}}@localhost:{{.BENCH_PG_PORT}}/bench?sslmode=disable"
     cmds:
       - go run ./cmd/bench-scv
+
+  generate:grammar:
+    desc: Regenerate tree-sitter goluca grammar blob
+    cmds:
+      - |
+        $(go env GOPATH)/bin/ts2go \
+          -input /home/hum3/nibble/tree-sitter-goluca/src/parser.c \
+          -output internal/golucagrammar/goluca.go \
+          -package golucagrammar -name goluca
 
   testBenchmark:
     desc: Start PG, run all benchmarks, stop PG

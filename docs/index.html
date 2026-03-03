@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>go-luca — Movement-based double-entry accounting</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+  <style>
+    .hero-body { padding: 3rem 1.5rem; }
+    .content ul { list-style: disc; margin-left: 1.5em; }
+    pre code { font-size: 0.9em; }
+    .tag.is-medium { font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+
+<section class="hero is-link is-medium">
+  <div class="hero-body">
+    <div class="container">
+      <h1 class="title is-1">go-luca</h1>
+      <p class="subtitle is-4">Movement-based double-entry accounting in Go</p>
+      <p class="is-size-6">
+        Inspired by
+        <a class="has-text-white has-text-weight-bold" href="https://www.bytestone.uk/afp/historical-accounting/pacioli/">Luca Pacioli</a>
+        and
+        <a class="has-text-white has-text-weight-bold" href="https://tigerbeetle.com/">TigerBeetle</a>
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="columns">
+
+      <div class="column is-half">
+        <div class="box">
+          <h2 class="title is-4">Core Concepts</h2>
+          <div class="content">
+            <ul>
+              <li><strong>Movements</strong> &mdash; directed flows of value from one account to another, not debit/credit legs</li>
+              <li><strong>Batches</strong> &mdash; linked movements sharing a batch ID for compound transactions</li>
+              <li><strong>Same-exponent rule</strong> &mdash; movements between accounts with different exponents are rejected (currency conversion must be explicit)</li>
+              <li><strong>Integer amounts</strong> &mdash; stored as <code>int64</code> in the smallest currency unit</li>
+              <li><strong>Hierarchical accounts</strong> &mdash; <code>Type:Product:AccountID:Address</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="column is-half">
+        <div class="box">
+          <h2 class="title is-4">.goluca Plain Text Format</h2>
+          <div class="content">
+<pre><code># A dividend payment
+2026-02-07 * Dividend payment
+  Asset:Cash &rarr; Equity:Capital "Dividend" 200.00 GBP
+
+# Linked payroll movements
+2026-02-01 * Payroll
+  +Income:Salary &rarr; Asset:Bank "net salary" 4000.00 GBP
+  +Income:Salary &rarr; Expense:Tax "income tax" 1000.00 GBP
+
+# Pending transaction
+2026-03-01 ! Pending invoice
+  Asset:Bank &rarr; Expense:Food 15.50 GBP</code></pre>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="columns">
+
+      <div class="column is-one-third">
+        <div class="box">
+          <h2 class="title is-5">Import / Export</h2>
+          <div class="content">
+            <p>Read and write <code>.goluca</code> files with tree-sitter-powered parsing.</p>
+<pre><code>// Import
+l.Import(file, nil)
+
+// Export
+l.Export(os.Stdout)</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="column is-one-third">
+        <div class="box">
+          <h2 class="title is-5">Balance Queries</h2>
+          <div class="content">
+            <p>Current, point-in-time, path-aggregated, and daily balances.</p>
+<pre><code>l.Balance(acctID)
+l.BalanceAt(acctID, t)
+l.BalanceByPath("Asset:", t)
+l.DailyBalances(acctID, from, to)</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="column is-one-third">
+        <div class="box">
+          <h2 class="title is-5">Interest Engine</h2>
+          <div class="content">
+            <p>Daily interest accrual computed in-transaction with live balance projections.</p>
+<pre><code>l.RecordMovementWithProjections(
+  from, to, amt, t, desc,
+)</code></pre>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <h2 class="title is-4 mt-5">Documentation</h2>
+    <div class="content">
+      <table class="table is-striped is-hoverable">
+        <thead><tr><th>Document</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><a href="../README.md">README</a></td><td>Project overview and chart of accounts</td></tr>
+          <tr><td><a href="../TEXT_SYNTAX.md">TEXT_SYNTAX</a></td><td>Plain text format reference</td></tr>
+          <tr><td><a href="benchmarks.md">Benchmarks</a></td><td>Performance benchmarks and analysis</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="title is-4 mt-5">Quick Start</h2>
+    <div class="content">
+<pre><code>go get github.com/drummonds/go-luca
+
+import (
+    "github.com/drummonds/go-luca"
+    _ "github.com/drummonds/go-postgres"
+)
+
+l, _ := luca.NewLedger(":memory:")
+defer l.Close()
+
+cash, _ := l.CreateAccount("Asset:Cash", "GBP", -2, 0)
+bank, _ := l.CreateAccount("Asset:Bank", "GBP", -2, 0)
+l.RecordMovement(cash.ID, bank.ID, 10000, time.Now(), "Transfer")</code></pre>
+    </div>
+
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p><strong>go-luca</strong> &mdash; <a href="https://github.com/drummonds/go-luca">github.com/drummonds/go-luca</a></p>
+  </div>
+</footer>
+
+</body>
+</html>
