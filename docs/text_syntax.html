@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>go-luca — Plain Text Syntax</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+  <style>
+    pre code { font-size: 0.9em; }
+    .content ul { list-style: disc; margin-left: 1.5em; }
+  </style>
+</head>
+<body>
+
+<section class="hero is-link is-small">
+  <div class="hero-body">
+    <div class="container">
+      <h1 class="title">Plain Text Syntax</h1>
+      <p class="subtitle"><a class="has-text-white" href="index.html">&larr; go-luca docs</a></p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container content">
+
+    <p>Borrows from the EBNF format described at
+      <a href="https://www.bytestone.uk/afp/plain-text-accounting/">bytestone.uk/afp/plain-text-accounting</a>.</p>
+
+    <h2>Chart of Accounts</h2>
+    <p>Accounts follow a hierarchical path: <code>Type:Product:AccountID:Address</code></p>
+    <p>The five account types are <strong>Asset</strong>, <strong>Liability</strong>,
+      <strong>Equity</strong>, <strong>Income</strong>, and <strong>Expense</strong>.</p>
+    <p>Each account address can also be <code>:Pending</code>.</p>
+    <p>Example: <code>Liability:InterestAccount:0000-111:</code></p>
+
+    <h2>Movements</h2>
+    <p>Pacioli had Credit // Debit. Movements replace the traditional transaction+postings model.</p>
+
+    <h3>Single Movements</h3>
+    <p>All arrow variants are equivalent:</p>
+<pre><code>2026-02-07 *
+  Cash &rarr; Equity 200 GBP
+
+2026-02-07 *
+  Cash // Equity 200 GBP
+
+2026-02-07 *
+  Cash > Equity 200 GBP
+
+2026-02-07 *
+  Cash -> Equity 200 GBP</code></pre>
+
+    <p>Including a description:</p>
+<pre><code>2026-02-07 *
+  Cash &rarr; Equity "Dividend" 200 GBP</code></pre>
+
+    <h3>Linked Movements</h3>
+    <p>Subsequent related movements are prefixed with <code>+</code> (TigerBeetle-inspired batch linking):</p>
+<pre><code>2026-02-07 *
+  Cash &rarr; Purchases 5
+  +Cash &rarr; VATInput 1</code></pre>
+
+    <h3>Pending Transactions</h3>
+    <p>Use <code>!</code> instead of <code>*</code> to mark a transaction as pending:</p>
+<pre><code>2026-03-01 ! Pending invoice
+  Asset:Bank &rarr; Expense:Food 15.50 GBP</code></pre>
+
+    <h2>Parameters</h2>
+    <p>Not all data is movements.</p>
+
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p><a href="index.html">go-luca docs</a> &mdash; <a href="https://github.com/drummonds/go-luca">github.com/drummonds/go-luca</a></p>
+  </div>
+</footer>
+
+</body>
+</html>

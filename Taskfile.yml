@@ -98,6 +98,11 @@ tasks:
           -output internal/golucagrammar/goluca.go \
           -package golucagrammar -name goluca
 
+  docs:md2html:
+    desc: Convert docs/*.md to Bulma-styled HTML
+    cmds:
+      - task-plus md2html -src docs -dst docs -label "go-luca docs"
+
   testBenchmark:
     desc: Start PG, run all benchmarks, stop PG
     cmds:

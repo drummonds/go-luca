@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Benchmarks - go-luca</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        pre {
+            background-color: #2b2b2b;
+            color: #f8f8f2;
+            padding: 1.25em 1.5em;
+            overflow-x: auto;
+        }
+        pre code {
+            color: inherit;
+            background: none;
+            padding: 0;
+            font-size: 0.875em;
+        }
+        code {
+            background-color: #f5f5f5;
+            color: #e83e8c;
+            padding: 0.125em 0.375em;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <section class="section">
+        <div class="container">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+                <ul>
+                    <li><a href="index.html">go-luca</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">go-luca docs</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">Benchmarks</a></li>
+                </ul>
+            </nav>
+
+            <div class="content">
+                <h1 id="benchmarks">Benchmarks</h1>
+<h2 id="running">Running</h2>
+<pre><code class="language-bash">task benchmark          # Standard Go benchmarks (pglike/SQLite, :memory:)
+task testBenchmark      # Standalone PG benchmarks (starts/stops Podman container)
+</code></pre>
+<h2 id="structure">Structure</h2>
+<pre><code>benchmark_test.go           # Standard Go benchmarks (in-process, :memory:)
+cmd/bench-*/                # Standalone programs for real PostgreSQL
+benchmarks/
+  analysis/                 # Narrative analysis per topic (purpose, findings, AI summary)
+  reports/                  # Timestamped raw reports with data tables and SQL queries
+</code></pre>
+<p>Each benchmark topic produces three analysis files:</p>
+<ul>
+<li><code>&lt;topic&gt;-purpose.md</code> — what scenario it simulates and why</li>
+<li><code>&lt;topic&gt;-analysis.md</code> — conclusions and recommendations</li>
+<li><code>&lt;topic&gt;-ai-summary.md</code> — compact summary</li>
+</ul>
+<p>Reports in <code>benchmarks/reports/</code> include full SQL queries, schema, raw output, and results tables (TPS).</p>
+<h2 id="writing-benchmarks">Writing Benchmarks</h2>
+<ul>
+<li>Use <code>:memory:</code> for in-process benchmarks (no disk I/O noise)</li>
+<li><code>b.ResetTimer()</code> after setup</li>
+<li>Sub-benchmarks (<code>b.Run(...)</code>) to vary parameters</li>
+<li><code>l.EnsureInterestAccounts()</code> during setup for interest-related benchmarks</li>
+<li>Standalone PG benchmarks go in <code>cmd/bench-*</code>, wired into <code>task testBenchmark</code></li>
+</ul>
+<h2 id="benchmark-index">Benchmark Index</h2>
+<h3 id="in-process-pglikesqlite">In-process (pglike/SQLite)</h3>
+<table>
+<thead>
+<tr>
+<th>Benchmark</th>
+<th>What it measures</th>
+<th style="text-align:right">TPS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BenchmarkRecordMovement</code></td>
+<td>Single movement insert</td>
+<td style="text-align:right">~2,318</td>
+</tr>
+<tr>
+<td><code>BenchmarkBalanceQuery</code></td>
+<td>Balance query vs movement count (100/1k/10k)</td>
+<td style="text-align:right">—</td>
+</tr>
+<tr>
+<td><code>BenchmarkSimpleMovementAndBalance</code></td>
+<td>Movement + Balance per op (baseline)</td>
+<td style="text-align:right">~1,260</td>
+</tr>
+<tr>
+<td><code>BenchmarkCompoundMovementWithProjections</code></td>
+<td>Compound: movement + interest + live balance</td>
+<td style="text-align:right">~586</td>
+</tr>
+<tr>
+<td><code>BenchmarkInterestNAccounts</code></td>
+<td>RunDailyInterest scaling (10/100/1k/10k accounts)</td>
+<td style="text-align:right">—</td>
+</tr>
+</tbody>
+</table>
+<h3 id="standalone-real-postgresql">Standalone (real PostgreSQL)</h3>
+<table>
+<thead>
+<tr>
+<th>Benchmark</th>
+<th>What it measures</th>
+<th>Analysis</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bench-balance-types</code></td>
+<td>BIGINT vs DOUBLE vs NUMERIC for point-in-time lookup</td>
+<td><code>benchmarks/analysis/balance-types-*</code></td>
+</tr>
+<tr>
+<td><code>bench-compound-movements</code></td>
+<td>Simple vs compound movement throughput</td>
+<td><code>benchmarks/analysis/compound-movements-*</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="analysis-reports">Analysis Reports</h2>
+<table>
+<thead>
+<tr>
+<th>Topic</th>
+<th>Question</th>
+<th>Finding</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../benchmarks/analysis/balance-types-analysis.md">Balance types</a></td>
+<td>Which PG type for balance storage?</td>
+<td>BIGINT — sub-ms lookups at 36M rows, all types equivalent</td>
+</tr>
+<tr>
+<td><a href="../benchmarks/analysis/compound-movements-analysis.md">Compound movements</a></td>
+<td>Is write-time projection fast enough?</td>
+<td>~586 TPS, 2.2x overhead vs simple — eliminates batch processing</td>
+</tr>
+</tbody>
+</table>
+
+            </div>
+        </div>
+    </section>
+</body>
+</html>
