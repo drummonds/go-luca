@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-03-03
+
+ - Improving documentation
+
 ## [0.2.2] - 2026-03-03
 
  - using task-plus md2svg for change
