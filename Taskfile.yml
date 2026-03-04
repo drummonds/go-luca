@@ -89,6 +89,11 @@ tasks:
     cmds:
       - go run ./cmd/bench-scv
 
+  docs:goluca2html:
+    desc: Build goluca syntax highlighter CLI
+    cmds:
+      - go build ./cmd/goluca2html
+
   docs:md2html:
     desc: Convert docs/*.md and benchmark analysis to Bulma-styled HTML
     cmds:

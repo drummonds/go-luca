@@ -15,7 +15,7 @@ type MovementWithPaths struct {
 
 // ListMovements returns all movements ordered by value_time then id,
 // with account paths resolved via JOIN.
-func (l *Ledger) ListMovements() ([]MovementWithPaths, error) {
+func (l *SQLLedger) ListMovements() ([]MovementWithPaths, error) {
 	rows, err := l.db.Query(
 		`SELECT m.id, m.batch_id, m.from_account_id, m.to_account_id, m.amount,
 		        m.code, m.ledger, m.pending_id, m.user_data_64,
@@ -51,7 +51,7 @@ func (l *Ledger) ListMovements() ([]MovementWithPaths, error) {
 }
 
 // Export writes the ledger contents as .goluca formatted text.
-func (l *Ledger) Export(w io.Writer) error {
+func (l *SQLLedger) Export(w io.Writer) error {
 	movements, err := l.ListMovements()
 	if err != nil {
 		return err

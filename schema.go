@@ -47,7 +47,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_balances_live_unique
 `
 
 // createSchema executes the DDL statements to create tables and indexes.
-func (l *Ledger) createSchema() error {
+func (l *SQLLedger) createSchema() error {
 	_, err := l.db.Exec(schemaSQL)
 	return err
 }

@@ -26,7 +26,7 @@ func (o *ImportOptions) defaults() ImportOptions {
 }
 
 // Import reads a .goluca file and records all transactions into the Ledger.
-func (l *Ledger) Import(r io.Reader, opts *ImportOptions) error {
+func (l *SQLLedger) Import(r io.Reader, opts *ImportOptions) error {
 	o := opts.defaults()
 
 	gf, err := ParseGoluca(r)
@@ -42,7 +42,7 @@ func (l *Ledger) Import(r io.Reader, opts *ImportOptions) error {
 	return nil
 }
 
-func (l *Ledger) importTransaction(txn Transaction, opts ImportOptions) error {
+func (l *SQLLedger) importTransaction(txn Transaction, opts ImportOptions) error {
 	if len(txn.Movements) == 0 {
 		return nil
 	}
@@ -126,7 +126,7 @@ func (l *Ledger) importTransaction(txn Transaction, opts ImportOptions) error {
 	return err
 }
 
-func (l *Ledger) resolveAccount(path string, m TextMovement, opts ImportOptions) (*Account, error) {
+func (l *SQLLedger) resolveAccount(path string, m TextMovement, opts ImportOptions) (*Account, error) {
 	acct, err := l.GetAccount(path)
 	if err != nil {
 		return nil, err
@@ -157,6 +157,6 @@ func inferExponent(amount string) int {
 }
 
 // ImportString is a convenience wrapper that imports from a string.
-func (l *Ledger) ImportString(s string, opts *ImportOptions) error {
+func (l *SQLLedger) ImportString(s string, opts *ImportOptions) error {
 	return l.Import(strings.NewReader(s), opts)
 }

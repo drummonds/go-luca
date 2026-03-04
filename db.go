@@ -10,7 +10,7 @@ import (
 
 // CreateAccount inserts a new account and returns it with the generated ID.
 // fullPath is parsed to extract Type, Product, AccountID, and Address components.
-func (l *Ledger) CreateAccount(fullPath string, currency string, exponent int, annualInterestRate float64) (*Account, error) {
+func (l *SQLLedger) CreateAccount(fullPath string, currency string, exponent int, annualInterestRate float64) (*Account, error) {
 	accountType, product, accountID, address, isPending, err := parseFullPath(fullPath)
 	if err != nil {
 		return nil, fmt.Errorf("parse path: %w", err)
@@ -59,7 +59,7 @@ func scanAccount(scanner interface{ Scan(...any) error }) (*Account, error) {
 const accountColumns = `id, full_path, account_type, product, account_id, address, is_pending, currency, exponent, annual_interest_rate, created_at`
 
 // GetAccount retrieves an account by its full path.
-func (l *Ledger) GetAccount(fullPath string) (*Account, error) {
+func (l *SQLLedger) GetAccount(fullPath string) (*Account, error) {
 	row := l.db.QueryRow(
 		`SELECT `+accountColumns+`
 		 FROM accounts WHERE full_path = $1`, fullPath,
@@ -75,7 +75,7 @@ func (l *Ledger) GetAccount(fullPath string) (*Account, error) {
 }
 
 // GetAccountByID retrieves an account by its database ID.
-func (l *Ledger) GetAccountByID(id int64) (*Account, error) {
+func (l *SQLLedger) GetAccountByID(id int64) (*Account, error) {
 	row := l.db.QueryRow(
 		`SELECT `+accountColumns+`
 		 FROM accounts WHERE id = $1`, id,
@@ -92,7 +92,7 @@ func (l *Ledger) GetAccountByID(id int64) (*Account, error) {
 
 // ListAccounts returns all accounts, optionally filtered by type.
 // Pass empty string to list all accounts.
-func (l *Ledger) ListAccounts(typeFilter AccountType) ([]*Account, error) {
+func (l *SQLLedger) ListAccounts(typeFilter AccountType) ([]*Account, error) {
 	var rows *sql.Rows
 	var err error
 	if typeFilter == "" {
@@ -121,7 +121,7 @@ func (l *Ledger) ListAccounts(typeFilter AccountType) ([]*Account, error) {
 }
 
 // nextBatchID returns the next available batch ID.
-func (l *Ledger) nextBatchID(tx *sql.Tx) (int64, error) {
+func (l *SQLLedger) nextBatchID(tx *sql.Tx) (int64, error) {
 	var id int64
 	err := tx.QueryRow(`SELECT COALESCE(MAX(batch_id), 0) + 1 FROM movements`).Scan(&id)
 	return id, err
@@ -130,7 +130,7 @@ func (l *Ledger) nextBatchID(tx *sql.Tx) (int64, error) {
 // validateSameExponent checks that both accounts exist and share the same exponent.
 // Movements between accounts with different exponents are not allowed — that
 // is treated as a currency conversion requiring explicit handling.
-func (l *Ledger) validateSameExponent(fromAccountID, toAccountID int64) error {
+func (l *SQLLedger) validateSameExponent(fromAccountID, toAccountID int64) error {
 	fromAcct, err := l.GetAccountByID(fromAccountID)
 	if err != nil {
 		return fmt.Errorf("get from account: %w", err)
@@ -155,7 +155,7 @@ func (l *Ledger) validateSameExponent(fromAccountID, toAccountID int64) error {
 // RecordMovement inserts a single movement and returns it.
 // Both accounts must have the same exponent; cross-exponent transfers are rejected.
 // amount is an integer in the smallest currency unit at the accounts' shared exponent.
-func (l *Ledger) RecordMovement(fromAccountID, toAccountID int64, amount int64, valueTime time.Time, description string) (*Movement, error) {
+func (l *SQLLedger) RecordMovement(fromAccountID, toAccountID int64, amount int64, valueTime time.Time, description string) (*Movement, error) {
 	if err := l.validateSameExponent(fromAccountID, toAccountID); err != nil {
 		return nil, err
 	}
@@ -201,7 +201,7 @@ func (l *Ledger) RecordMovement(fromAccountID, toAccountID int64, amount int64, 
 // RecordLinkedMovements inserts multiple movements sharing the same batch_id
 // within a single database transaction.
 // All account pairs must share the same exponent.
-func (l *Ledger) RecordLinkedMovements(movements []MovementInput, valueTime time.Time) (int64, error) {
+func (l *SQLLedger) RecordLinkedMovements(movements []MovementInput, valueTime time.Time) (int64, error) {
 	if len(movements) == 0 {
 		return 0, fmt.Errorf("no movements to record")
 	}
@@ -262,7 +262,7 @@ func txBalance(tx *sql.Tx, accountID int64, at time.Time) (int64, error) {
 // RecordMovementWithProjections records a movement and, in the same transaction,
 // pre-computes interest accrual and the end-of-day live balance for the
 // to-account. This avoids separate end-of-day batch processing.
-func (l *Ledger) RecordMovementWithProjections(fromAccountID, toAccountID int64, amount int64, valueTime time.Time, description string) (*Movement, error) {
+func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID int64, amount int64, valueTime time.Time, description string) (*Movement, error) {
 	if err := l.validateSameExponent(fromAccountID, toAccountID); err != nil {
 		return nil, err
 	}
@@ -394,7 +394,7 @@ func (l *Ledger) RecordMovementWithProjections(fromAccountID, toAccountID int64,
 
 // GetLiveBalance reads the pre-computed end-of-day balance from balances_live.
 // Returns nil if no balance exists for the given account and date.
-func (l *Ledger) GetLiveBalance(accountID int64, date time.Time) (*LiveBalance, error) {
+func (l *SQLLedger) GetLiveBalance(accountID int64, date time.Time) (*LiveBalance, error) {
 	balanceDate := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 	var lb LiveBalance
 	var dateStr string

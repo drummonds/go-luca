@@ -8,6 +8,13 @@
   <style>
     pre code { font-size: 0.9em; }
     .content ul { list-style: disc; margin-left: 1.5em; }
+    .hl-constant { color: #d73a49; }
+    .hl-keyword  { color: #6f42c1; }
+    .hl-string   { color: #032f62; }
+    .hl-type     { color: #005cc5; }
+    .hl-operator { color: #e36209; }
+    .hl-number   { color: #005cc5; }
+    .hl-comment  { color: #6a737d; font-style: italic; }
   </style>
 </head>
 <body>
@@ -39,32 +46,32 @@
 
     <h3>Single Movements</h3>
     <p>All arrow variants are equivalent:</p>
-<pre><code>2026-02-07 *
-  Cash &rarr; Equity 200 GBP
+<pre><code><span class="hl-constant">2026-02-07</span> <span class="hl-keyword">*</span>
+  <span class="hl-type">Asset:Cash</span> <span class="hl-operator">→</span> <span class="hl-type">Equity:Capital</span> <span class="hl-number">200</span> <span class="hl-constant">GBP</span>
 
-2026-02-07 *
-  Cash // Equity 200 GBP
+<span class="hl-constant">2026-02-07</span> <span class="hl-keyword">*</span>
+  <span class="hl-type">Asset:Cash</span> <span class="hl-operator">//</span> <span class="hl-type">Equity:Capital</span> <span class="hl-number">200</span> <span class="hl-constant">GBP</span>
 
-2026-02-07 *
-  Cash > Equity 200 GBP
+<span class="hl-constant">2026-02-07</span> <span class="hl-keyword">*</span>
+  <span class="hl-type">Asset:Cash</span> <span class="hl-operator">&gt;</span> <span class="hl-type">Equity:Capital</span> <span class="hl-number">200</span> <span class="hl-constant">GBP</span>
 
-2026-02-07 *
-  Cash -> Equity 200 GBP</code></pre>
+<span class="hl-constant">2026-02-07</span> <span class="hl-keyword">*</span>
+  <span class="hl-type">Asset:Cash</span> <span class="hl-operator">-&gt;</span> <span class="hl-type">Equity:Capital</span> <span class="hl-number">200</span> <span class="hl-constant">GBP</span></code></pre>
 
     <p>Including a description:</p>
-<pre><code>2026-02-07 *
-  Cash &rarr; Equity "Dividend" 200 GBP</code></pre>
+<pre><code><span class="hl-constant">2026-02-07</span> <span class="hl-keyword">*</span>
+  <span class="hl-type">Asset:Cash</span> <span class="hl-operator">→</span> <span class="hl-type">Equity:Capital</span> <span class="hl-string">"Dividend"</span> <span class="hl-number">200</span> <span class="hl-constant">GBP</span></code></pre>
 
     <h3>Linked Movements</h3>
     <p>Subsequent related movements are prefixed with <code>+</code> (TigerBeetle-inspired batch linking):</p>
-<pre><code>2026-02-07 *
-  Cash &rarr; Purchases 5
-  +Cash &rarr; VATInput 1</code></pre>
+<pre><code><span class="hl-constant">2026-02-07</span> <span class="hl-keyword">*</span>
+  <span class="hl-type">Asset:Cash</span> <span class="hl-operator">→</span> <span class="hl-type">Expense:Purchases</span> <span class="hl-number">5.00</span> <span class="hl-constant">GBP</span>
+  <span class="hl-operator">+</span><span class="hl-type">Asset:Cash</span> <span class="hl-operator">→</span> <span class="hl-type">Expense:Tax</span> <span class="hl-number">1.00</span> <span class="hl-constant">GBP</span></code></pre>
 
     <h3>Pending Transactions</h3>
     <p>Use <code>!</code> instead of <code>*</code> to mark a transaction as pending:</p>
-<pre><code>2026-03-01 ! Pending invoice
-  Asset:Bank &rarr; Expense:Food 15.50 GBP</code></pre>
+<pre><code><span class="hl-constant">2026-03-01</span> <span class="hl-keyword">!</span> <span class="hl-string">Pending invoice</span>
+  <span class="hl-type">Asset:Bank</span> <span class="hl-operator">→</span> <span class="hl-type">Expense:Food</span> <span class="hl-number">15.50</span> <span class="hl-constant">GBP</span></code></pre>
 
     <h2>Parameters</h2>
     <p>Not all data is movements.</p>

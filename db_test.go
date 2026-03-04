@@ -7,7 +7,7 @@ import (
 	_ "github.com/drummonds/go-postgres"
 )
 
-func newTestLedger(t *testing.T) *Ledger {
+func newTestLedger(t *testing.T) *SQLLedger {
 	t.Helper()
 	l, err := NewLedger(":memory:")
 	if err != nil {

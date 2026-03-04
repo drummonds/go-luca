@@ -1,17 +1,56 @@
 package luca
 
 import (
-	"database/sql"
+	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 )
+
+// ErrNotImplemented is returned by Ledger backends that don't support a method.
+var ErrNotImplemented = errors.New("not implemented")
 
 // Movement code constants (TigerBeetle-inspired).
 const (
 	CodeNormal          int16 = 0
 	CodeInterestAccrual int16 = 1
 )
+
+// Ledger is the interface for all ledger backends.
+type Ledger interface {
+	Close() error
+
+	// Accounts
+	CreateAccount(fullPath string, currency string, exponent int, annualInterestRate float64) (*Account, error)
+	GetAccount(fullPath string) (*Account, error)
+	GetAccountByID(id int64) (*Account, error)
+	ListAccounts(typeFilter AccountType) ([]*Account, error)
+
+	// Movements
+	RecordMovement(fromAccountID, toAccountID int64, amount int64, valueTime time.Time, description string) (*Movement, error)
+	RecordLinkedMovements(movements []MovementInput, valueTime time.Time) (int64, error)
+	RecordMovementWithProjections(fromAccountID, toAccountID int64, amount int64, valueTime time.Time, description string) (*Movement, error)
+
+	// Balances
+	Balance(accountID int64) (int64, error)
+	BalanceAt(accountID int64, at time.Time) (int64, error)
+	BalanceByPath(pathPrefix string, at time.Time) (int64, int, error)
+	DailyBalances(accountID int64, from, to time.Time) ([]DailyBalance, error)
+	GetLiveBalance(accountID int64, date time.Time) (*LiveBalance, error)
+
+	// Interest
+	EnsureInterestAccounts() error
+	CalculateDailyInterest(accountID int64, date time.Time) (*InterestResult, error)
+	RunDailyInterest(date time.Time) ([]InterestResult, error)
+	RunInterestForPeriod(from, to time.Time) ([]InterestResult, error)
+
+	// Import/Export
+	ListMovements() ([]MovementWithPaths, error)
+	Export(w io.Writer) error
+	Import(r io.Reader, opts *ImportOptions) error
+	ImportString(s string, opts *ImportOptions) error
+}
 
 // LiveBalance is a pre-computed end-of-day balance snapshot stored in balances_live.
 type LiveBalance struct {
@@ -83,32 +122,6 @@ type MovementInput struct {
 	PendingID     int64
 	UserData64    int64
 	Description   string
-}
-
-// Ledger is the top-level object that manages accounts, movements,
-// and the database connection.
-type Ledger struct {
-	db *sql.DB
-}
-
-// NewLedger opens a database connection and ensures the schema exists.
-// dsn can be ":memory:" for tests or a file path for persistence.
-func NewLedger(dsn string) (*Ledger, error) {
-	db, err := sql.Open("pglike", dsn)
-	if err != nil {
-		return nil, fmt.Errorf("open database: %w", err)
-	}
-	l := &Ledger{db: db}
-	if err := l.createSchema(); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("create schema: %w", err)
-	}
-	return l, nil
-}
-
-// Close closes the underlying database connection.
-func (l *Ledger) Close() error {
-	return l.db.Close()
 }
 
 // parseFullPath splits a hierarchical account path into its components.

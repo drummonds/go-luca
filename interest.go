@@ -19,7 +19,7 @@ type InterestResult struct {
 
 // EnsureInterestAccounts creates the system accounts needed for interest
 // processing. These are created idempotently.
-func (l *Ledger) EnsureInterestAccounts() error {
+func (l *SQLLedger) EnsureInterestAccounts() error {
 	for _, path := range []string{"Expense:Interest", "Income:Interest"} {
 		existing, err := l.GetAccount(path)
 		if err != nil {
@@ -38,7 +38,7 @@ func (l *Ledger) EnsureInterestAccounts() error {
 // Formula: interest = closingBalance * (annualRate / 365)
 // The interest is recorded as a movement from Expense:Interest to the account.
 // All amounts use the account's exponent.
-func (l *Ledger) CalculateDailyInterest(accountID int64, date time.Time) (*InterestResult, error) {
+func (l *SQLLedger) CalculateDailyInterest(accountID int64, date time.Time) (*InterestResult, error) {
 	acct, err := l.GetAccountByID(accountID)
 	if err != nil {
 		return nil, fmt.Errorf("get account: %w", err)
@@ -109,7 +109,7 @@ func (l *Ledger) CalculateDailyInterest(accountID int64, date time.Time) (*Inter
 
 // RunDailyInterest processes interest for all accounts that have a non-zero
 // annual_interest_rate, for the given date.
-func (l *Ledger) RunDailyInterest(date time.Time) ([]InterestResult, error) {
+func (l *SQLLedger) RunDailyInterest(date time.Time) ([]InterestResult, error) {
 	rows, err := l.db.Query(
 		`SELECT id FROM accounts WHERE annual_interest_rate != 0 ORDER BY id`)
 	if err != nil {
@@ -143,7 +143,7 @@ func (l *Ledger) RunDailyInterest(date time.Time) ([]InterestResult, error) {
 }
 
 // RunInterestForPeriod runs daily interest for every day in [from, to] inclusive.
-func (l *Ledger) RunInterestForPeriod(from, to time.Time) ([]InterestResult, error) {
+func (l *SQLLedger) RunInterestForPeriod(from, to time.Time) ([]InterestResult, error) {
 	var allResults []InterestResult
 	for d := from; !d.After(to); d = d.AddDate(0, 0, 1) {
 		results, err := l.RunDailyInterest(d)

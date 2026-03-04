@@ -10,6 +10,13 @@
     .content ul { list-style: disc; margin-left: 1.5em; }
     pre code { font-size: 0.9em; }
     .tag.is-medium { font-size: 0.85rem; }
+    .hl-constant { color: #d73a49; }
+    .hl-keyword  { color: #6f42c1; }
+    .hl-string   { color: #032f62; }
+    .hl-type     { color: #005cc5; }
+    .hl-operator { color: #e36209; }
+    .hl-number   { color: #005cc5; }
+    .hl-comment  { color: #6a737d; font-style: italic; }
   </style>
 </head>
 <body>
@@ -52,18 +59,18 @@
         <div class="box">
           <h2 class="title is-4">.goluca Plain Text Format</h2>
           <div class="content">
-<pre><code># A dividend payment
-2026-02-07 * Dividend payment
-  Asset:Cash &rarr; Equity:Capital "Dividend" 200.00 GBP
+<pre><code><span class="hl-comment"># A dividend payment</span>
+<span class="hl-constant">2026-02-07</span> <span class="hl-keyword">*</span> <span class="hl-string">Dividend payment</span>
+  <span class="hl-type">Asset:Cash</span> <span class="hl-operator">→</span> <span class="hl-type">Equity:Capital</span> <span class="hl-string">"Dividend"</span> <span class="hl-number">200.00</span> <span class="hl-constant">GBP</span>
 
-# Linked payroll movements
-2026-02-01 * Payroll
-  +Income:Salary &rarr; Asset:Bank "net salary" 4000.00 GBP
-  +Income:Salary &rarr; Expense:Tax "income tax" 1000.00 GBP
+<span class="hl-comment"># Linked payroll movements</span>
+<span class="hl-constant">2026-02-01</span> <span class="hl-keyword">*</span> <span class="hl-string">Payroll</span>
+  <span class="hl-operator">+</span><span class="hl-type">Income:Salary</span> <span class="hl-operator">→</span> <span class="hl-type">Asset:Bank</span> <span class="hl-string">"net salary"</span> <span class="hl-number">4000.00</span> <span class="hl-constant">GBP</span>
+  <span class="hl-operator">+</span><span class="hl-type">Income:Salary</span> <span class="hl-operator">→</span> <span class="hl-type">Expense:Tax</span> <span class="hl-string">"income tax"</span> <span class="hl-number">1000.00</span> <span class="hl-constant">GBP</span>
 
-# Pending transaction
-2026-03-01 ! Pending invoice
-  Asset:Bank &rarr; Expense:Food 15.50 GBP</code></pre>
+<span class="hl-comment"># Pending transaction</span>
+<span class="hl-constant">2026-03-01</span> <span class="hl-keyword">!</span> <span class="hl-string">Pending invoice</span>
+  <span class="hl-type">Asset:Bank</span> <span class="hl-operator">→</span> <span class="hl-type">Expense:Food</span> <span class="hl-number">15.50</span> <span class="hl-constant">GBP</span></code></pre>
           </div>
         </div>
       </div>

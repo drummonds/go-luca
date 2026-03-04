@@ -14,7 +14,7 @@ type DailyBalance struct {
 // Balance returns the current balance of an account (all movements, all time).
 // Since movements are only allowed between same-exponent accounts,
 // SUM(amount) is always in the account's own exponent.
-func (l *Ledger) Balance(accountID int64) (int64, error) {
+func (l *SQLLedger) Balance(accountID int64) (int64, error) {
 	var balance int64
 	err := l.db.QueryRow(
 		`SELECT
@@ -30,7 +30,7 @@ func (l *Ledger) Balance(accountID int64) (int64, error) {
 
 // BalanceAt returns the balance of an account as of a specific point in time.
 // Only considers movements with value_time <= the given time.
-func (l *Ledger) BalanceAt(accountID int64, at time.Time) (int64, error) {
+func (l *SQLLedger) BalanceAt(accountID int64, at time.Time) (int64, error) {
 	var balance int64
 	err := l.db.QueryRow(
 		`SELECT
@@ -50,7 +50,7 @@ func (l *Ledger) BalanceAt(accountID int64, at time.Time) (int64, error) {
 // When all matched accounts share the same exponent, this is a simple SUM.
 // When they differ (e.g. aggregating across ledger partitions), each movement
 // is scaled from its accounts' exponent to the reporting exponent in Go.
-func (l *Ledger) BalanceByPath(pathPrefix string, at time.Time) (int64, int, error) {
+func (l *SQLLedger) BalanceByPath(pathPrefix string, at time.Time) (int64, int, error) {
 	pattern := pathPrefix + "%"
 
 	// Get the reporting exponent (min of all matched accounts)
@@ -134,7 +134,7 @@ func (l *Ledger) BalanceByPath(pathPrefix string, at time.Time) (int64, int, err
 }
 
 // DailyBalances returns day-by-day closing balances for an account over a date range.
-func (l *Ledger) DailyBalances(accountID int64, from, to time.Time) ([]DailyBalance, error) {
+func (l *SQLLedger) DailyBalances(accountID int64, from, to time.Time) ([]DailyBalance, error) {
 	var result []DailyBalance
 	for d := from; !d.After(to); d = d.AddDate(0, 0, 1) {
 		endOfDay := time.Date(d.Year(), d.Month(), d.Day(), 23, 59, 59, 999999999, d.Location())
