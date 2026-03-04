@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-03-04
+
+ - Fleshing out API interface and creating ledger documentation
+
 ## [0.2.5] - 2026-03-04
 
  - Restructuring and adding documenation
