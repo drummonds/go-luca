@@ -89,15 +89,6 @@ tasks:
     cmds:
       - go run ./cmd/bench-scv
 
-  generate:grammar:
-    desc: Regenerate tree-sitter goluca grammar blob
-    cmds:
-      - |
-        $(go env GOPATH)/bin/ts2go \
-          -input /home/hum3/nibble/tree-sitter-goluca/src/parser.c \
-          -output internal/golucagrammar/goluca.go \
-          -package golucagrammar -name goluca
-
   docs:md2html:
     desc: Convert docs/*.md and benchmark analysis to Bulma-styled HTML
     cmds:

@@ -4,8 +4,8 @@ go 1.25.3
 
 require (
 	github.com/drummonds/go-postgres v0.2.1
+	github.com/drummonds/gotreesitter v0.6.0
 	github.com/jackc/pgx/v5 v5.8.0
-	github.com/odvcencio/gotreesitter v0.6.0
 	github.com/shopspring/decimal v1.4.0
 )
 
@@ -27,3 +27,5 @@ require (
 	modernc.org/memory v1.11.0 // indirect
 	modernc.org/sqlite v1.44.3 // indirect
 )
+
+replace github.com/drummonds/gotreesitter v0.6.0 => /home/hum3/nibble/gotreesitter

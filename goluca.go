@@ -6,9 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odvcencio/gotreesitter"
-
-	"github.com/drummonds/go-luca/internal/golucagrammar"
+	"github.com/drummonds/gotreesitter"
+	"github.com/drummonds/gotreesitter/grammars"
 )
 
 // Transaction is an in-memory representation of a .goluca transaction,
@@ -42,7 +41,7 @@ func ParseGoluca(r io.Reader) (*GolucaFile, error) {
 		return nil, fmt.Errorf("read source: %w", err)
 	}
 
-	lang := golucagrammar.GolucaLanguage()
+	lang := grammars.GolucaLanguage()
 	parser := gotreesitter.NewParser(lang)
 	tree, err := parser.Parse(src)
 	if err != nil {
