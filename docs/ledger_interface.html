@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>go-luca — Ledger Interface</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+  <style>
+    pre code { font-size: 0.9em; }
+    .content ul { list-style: disc; margin-left: 1.5em; }
+  </style>
+</head>
+<body>
+
+<section class="hero is-link is-small">
+  <div class="hero-body">
+    <div class="container">
+      <h1 class="title">Ledger Interface</h1>
+      <p class="subtitle"><a class="has-text-white" href="index.html">&larr; go-luca docs</a></p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container content">
+
+    <p>The <code>Ledger</code> interface decouples accounting operations from storage backends.
+       Two implementations exist today: <strong>SQLLedger</strong> (database/sql) and
+       <strong>MemLedger</strong> (pure Go in-memory).</p>
+
+    <h2>Backends</h2>
+
+    <h3>SQLLedger</h3>
+    <p>The full-featured backend, backed by any <code>database/sql</code> driver.</p>
+<pre><code>// pglike (SQLite with PostgreSQL syntax)
+l, _ := luca.NewLedger(":memory:")
+
+// Any database/sql driver (e.g. real postgres)
+db, _ := sql.Open("postgres", dsn)
+l, _ := luca.NewSQLLedger(db)</code></pre>
+
+    <h3>MemLedger</h3>
+    <p>Pure Go, no dependencies. Core operations only &mdash; advanced features return <code>ErrNotImplemented</code>.</p>
+<pre><code>l := luca.NewMemLedger()</code></pre>
+
+    <h2>Method Groups</h2>
+
+    <h3>Accounts</h3>
+    <ul>
+      <li><code>CreateAccount</code> &mdash; insert a new account by full path</li>
+      <li><code>GetAccount</code> &mdash; look up by full path</li>
+      <li><code>GetAccountByID</code> &mdash; look up by numeric ID</li>
+      <li><code>ListAccounts</code> &mdash; list all, optionally filtered by type</li>
+    </ul>
+
+    <h3>Movements</h3>
+    <ul>
+      <li><code>RecordMovement</code> &mdash; single movement between two accounts (same exponent enforced)</li>
+      <li><code>RecordLinkedMovements</code> &mdash; batch of movements sharing a batch ID</li>
+      <li><code>RecordMovementWithProjections</code> &mdash; movement with interest accrual and live balance upsert</li>
+    </ul>
+
+    <h3>Balances</h3>
+    <ul>
+      <li><code>Balance</code> &mdash; current all-time balance</li>
+      <li><code>BalanceAt</code> &mdash; balance at a point in time (value_time &le; t)</li>
+      <li><code>BalanceByPath</code> &mdash; aggregate balance across accounts matching a path prefix</li>
+      <li><code>DailyBalances</code> &mdash; day-by-day closing balances over a date range</li>
+      <li><code>GetLiveBalance</code> &mdash; pre-computed end-of-day balance snapshot</li>
+    </ul>
+
+    <h3>Interest</h3>
+    <ul>
+      <li><code>EnsureInterestAccounts</code> &mdash; create system accounts for interest processing</li>
+      <li><code>CalculateDailyInterest</code> &mdash; one day's interest for one account</li>
+      <li><code>RunDailyInterest</code> &mdash; process interest for all interest-bearing accounts</li>
+      <li><code>RunInterestForPeriod</code> &mdash; run daily interest over a date range</li>
+    </ul>
+
+    <h3>Import/Export</h3>
+    <p>Import and export operate on journals &mdash; the plain text record of accounting
+       movements. The .goluca format is one of several
+       <a href="https://github.com/drummonds/plain-text-accounting-formats">plain text accounting formats</a>;
+       see also the <a href="text_syntax.html">plain text syntax</a> reference for .goluca specifics.</p>
+    <ul>
+      <li><code>ListMovements</code> &mdash; all movements with resolved account paths</li>
+      <li><code>Export</code> &mdash; write the journal as .goluca text</li>
+      <li><code>Import</code> / <code>ImportString</code> &mdash; read a .goluca journal and record its movements</li>
+    </ul>
+
+    <h2>Backend Capabilities</h2>
+
+    <table class="table is-striped is-hoverable">
+      <thead><tr><th>Capability</th><th>SQLLedger</th><th>MemLedger</th></tr></thead>
+      <tbody>
+        <tr><td>Accounts</td><td>Full</td><td>Full</td></tr>
+        <tr><td>Movements (basic)</td><td>Full</td><td>Full</td></tr>
+        <tr><td>RecordMovementWithProjections</td><td>Full</td><td>Stub</td></tr>
+        <tr><td>Balance / BalanceAt / DailyBalances</td><td>Full</td><td>Full</td></tr>
+        <tr><td>BalanceByPath</td><td>Full</td><td>Stub</td></tr>
+        <tr><td>GetLiveBalance</td><td>Full</td><td>Stub</td></tr>
+        <tr><td>Interest engine</td><td>Full</td><td>Stub</td></tr>
+        <tr><td>Import / Export</td><td>Full</td><td>Stub</td></tr>
+      </tbody>
+    </table>
+    <p>Stubbed methods return <code>ErrNotImplemented</code>.</p>
+
+    <h2>Bitemporal Notes</h2>
+    <p>Movements carry two timestamps:</p>
+    <ul>
+      <li><strong>value_time</strong> &mdash; when the economic event occurred</li>
+      <li><strong>knowledge_time</strong> &mdash; when the system recorded it (defaults to NOW)</li>
+    </ul>
+    <p><code>BalanceAt</code> queries against value_time. Future extensions could support
+       knowledge-time queries (as-of / as-known-at) for full bitemporal reporting.</p>
+
+    <h2>Future Directions</h2>
+    <ul>
+      <li><strong>Compact MemLedger</strong> &mdash; columnar storage for read-heavy analytics</li>
+      <li><strong>Large MemLedger</strong> &mdash; sharded maps for high-concurrency writes</li>
+      <li><strong>pgx backend</strong> &mdash; high-performance PostgreSQL via pgx/v5 (bypassing database/sql)</li>
+      <li><strong>Bitemporal queries</strong> &mdash; knowledge-time-aware balance methods</li>
+    </ul>
+
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p><a href="index.html">go-luca docs</a> &mdash; <a href="https://github.com/drummonds/go-luca">github.com/drummonds/go-luca</a></p>
+  </div>
+</footer>
+
+</body>
+</html>

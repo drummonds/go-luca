@@ -125,12 +125,15 @@ l.DailyBalances(acctID, from, to)</code></pre>
       <table class="table is-striped is-hoverable">
         <thead><tr><th>Document</th><th>Description</th></tr></thead>
         <tbody>
-          <tr><td><a href="../README.md">README</a></td><td>Project overview and chart of accounts</td></tr>
-          <tr><td><a href="text_syntax.html">TEXT_SYNTAX</a></td><td>Plain text format reference (.goluca arrow variants, linked movements, parameters)</td></tr>
+          <tr><td><a href="https://github.com/drummonds/go-luca#readme">README</a></td><td>Project overview and chart of accounts</td></tr>
+          <tr><td><a href="text_syntax.html">Plain text syntax</a></td><td>.goluca format reference (arrow variants, linked movements, parameters)</td></tr>
+          <tr><td><a href="https://github.com/drummonds/plain-text-accounting-formats">Plain text accounting formats</a></td><td>EBNF grammar, format comparison (Beancount, Hledger, Ledger)</td></tr>
+          <tr><td><a href="ledger_interface.html">Ledger interface</a></td><td>Interface method groups, backend capabilities (SQL/Mem), bitemporal notes, future directions</td></tr>
           <tr><td><a href="benchmarks.html">Benchmarks</a></td><td>Performance benchmarks and analysis</td></tr>
           <tr><td><a href="benchmarks/analysis/balance-types-analysis.html">Balance types analysis</a></td><td>BIGINT vs DOUBLE vs NUMERIC — sub-ms lookups at 36M rows</td></tr>
           <tr><td><a href="benchmarks/analysis/compound-movements-analysis.html">Compound movements analysis</a></td><td>Write-time projection: ~586 TPS, eliminates batch processing</td></tr>
           <tr><td><a href="benchmarks/analysis/scv-analysis.html">SCV analysis</a></td><td>Single Customer View generation benchmark</td></tr>
+          <tr><td><a href="benchmarks/analysis/direct-vs-api-analysis.html">Direct vs API analysis</a></td><td>Library method calls vs HTTP/JSON API overhead</td></tr>
         </tbody>
       </table>
     </div>

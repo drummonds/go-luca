@@ -89,6 +89,11 @@ tasks:
     cmds:
       - go run ./cmd/bench-scv
 
+  bench:api:
+    desc: Run direct vs API benchmark (no PG needed)
+    cmds:
+      - go run ./cmd/bench-api
+
   docs:goluca2html:
     desc: Build goluca syntax highlighter CLI
     cmds:

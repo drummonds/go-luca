@@ -29,9 +29,11 @@ The `Ledger` interface decouples accounting operations from storage backends.
 - `RunInterestForPeriod` — run daily interest over a date range
 
 ### Import/Export
+Import and export operate on journals — the plain text record of accounting movements. The .goluca format is one of several [plain text accounting formats](https://github.com/drummonds/plain-text-accounting-formats).
+
 - `ListMovements` — all movements with resolved account paths
-- `Export` — write ledger as .goluca text format
-- `Import` / `ImportString` — read .goluca text and record transactions
+- `Export` — write the journal as .goluca text
+- `Import` / `ImportString` — read a .goluca journal and record its movements
 
 ## Backend Capabilities
 

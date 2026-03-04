@@ -1,6 +1,6 @@
 # Plain text syntax
 
-We are going to borrow from the EBNF format in https://www.bytestone.uk/afp/plain-text-accounting/
+We are going to borrow from the EBNF format in https://github.com/drummonds/plain-text-accounting-formats
 
 
 
