@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-03-04
+
+ - Changing to local gotreesitter
+
 ## [0.2.3] - 2026-03-03
 
  - Improving documentation
