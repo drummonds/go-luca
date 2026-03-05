@@ -105,11 +105,13 @@ tasks:
       - task-plus md2html -src docs -dst docs -label "go-luca docs"
       - task-plus md2html -src benchmarks/analysis -dst docs/benchmarks/analysis -label "Benchmark Analysis"
 
-  testBenchmark:
-    desc: Start PG, run all benchmarks, stop PG
+  bench:all:
+    desc: Run all benchmarks and regenerate docs
     cmds:
+      - task: bench:api
       - task: bench:pg:start
       - defer: { task: bench:pg:stop }
       - task: bench:balance-types
       - task: bench:compound-movements
       - task: bench:scv
+      - task: docs:md2html

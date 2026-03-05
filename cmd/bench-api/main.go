@@ -13,13 +13,43 @@ import (
 	_ "github.com/drummonds/go-postgres"
 )
 
+// backend describes a Ledger backend to benchmark.
+type backend struct {
+	name  string
+	setup func() (luca.Ledger, func()) // returns ledger + cleanup
+}
+
+var backends = []backend{
+	{"mem", func() (luca.Ledger, func()) {
+		return luca.NewMemLedger(), func() {}
+	}},
+	{"sql", func() (luca.Ledger, func()) {
+		l, err := luca.NewLedger(":memory:")
+		if err != nil {
+			log.Fatalf("NewLedger: %v", err)
+		}
+		return l, func() { l.Close() }
+	}},
+	{"api", func() (luca.Ledger, func()) {
+		l, err := luca.NewLedger(":memory:")
+		if err != nil {
+			log.Fatalf("NewLedger: %v", err)
+		}
+		srv := api.NewServer(l)
+		ts := httptest.NewServer(srv)
+		client := api.NewClient(ts.URL)
+		return client, func() { ts.Close(); l.Close() }
+	}},
+}
+
 func main() {
-	report := benchutil.NewReport("Direct vs API",
-		"Compare Ledger performance via direct method calls vs HTTP/JSON API round-trips")
+	report := benchutil.NewReport("Ledger Backends",
+		"Compare Ledger performance across backends: MemLedger, SQLLedger (pglike), and HTTP/JSON API")
 	report.AddMethods(
-		"- **Direct:** Call Ledger methods directly on *SQLLedger (in-process pglike/SQLite :memory:)\n" +
-			"- **API:** Call via api.Client → httptest.Server → api.Server → same *SQLLedger\n" +
-			"- **N:** Number of movements (pre-loaded)\n" +
+		"- **mem:** Pure Go in-memory MemLedger\n" +
+			"- **sql:** SQLLedger with pglike/SQLite :memory:\n" +
+			"- **api:** api.Client → httptest.Server → api.Server → SQLLedger :memory:\n" +
+			"- **N:** Number of movements (pre-loaded for balance queries)\n" +
 			"- **M:** Number of accounts\n" +
 			"- Each scenario creates a fresh ledger to avoid cross-contamination\n" +
 			"- Warmup: None — first iteration included")
@@ -27,7 +57,7 @@ func main() {
 	scenarios := []struct {
 		label    string
 		accounts int
-		preload  int // movements to pre-load before balance queries
+		preload  int
 	}{
 		{"small", 10, 100},
 		{"medium", 100, 1000},
@@ -39,18 +69,18 @@ func main() {
 	for _, sc := range scenarios {
 		fmt.Printf("  %s (M=%d)...\n", sc.label, sc.accounts)
 
-		directResult, err := benchRecordMovement(sc.label+"/direct", sc.accounts, func(l luca.Ledger) luca.Ledger { return l })
-		if err != nil {
-			log.Fatal(err)
-		}
-		apiResult, err := benchRecordMovement(sc.label+"/api", sc.accounts, wrapAPI)
-		if err != nil {
-			log.Fatal(err)
+		var results []*benchutil.TimingResult
+		for _, be := range backends {
+			r, err := benchRecordMovement(be.name, sc.accounts, be.setup)
+			if err != nil {
+				log.Fatal(err)
+			}
+			results = append(results, r)
 		}
 
 		report.AddTPSResults(
 			fmt.Sprintf("RecordMovement (%s, M=%s)", sc.label, benchutil.FmtInt(sc.accounts)),
-			[]*benchutil.TimingResult{directResult, apiResult})
+			results)
 	}
 
 	// --- Balance query latency ---
@@ -58,23 +88,23 @@ func main() {
 	for _, sc := range scenarios {
 		fmt.Printf("  %s (N=%d, M=%d)...\n", sc.label, sc.preload, sc.accounts)
 
-		directResult, err := benchBalance(sc.label+"/direct", sc.accounts, sc.preload, func(l luca.Ledger) luca.Ledger { return l })
-		if err != nil {
-			log.Fatal(err)
-		}
-		apiResult, err := benchBalance(sc.label+"/api", sc.accounts, sc.preload, wrapAPI)
-		if err != nil {
-			log.Fatal(err)
+		var results []*benchutil.TimingResult
+		for _, be := range backends {
+			r, err := benchBalance(be.name, sc.accounts, sc.preload, be.setup)
+			if err != nil {
+				log.Fatal(err)
+			}
+			results = append(results, r)
 		}
 
 		report.AddResults(
 			fmt.Sprintf("Balance query (%s, N=%s, M=%s)", sc.label, benchutil.FmtInt(sc.preload), benchutil.FmtInt(sc.accounts)),
-			[]*benchutil.TimingResult{directResult, apiResult})
+			results)
 	}
 
 	analysisDir := "benchmarks/analysis"
-	report.AddFileSection("Purpose", filepath.Join(analysisDir, "direct-vs-api-purpose.md"))
-	report.AddFileSection("Analysis", filepath.Join(analysisDir, "direct-vs-api-analysis.md"))
+	report.AddFileSection("Purpose", filepath.Join(analysisDir, "ledger-backends-purpose.md"))
+	report.AddFileSection("Analysis", filepath.Join(analysisDir, "ledger-backends-analysis.md"))
 
 	path, err := report.Write()
 	if err != nil {
@@ -83,25 +113,10 @@ func main() {
 	fmt.Printf("\nReport written to: %s\n", path)
 }
 
-type wrapFn func(luca.Ledger) luca.Ledger
+func benchRecordMovement(label string, accountCount int, setup func() (luca.Ledger, func())) (*benchutil.TimingResult, error) {
+	l, cleanup := setup()
+	defer cleanup()
 
-func wrapAPI(l luca.Ledger) luca.Ledger {
-	srv := api.NewServer(l)
-	ts := httptest.NewServer(srv)
-	// Note: ts never closed in benchmarks — acceptable for short-lived process
-	return api.NewClient(ts.URL)
-}
-
-func benchRecordMovement(label string, accountCount int, wrap wrapFn) (*benchutil.TimingResult, error) {
-	backing, err := luca.NewLedger(":memory:")
-	if err != nil {
-		return nil, err
-	}
-	defer backing.Close()
-
-	l := wrap(backing)
-
-	// Create accounts
 	from, _ := l.CreateAccount("Asset:Cash", "GBP", -2, 0)
 	to, _ := l.CreateAccount("Equity:Capital", "GBP", -2, 0)
 	for i := 2; i < accountCount; i++ {
@@ -118,26 +133,19 @@ func benchRecordMovement(label string, accountCount int, wrap wrapFn) (*benchuti
 	})
 }
 
-func benchBalance(label string, accountCount, movementCount int, wrap wrapFn) (*benchutil.TimingResult, error) {
-	backing, err := luca.NewLedger(":memory:")
-	if err != nil {
-		return nil, err
-	}
-	defer backing.Close()
-
-	l := wrap(backing)
+func benchBalance(label string, accountCount, movementCount int, setup func() (luca.Ledger, func())) (*benchutil.TimingResult, error) {
+	l, cleanup := setup()
+	defer cleanup()
 
 	from, _ := l.CreateAccount("Asset:Cash", "GBP", -2, 0)
 	to, _ := l.CreateAccount("Equity:Capital", "GBP", -2, 0)
 	for i := 2; i < accountCount; i++ {
-		// Create via backing to avoid API overhead during setup
-		backing.CreateAccount(fmt.Sprintf("Asset:Acct%04d", i), "GBP", -2, 0)
+		l.CreateAccount(fmt.Sprintf("Asset:Acct%04d", i), "GBP", -2, 0)
 	}
 
-	// Pre-load movements via backing for speed
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	for i := range movementCount {
-		backing.RecordMovement(from.ID, to.ID, 100, now.Add(time.Duration(i)*time.Hour), "")
+		l.RecordMovement(from.ID, to.ID, 100, now.Add(time.Duration(i)*time.Hour), "")
 	}
 
 	return benchutil.RunTimed(label, movementCount, accountCount, 0, func() error {

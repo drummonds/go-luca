@@ -86,12 +86,11 @@ func (r *Report) AddFileSection(heading, path string) {
 	r.sections = append(r.sections, fmt.Sprintf("## %s\n\n%s\n\n", heading, strings.TrimSpace(string(data))))
 }
 
-// Write outputs the report to benchmarks/reports/<slug>-<timestamp>.md.
+// Write outputs the report to benchmarks/reports/<slug>.md, overwriting any previous run.
 // Returns the file path written.
 func (r *Report) Write() (string, error) {
 	slug := strings.ReplaceAll(strings.ToLower(r.Title), " ", "-")
-	ts := time.Now().Format("20060102-150405")
-	filename := fmt.Sprintf("%s-%s.md", slug, ts)
+	filename := fmt.Sprintf("%s.md", slug)
 
 	dir := filepath.Join("benchmarks", "reports")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
