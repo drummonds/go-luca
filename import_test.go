@@ -66,7 +66,7 @@ func TestImportLinkedMovements(t *testing.T) {
 	l := newTestLedger(t)
 
 	input := `2026-02-01 * Payroll
-  +Income:Salary → Asset:Bank "net salary" 4000.00 GBP
+  Income:Salary → Asset:Bank "net salary" 4000.00 GBP
   +Income:Salary → Expense:Tax "income tax" 1000.00 GBP
 `
 	err := l.ImportString(input, nil)
@@ -112,7 +112,7 @@ func TestImportExportRoundTrip(t *testing.T) {
   Asset:Cash → Asset:Bank 100.00 GBP
 
 2026-02-02 * Payroll
-  +Income:Salary → Asset:Bank "net salary" 4000.00 GBP
+  Income:Salary → Asset:Bank "net salary" 4000.00 GBP
   +Income:Salary → Expense:Tax "income tax" 1000.00 GBP
 `
 	err := l1.ImportString(input, nil)

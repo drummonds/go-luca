@@ -10,7 +10,7 @@ const sampleGoluca = `2026-02-07 * Dividend payment
   Asset:Cash → Equity:Capital "Dividend" 200.00 GBP
 
 2026-02-01 * Payroll
-  +Income:Salary → Asset:Bank "net salary" 4000.00 GBP
+  Income:Salary → Asset:Bank "net salary" 4000.00 GBP
   +Income:Salary → Expense:Tax "income tax" 1000.00 GBP
 
 2026-03-01 ! Pending invoice
