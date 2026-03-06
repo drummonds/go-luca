@@ -1,0 +1,89 @@
+name: go-luca
+desc: Movement-based double-entry bookkeeping database schema
+
+dsn: "sqlite:///tmp/go-luca-schema.db"
+docPath: docs/schema
+
+er:
+  format: mermaid
+  comment: true
+
+exclude:
+  - _sequences
+
+format:
+  adjust: true
+  sort: true
+
+comments:
+  - table: accounts
+    tableComment: >
+      Chart of accounts. Each account has a hierarchical path (Type:Product:AccountID:Address)
+      and belongs to one of five fundamental types: Asset, Liability, Equity, Income, Expense.
+      Amounts are stored as integers at the precision defined by exponent (e.g. -2 for pence).
+    columnComments:
+      id: "Auto-incrementing primary key"
+      full_path: "Hierarchical account path, e.g. Asset:Bank:Current:Main"
+      account_type: "One of: Asset, Liability, Equity, Income, Expense"
+      product: "Product category within the account type"
+      account_id: "Specific account identifier within the product"
+      address: "Sub-address within the account (e.g. branch). 'Pending' marks pending accounts"
+      is_pending: "True if this is a pending/suspense account"
+      currency: "ISO 4217 currency code (e.g. GBP, USD)"
+      exponent: "Decimal exponent for amount precision (-2 = pence, -5 = high precision)"
+      annual_interest_rate: "Annual interest rate as a decimal (0.045 = 4.5%)"
+      created_at: "Timestamp when the account was created"
+
+  - table: movements
+    tableComment: >
+      Core transaction records. Each movement transfers an integer amount from one account
+      to another. Movements with the same batch_id form a linked transaction (compound entry).
+      Inspired by TigerBeetle's transfer model with code, ledger, and pending_id fields.
+    columnComments:
+      id: "Auto-incrementing primary key"
+      batch_id: "Groups related movements into a single atomic transaction"
+      from_account_id: "Source account (references accounts.id)"
+      to_account_id: "Destination account (references accounts.id)"
+      amount: "Transfer amount in smallest currency unit (integer at account exponent)"
+      code: "Movement category: 0=normal, 1=interest accrual (TigerBeetle-inspired)"
+      ledger: "Partition identifier for multi-ledger setups (TigerBeetle-inspired)"
+      pending_id: "Two-phase commit: references pending movement to post/void (0=N/A)"
+      user_data_64: "Arbitrary external reference for application use"
+      value_time: "When the movement economically occurred (value date)"
+      knowledge_time: "When the system recorded this movement (knowledge date)"
+      description: "Human-readable description of the movement"
+
+  - table: balances_live
+    tableComment: >
+      Pre-computed end-of-day balance snapshots. Updated transactionally when movements
+      are recorded via RecordMovementWithProjections. Avoids expensive SUM queries for
+      frequently accessed balances.
+    columnComments:
+      id: "Auto-incrementing primary key"
+      account_id: "Account this balance belongs to (references accounts.id)"
+      balance_date: "Date of the balance snapshot (start of day)"
+      balance: "End-of-day balance in smallest currency unit"
+      updated_at: "When this balance was last recomputed"
+
+relations:
+  - table: movements
+    columns:
+      - from_account_id
+    parentTable: accounts
+    parentColumns:
+      - id
+    def: "movements.from_account_id -> accounts.id"
+  - table: movements
+    columns:
+      - to_account_id
+    parentTable: accounts
+    parentColumns:
+      - id
+    def: "movements.to_account_id -> accounts.id"
+  - table: balances_live
+    columns:
+      - account_id
+    parentTable: accounts
+    parentColumns:
+      - id
+    def: "balances_live.account_id -> accounts.id"

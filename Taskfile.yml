@@ -105,6 +105,23 @@ tasks:
       - task-plus md2html -src docs -dst docs -label "go-luca docs"
       - task-plus md2html -src benchmarks/analysis -dst docs/benchmarks/analysis -label "Benchmark Analysis"
 
+  tbls:setup:
+    desc: Create schema database for tbls documentation
+    cmds:
+      - go run ./cmd/luca-schema -db /tmp/go-luca-schema.db
+
+  tbls:doc:
+    desc: Generate schema documentation with tbls
+    deps: [tbls:setup]
+    cmds:
+      - tbls doc --rm-dist
+
+  tbls:diff:
+    desc: Check schema docs are up to date
+    deps: [tbls:setup]
+    cmds:
+      - tbls diff
+
   bench:all:
     desc: Run all benchmarks and regenerate docs
     cmds:
