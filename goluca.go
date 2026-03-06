@@ -72,6 +72,7 @@ func ParseGoluca(r io.Reader) (*GolucaFile, error) {
 
 func parseTransaction(n *gotreesitter.Node, src []byte, lang *gotreesitter.Language) (Transaction, error) {
 	var txn Transaction
+	hasLinked := false
 	for i := range n.ChildCount() {
 		child := n.Child(i)
 		switch child.Type(lang) {
@@ -79,7 +80,15 @@ func parseTransaction(n *gotreesitter.Node, src []byte, lang *gotreesitter.Langu
 			parseHeader(child, src, lang, &txn)
 		case "movement":
 			m := parseMovement(child, src, lang)
+			if m.Linked {
+				hasLinked = true
+			}
 			txn.Movements = append(txn.Movements, m)
+		}
+	}
+	if hasLinked {
+		for i := range txn.Movements {
+			txn.Movements[i].Linked = true
 		}
 	}
 	return txn, nil
