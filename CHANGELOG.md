@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-03-06
+
+ - add ing DB tables docuemntation
+
 ## [0.2.7] - 2026-03-05
 
  - docmentation release
