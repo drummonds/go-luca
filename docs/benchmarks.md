@@ -17,7 +17,7 @@ benchmarks/
   reports/                  # Timestamped raw reports with data tables and SQL queries
 ```
 
-Each benchmark topic has a single `<topic>.md` file containing purpose, analysis, and summary sections.
+Each benchmark topic has up to three source files (`-purpose.md`, `-analysis.md`, `-ai-summary.md`) which are combined into a single HTML page per topic by `task docs:bench-combine`.
 
 Reports in `benchmarks/reports/` include full SQL queries, schema, raw output, and results tables (TPS).
 

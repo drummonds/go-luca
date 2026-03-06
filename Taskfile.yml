@@ -100,16 +100,46 @@ tasks:
       - go build ./cmd/goluca2html
 
   docs:md2html:
-    desc: Convert docs/*.md and benchmark analysis to Bulma-styled HTML
+    desc: Convert docs/*.md to Bulma-styled HTML
     cmds:
       - task-plus md2html -src docs -dst docs -label "go-luca docs"
-      - task-plus md2html -src benchmarks/analysis -dst docs/benchmarks/analysis -label "Benchmark Analysis"
+
+  docs:bench-combine:
+    desc: Combine split benchmark markdowns into single HTML pages per topic
+    cmds:
+      - |
+        tmpdir=$(mktemp -d)
+        trap "rm -rf $tmpdir" EXIT
+        for purpose in benchmarks/analysis/*-purpose.md; do
+          topic=$(basename "$purpose" -purpose.md)
+          {
+            echo "# $(echo "$topic" | sed 's/-/ /g; s/\b\(.\)/\u\1/g') Benchmark"
+            echo ""
+            echo "## Purpose"
+            echo ""
+            cat "$purpose"
+            if [ -f "benchmarks/analysis/${topic}-analysis.md" ]; then
+              echo ""
+              echo "## Analysis"
+              echo ""
+              cat "benchmarks/analysis/${topic}-analysis.md"
+            fi
+            if [ -f "benchmarks/analysis/${topic}-ai-summary.md" ]; then
+              echo ""
+              echo "## Summary"
+              echo ""
+              cat "benchmarks/analysis/${topic}-ai-summary.md"
+            fi
+          } > "$tmpdir/${topic}.md"
+        done
+        task-plus md2html -src "$tmpdir" -dst docs/benchmarks/analysis -label "Benchmark Analysis"
 
   build:docs:
-    desc: Build all documentation (md2html, tbls, goluca2html)
+    desc: Build all documentation (md2html, benchmarks, tbls, goluca2html)
     cmds:
       - task: docs:goluca2html
       - task: docs:md2html
+      - task: docs:bench-combine
       - task: tbls:doc
 
   tbls:setup:

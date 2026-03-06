@@ -55,7 +55,7 @@ benchmarks/
   analysis/                 # Narrative analysis per topic (purpose, findings, AI summary)
   reports/                  # Timestamped raw reports with data tables and SQL queries
 </code></pre>
-<p>Each benchmark topic has a single <code>&lt;topic&gt;.md</code> file containing purpose, analysis, and summary sections.</p>
+<p>Each benchmark topic has up to three source files (<code>-purpose.md</code>, <code>-analysis.md</code>, <code>-ai-summary.md</code>) which are combined into a single HTML page per topic by <code>task docs:bench-combine</code>.</p>
 <p>Reports in <code>benchmarks/reports/</code> include full SQL queries, schema, raw output, and results tables (TPS).</p>
 <h2 id="writing-benchmarks">Writing Benchmarks</h2>
 <ul>
