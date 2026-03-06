@@ -36,6 +36,35 @@ Compare performance of direct method calls against the HTTP/JSON API layer.
 
 ## Planned
 
+### API Documentation (Swagger/OpenAPI)
+- Generate OpenAPI spec from the API layer (see godocs project for approach)
+- Serve Swagger UI alongside the API for interactive exploration
+- Auto-generate Go client from the spec
+
+### Interest Rate Precision
+- Define required precision for gross and AER rates (currently stored as float64)
+- Interest rates typically specified to 4dp (e.g. 4.25% = 0.0425) — what internal precision is needed for correct daily accrual?
+- Analyse rounding error accumulation over long periods at different precisions
+- Document precision guarantees and rounding strategy (e.g. banker's rounding)
+- Consider whether `shopspring/decimal` should be used for rate storage, not just calculation
+
+### Interest Calculation Enhancements
+- Compound interest (daily, monthly, annual compounding)
+- Tiered/banded interest rates (different rate above/below thresholds)
+- Interest on overdrawn balances (debit interest)
+- Accrued-but-not-yet-posted interest reporting
+- Period-end interest capitalisation
+
+### Parameter Hierarchies
+- Hierarchical parameter inheritance (e.g. default interest rate at product level, override at account level)
+- Time-varying parameters (rate changes with effective dates)
+- Parameter audit trail
+
+### Accounting Hierarchies
+- Configurable account aggregation trees beyond the fixed Type:Product:AccountID:Address path
+- Custom reporting hierarchies (e.g. cost centres, departments)
+- Balance aggregation respecting hierarchy with cross-exponent scaling
+
 ### Ledger Backend Variants
 - **Compact MemLedger** — columnar storage for read-heavy analytics
 - **Large MemLedger** — sharded maps for high-concurrency writes
