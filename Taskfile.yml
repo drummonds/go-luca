@@ -94,53 +94,11 @@ tasks:
     cmds:
       - go run ./cmd/bench-api
 
-  docs:goluca2html:
-    desc: Build goluca syntax highlighter CLI
+  docs:
+    desc: Build all documentation (markdown to HTML, schema, benchmarks)
+    deps: [tbls:doc]
     cmds:
-      - go build ./cmd/goluca2html
-
-  docs:md2html:
-    desc: Convert docs/*.md to Bulma-styled HTML
-    cmds:
-      - task-plus md2html -src docs -dst docs -label "go-luca docs"
-
-  docs:bench-combine:
-    desc: Combine split benchmark markdowns into single HTML pages per topic
-    cmds:
-      - |
-        tmpdir=$(mktemp -d)
-        trap "rm -rf $tmpdir" EXIT
-        for purpose in benchmarks/analysis/*-purpose.md; do
-          topic=$(basename "$purpose" -purpose.md)
-          {
-            echo "# $(echo "$topic" | sed 's/-/ /g; s/\b\(.\)/\u\1/g') Benchmark"
-            echo ""
-            echo "## Purpose"
-            echo ""
-            cat "$purpose"
-            if [ -f "benchmarks/analysis/${topic}-analysis.md" ]; then
-              echo ""
-              echo "## Analysis"
-              echo ""
-              cat "benchmarks/analysis/${topic}-analysis.md"
-            fi
-            if [ -f "benchmarks/analysis/${topic}-ai-summary.md" ]; then
-              echo ""
-              echo "## Summary"
-              echo ""
-              cat "benchmarks/analysis/${topic}-ai-summary.md"
-            fi
-          } > "$tmpdir/${topic}.md"
-        done
-        task-plus md2html -src "$tmpdir" -dst docs/benchmarks/analysis -label "Benchmark Analysis"
-
-  build:docs:
-    desc: Build all documentation (md2html, benchmarks, tbls, goluca2html)
-    cmds:
-      - task: docs:goluca2html
-      - task: docs:md2html
-      - task: docs:bench-combine
-      - task: tbls:doc
+      - go run ./cmd/luca-docs
 
   tbls:setup:
     desc: Create schema database for tbls documentation
@@ -168,4 +126,4 @@ tasks:
       - task: bench:balance-types
       - task: bench:compound-movements
       - task: bench:scv
-      - task: docs:md2html
+      - task: docs

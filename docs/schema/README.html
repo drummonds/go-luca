@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>go-luca - go-luca</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        pre {
+            background-color: #2b2b2b;
+            color: #f8f8f2;
+            padding: 1.25em 1.5em;
+            overflow-x: auto;
+        }
+        pre code {
+            color: inherit;
+            background: none;
+            padding: 0;
+            font-size: 0.875em;
+        }
+        code {
+            background-color: #f5f5f5;
+            color: #e83e8c;
+            padding: 0.125em 0.375em;
+            border-radius: 3px;
+        }
+        pre.mermaid {
+            background-color: #ffffff;
+            color: #333;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <section class="section">
+        <div class="container">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+                <ul>
+                    <li><a href="../index.html">go-luca</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">go-luca</a></li>
+                </ul>
+            </nav>
+            <div class="content">
+<h1>go-luca</h1>
+<h2>Description</h2>
+<p>Movement-based double-entry bookkeeping database schema</p>
+<h2>Tables</h2>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Columns</th>
+<th>Comment</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="accounts.md">accounts</a></td>
+<td>11</td>
+<td>Chart of accounts. Each account has a hierarchical path (Type:Product:AccountID:Address) and belongs to one of five fundamental types: Asset, Liability, Equity, Income, Expense. Amounts are stored as integers at the precision defined by exponent (e.g. -2 for pence).<br /></td>
+<td>table</td>
+</tr>
+<tr>
+<td><a href="balances_live.md">balances_live</a></td>
+<td>5</td>
+<td>Pre-computed end-of-day balance snapshots. Updated transactionally when movements are recorded via RecordMovementWithProjections. Avoids expensive SUM queries for frequently accessed balances.<br /></td>
+<td>table</td>
+</tr>
+<tr>
+<td><a href="movements.md">movements</a></td>
+<td>12</td>
+<td>Core transaction records. Each movement transfers an integer amount from one account to another. Movements with the same batch_id form a linked transaction (compound entry). Inspired by TigerBeetle's transfer model with code, ledger, and pending_id fields.<br /></td>
+<td>table</td>
+</tr>
+</tbody>
+</table>
+<h2>Relations</h2>
+<pre class="mermaid">erDiagram
+
+&quot;balances_live&quot; }o--|| &quot;accounts&quot; : &quot;balances_live.account_id -&gt; accounts.id&quot;
+&quot;movements&quot; }o--|| &quot;accounts&quot; : &quot;movements.from_account_id -&gt; accounts.id&quot;
+&quot;movements&quot; }o--|| &quot;accounts&quot; : &quot;movements.to_account_id -&gt; accounts.id&quot;
+
+&quot;accounts&quot; {
+  TEXT account_id &quot;Specific account identifier within the product&quot;
+  TEXT account_type &quot;One of: Asset, Liability, Equity, Income, Expense&quot;
+  TEXT address &quot;Sub-address within the account (e.g. branch). 'Pending' marks pending accounts&quot;
+  REAL annual_interest_rate &quot;Annual interest rate as a decimal (0.045 = 4.5%)&quot;
+  TEXT created_at &quot;Timestamp when the account was created&quot;
+  TEXT currency &quot;ISO 4217 currency code (e.g. GBP, USD)&quot;
+  INTEGER exponent &quot;Decimal exponent for amount precision (-2 = pence, -5 = high precision)&quot;
+  TEXT full_path &quot;Hierarchical account path, e.g. Asset:Bank:Current:Main&quot;
+  INTEGER id &quot;Auto-incrementing primary key&quot;
+  INTEGER is_pending &quot;True if this is a pending/suspense account&quot;
+  TEXT product &quot;Product category within the account type&quot;
+}
+&quot;balances_live&quot; {
+  INTEGER account_id &quot;Account this balance belongs to (references accounts.id)&quot;
+  INTEGER balance &quot;End-of-day balance in smallest currency unit&quot;
+  TEXT balance_date &quot;Date of the balance snapshot (start of day)&quot;
+  INTEGER id &quot;Auto-incrementing primary key&quot;
+  TEXT updated_at &quot;When this balance was last recomputed&quot;
+}
+&quot;movements&quot; {
+  INTEGER amount &quot;Transfer amount in smallest currency unit (integer at account exponent)&quot;
+  INTEGER batch_id &quot;Groups related movements into a single atomic transaction&quot;
+  INTEGER code &quot;Movement category: 0=normal, 1=interest accrual (TigerBeetle-inspired)&quot;
+  TEXT description &quot;Human-readable description of the movement&quot;
+  INTEGER from_account_id &quot;Source account (references accounts.id)&quot;
+  INTEGER id &quot;Auto-incrementing primary key&quot;
+  TEXT knowledge_time &quot;When the system recorded this movement (knowledge date)&quot;
+  INTEGER ledger &quot;Partition identifier for multi-ledger setups (TigerBeetle-inspired)&quot;
+  INTEGER pending_id &quot;Two-phase commit: references pending movement to post/void (0=N/A)&quot;
+  INTEGER to_account_id &quot;Destination account (references accounts.id)&quot;
+  INTEGER user_data_64 &quot;Arbitrary external reference for application use&quot;
+  TEXT value_time &quot;When the movement economically occurred (value date)&quot;
+}
+</pre>
+<hr>
+<blockquote>
+<p>Generated by <a href="https://github.com/k1LoW/tbls">tbls</a></p>
+</blockquote>
+
+            </div>
+        </div>
+    </section>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+</body>
+</html>

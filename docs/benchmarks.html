@@ -36,19 +36,17 @@
         <div class="container">
             <nav class="breadcrumb" aria-label="breadcrumbs">
                 <ul>
-                    <li><a href="../index.html">go-luca</a></li>
-                    <li class="is-active"><a href="#" aria-current="page">go-luca docs</a></li>
+                    <li><a href="index.html">go-luca</a></li>
                     <li class="is-active"><a href="#" aria-current="page">Benchmarks</a></li>
                 </ul>
             </nav>
-
             <div class="content">
-                <h1 id="benchmarks">Benchmarks</h1>
-<h2 id="running">Running</h2>
+<h1>Benchmarks</h1>
+<h2>Running</h2>
 <pre><code class="language-bash">task benchmark          # Standard Go benchmarks (pglike/SQLite, :memory:)
 task testBenchmark      # Standalone PG benchmarks (starts/stops Podman container)
 </code></pre>
-<h2 id="structure">Structure</h2>
+<h2>Structure</h2>
 <pre><code>benchmark_test.go           # Standard Go benchmarks (in-process, :memory:)
 cmd/bench-*/                # Standalone programs for real PostgreSQL
 benchmarks/
@@ -57,7 +55,7 @@ benchmarks/
 </code></pre>
 <p>Each benchmark topic has up to three source files (<code>-purpose.md</code>, <code>-analysis.md</code>, <code>-ai-summary.md</code>) which are combined into a single HTML page per topic by <code>task docs:bench-combine</code>.</p>
 <p>Reports in <code>benchmarks/reports/</code> include full SQL queries, schema, raw output, and results tables (TPS).</p>
-<h2 id="writing-benchmarks">Writing Benchmarks</h2>
+<h2>Writing Benchmarks</h2>
 <ul>
 <li>Use <code>:memory:</code> for in-process benchmarks (no disk I/O noise)</li>
 <li><code>b.ResetTimer()</code> after setup</li>
@@ -65,8 +63,8 @@ benchmarks/
 <li><code>l.EnsureInterestAccounts()</code> during setup for interest-related benchmarks</li>
 <li>Standalone PG benchmarks go in <code>cmd/bench-*</code>, wired into <code>task testBenchmark</code></li>
 </ul>
-<h2 id="benchmark-index">Benchmark Index</h2>
-<h3 id="in-process-pglikesqlite">In-process (pglike/SQLite)</h3>
+<h2>Benchmark Index</h2>
+<h3>In-process (pglike/SQLite)</h3>
 <table>
 <thead>
 <tr>
@@ -103,7 +101,7 @@ benchmarks/
 </tr>
 </tbody>
 </table>
-<h3 id="standalone-real-postgresql">Standalone (real PostgreSQL)</h3>
+<h3>Standalone (real PostgreSQL)</h3>
 <table>
 <thead>
 <tr>

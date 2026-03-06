@@ -36,30 +36,28 @@
         <div class="container">
             <nav class="breadcrumb" aria-label="breadcrumbs">
                 <ul>
-                    <li><a href="../index.html">go-luca</a></li>
-                    <li class="is-active"><a href="#" aria-current="page">go-luca docs</a></li>
+                    <li><a href="index.html">go-luca</a></li>
                     <li class="is-active"><a href="#" aria-current="page">Ledger Interface</a></li>
                 </ul>
             </nav>
-
             <div class="content">
-                <h1 id="ledger-interface">Ledger Interface</h1>
+<h1>Ledger Interface</h1>
 <p>The <code>Ledger</code> interface decouples accounting operations from storage backends.</p>
-<h2 id="method-groups">Method Groups</h2>
-<h3 id="accounts">Accounts</h3>
+<h2>Method Groups</h2>
+<h3>Accounts</h3>
 <ul>
 <li><code>CreateAccount</code> — insert a new account by full path</li>
 <li><code>GetAccount</code> — look up by full path</li>
 <li><code>GetAccountByID</code> — look up by numeric ID</li>
 <li><code>ListAccounts</code> — list all, optionally filtered by type</li>
 </ul>
-<h3 id="movements">Movements</h3>
+<h3>Movements</h3>
 <ul>
 <li><code>RecordMovement</code> — single movement between two accounts (same exponent enforced)</li>
 <li><code>RecordLinkedMovements</code> — batch of movements sharing a batch ID</li>
 <li><code>RecordMovementWithProjections</code> — movement with interest accrual and live balance upsert</li>
 </ul>
-<h3 id="balances">Balances</h3>
+<h3>Balances</h3>
 <ul>
 <li><code>Balance</code> — current all-time balance</li>
 <li><code>BalanceAt</code> — balance at a point in time (value_time &lt;= t)</li>
@@ -67,21 +65,21 @@
 <li><code>DailyBalances</code> — day-by-day closing balances over a date range</li>
 <li><code>GetLiveBalance</code> — pre-computed end-of-day balance snapshot</li>
 </ul>
-<h3 id="interest">Interest</h3>
+<h3>Interest</h3>
 <ul>
 <li><code>EnsureInterestAccounts</code> — create system accounts for interest processing</li>
 <li><code>CalculateDailyInterest</code> — one day's interest for one account</li>
 <li><code>RunDailyInterest</code> — process interest for all interest-bearing accounts</li>
 <li><code>RunInterestForPeriod</code> — run daily interest over a date range</li>
 </ul>
-<h3 id="importexport">Import/Export</h3>
+<h3>Import/Export</h3>
 <p>Import and export operate on journals — the plain text record of accounting movements. The .goluca format is one of several <a href="https://github.com/drummonds/plain-text-accounting-formats">plain text accounting formats</a>.</p>
 <ul>
 <li><code>ListMovements</code> — all movements with resolved account paths</li>
 <li><code>Export</code> — write the journal as .goluca text</li>
 <li><code>Import</code> / <code>ImportString</code> — read a .goluca journal and record its movements</li>
 </ul>
-<h2 id="backend-capabilities">Backend Capabilities</h2>
+<h2>Backend Capabilities</h2>
 <table>
 <thead>
 <tr>
@@ -134,14 +132,14 @@
 </tbody>
 </table>
 <p>Stubbed methods return <code>ErrNotImplemented</code>.</p>
-<h2 id="bitemporal-notes">Bitemporal Notes</h2>
+<h2>Bitemporal Notes</h2>
 <p>Movements carry two timestamps:</p>
 <ul>
 <li><strong>value_time</strong> — when the economic event occurred</li>
 <li><strong>knowledge_time</strong> — when the system recorded it (defaults to NOW)</li>
 </ul>
 <p><code>BalanceAt</code> queries against value_time. Future extensions could support knowledge-time queries (as-of / as-known-at) for full bitemporal reporting.</p>
-<h2 id="future-directions">Future Directions</h2>
+<h2>Future Directions</h2>
 <ul>
 <li><strong>Compact MemLedger</strong> — columnar storage for read-heavy analytics</li>
 <li><strong>Large MemLedger</strong> — sharded maps for high-concurrency writes</li>

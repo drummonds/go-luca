@@ -36,15 +36,13 @@
         <div class="container">
             <nav class="breadcrumb" aria-label="breadcrumbs">
                 <ul>
-                    <li><a href="../index.html">go-luca</a></li>
-                    <li class="is-active"><a href="#" aria-current="page">Benchmark Analysis</a></li>
+                    <li><a href="../../index.html">go-luca</a></li>
                     <li class="is-active"><a href="#" aria-current="page">Compound Movements Benchmark</a></li>
                 </ul>
             </nav>
-
             <div class="content">
-                <h1 id="compound-movements-benchmark">Compound Movements Benchmark</h1>
-<h2 id="purpose">Purpose</h2>
+<h1>Compound Movements Benchmark</h1>
+<h2>Purpose</h2>
 <p>When funds arrive, two approaches exist:</p>
 <ol>
 <li>
@@ -61,7 +59,7 @@ already projected.</p>
 <p>The benchmark compares throughput of both approaches on real PostgreSQL to quantify the
 write-time cost of eagerly projecting interest and balances. The question: is the
 compound approach fast enough to use on the hot path?</p>
-<h2 id="analysis">Analysis</h2>
+<h2>Analysis</h2>
 <p>Results from real PostgreSQL (podman postgres:16-alpine). Placeholder — update after first run.</p>
 <p>The compound approach runs ~7 SQL operations in a single transaction vs ~3 for simple.
 The overhead comes from:</p>
@@ -74,7 +72,7 @@ The overhead comes from:</p>
 </ul>
 <p>The benefit: no separate end-of-day batch. The projected balance and interest accrual
 are always current after each movement.</p>
-<h2 id="summary">Summary</h2>
+<h2>Summary</h2>
 <p>Compound movement (write-time projection of interest + live balance) vs simple
 movement + balance query, benchmarked on real PostgreSQL.</p>
 <p>Results placeholder — update after first run with actual TPS numbers.</p>

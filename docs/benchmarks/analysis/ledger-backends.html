@@ -36,15 +36,13 @@
         <div class="container">
             <nav class="breadcrumb" aria-label="breadcrumbs">
                 <ul>
-                    <li><a href="../index.html">go-luca</a></li>
-                    <li class="is-active"><a href="#" aria-current="page">Benchmark Analysis</a></li>
+                    <li><a href="../../index.html">go-luca</a></li>
                     <li class="is-active"><a href="#" aria-current="page">Ledger Backends Benchmark</a></li>
                 </ul>
             </nav>
-
             <div class="content">
-                <h1 id="ledger-backends-benchmark">Ledger Backends Benchmark</h1>
-<h2 id="purpose">Purpose</h2>
+<h1>Ledger Backends Benchmark</h1>
+<h2>Purpose</h2>
 <p>Compare Ledger performance across backends: MemLedger (pure Go), SQLLedger (pglike/SQLite),
 and the HTTP/JSON API layer. This quantifies the cost of each abstraction level so users can
 make informed choices between embedding go-luca as a library or running it as a service.</p>
@@ -54,7 +52,7 @@ make informed choices between embedding go-luca as a library or running it as a 
 <li>What is the per-call overhead of the HTTP/JSON API layer?</li>
 <li>How does overhead scale with pre-loaded data volume?</li>
 </ul>
-<h2 id="analysis">Analysis</h2>
+<h2>Analysis</h2>
 <p><em>Run <code>task bench:api</code> to generate results, then update this file with analysis.</em></p>
 
             </div>

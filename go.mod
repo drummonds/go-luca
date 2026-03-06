@@ -7,6 +7,7 @@ require (
 	github.com/drummonds/gotreesitter v0.6.0
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/shopspring/decimal v1.4.0
+	github.com/yuin/goldmark v1.7.16
 )
 
 require (
