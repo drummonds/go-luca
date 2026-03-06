@@ -56,19 +56,19 @@
 </thead>
 <tbody>
 <tr>
-<td><a href="accounts.md">accounts</a></td>
+<td><a href="accounts.html">accounts</a></td>
 <td>11</td>
 <td>Chart of accounts. Each account has a hierarchical path (Type:Product:AccountID:Address) and belongs to one of five fundamental types: Asset, Liability, Equity, Income, Expense. Amounts are stored as integers at the precision defined by exponent (e.g. -2 for pence).<br /></td>
 <td>table</td>
 </tr>
 <tr>
-<td><a href="balances_live.md">balances_live</a></td>
+<td><a href="balances_live.html">balances_live</a></td>
 <td>5</td>
 <td>Pre-computed end-of-day balance snapshots. Updated transactionally when movements are recorded via RecordMovementWithProjections. Avoids expensive SUM queries for frequently accessed balances.<br /></td>
 <td>table</td>
 </tr>
 <tr>
-<td><a href="movements.md">movements</a></td>
+<td><a href="movements.html">movements</a></td>
 <td>12</td>
 <td>Core transaction records. Each movement transfers an integer amount from one account to another. Movements with the same batch_id form a linked transaction (compound entry). Inspired by TigerBeetle's transfer model with code, ledger, and pending_id fields.<br /></td>
 <td>table</td>

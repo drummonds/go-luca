@@ -190,6 +190,10 @@ func renderMarkdown(tmpl *template.Template, src []byte, outPath, rootPath strin
 
 	body := buf.String()
 
+	// Rewrite .md links to .html (tbls generates .md inter-page links)
+	body = strings.ReplaceAll(body, `.md"`, `.html"`)
+	body = strings.ReplaceAll(body, `.md)`, `.html)`)
+
 	// Handle mermaid code blocks: replace <pre><code class="language-mermaid">...</code></pre>
 	// with <pre class="mermaid">...</pre>
 	hasMermaid := strings.Contains(body, "language-mermaid")
