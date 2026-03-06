@@ -105,6 +105,13 @@ tasks:
       - task-plus md2html -src docs -dst docs -label "go-luca docs"
       - task-plus md2html -src benchmarks/analysis -dst docs/benchmarks/analysis -label "Benchmark Analysis"
 
+  build:docs:
+    desc: Build all documentation (md2html, tbls, goluca2html)
+    cmds:
+      - task: docs:goluca2html
+      - task: docs:md2html
+      - task: tbls:doc
+
   tbls:setup:
     desc: Create schema database for tbls documentation
     cmds:

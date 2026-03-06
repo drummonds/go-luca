@@ -17,10 +17,7 @@ benchmarks/
   reports/                  # Timestamped raw reports with data tables and SQL queries
 ```
 
-Each benchmark topic produces three analysis files:
-- `<topic>-purpose.md` — what scenario it simulates and why
-- `<topic>-analysis.md` — conclusions and recommendations
-- `<topic>-ai-summary.md` — compact summary
+Each benchmark topic has a single `<topic>.md` file containing purpose, analysis, and summary sections.
 
 Reports in `benchmarks/reports/` include full SQL queries, schema, raw output, and results tables (TPS).
 
@@ -48,7 +45,7 @@ Reports in `benchmarks/reports/` include full SQL queries, schema, raw output, a
 
 | Benchmark | What it measures | Analysis |
 |-----------|-----------------|----------|
-| `bench-balance-types` | BIGINT vs DOUBLE vs NUMERIC for point-in-time lookup | `benchmarks/analysis/balance-types-*` |
-| `bench-compound-movements` | Simple vs compound movement throughput | `benchmarks/analysis/compound-movements-*` |
-
-See [front page](index.html) for links to individual analysis reports.
+| `bench-balance-types` | BIGINT vs DOUBLE vs NUMERIC for point-in-time lookup | [balance-types](benchmarks/analysis/balance-types.html) |
+| `bench-compound-movements` | Simple vs compound movement throughput | [compound-movements](benchmarks/analysis/compound-movements.html) |
+| `bench-scv` | Single Customer View generation | [scv](benchmarks/analysis/scv.html) |
+| `bench-api` | Direct library calls vs HTTP API | [ledger-backends](benchmarks/analysis/ledger-backends.html) |

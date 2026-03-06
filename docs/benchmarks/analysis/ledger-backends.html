@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>scv-purpose - go-luca</title>
+    <title>Ledger Backends Benchmark - go-luca</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
     <style>
         pre {
@@ -24,6 +24,11 @@
             padding: 0.125em 0.375em;
             border-radius: 3px;
         }
+        pre.mermaid {
+            background-color: #ffffff;
+            color: #333;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -33,21 +38,24 @@
                 <ul>
                     <li><a href="../index.html">go-luca</a></li>
                     <li class="is-active"><a href="#" aria-current="page">Benchmark Analysis</a></li>
-                    <li class="is-active"><a href="#" aria-current="page">scv-purpose</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">Ledger Backends Benchmark</a></li>
                 </ul>
             </nav>
 
             <div class="content">
-                <p>FSCS requires firms to produce Single Customer View (SCV) files regularly. This benchmark
-measures how fast go-luca can generate the two key CSV files from a PostgreSQL database:</p>
+                <h1 id="ledger-backends-benchmark">Ledger Backends Benchmark</h1>
+<h2 id="purpose">Purpose</h2>
+<p>Compare Ledger performance across backends: MemLedger (pure Go), SQLLedger (pglike/SQLite),
+and the HTTP/JSON API layer. This quantifies the cost of each abstraction level so users can
+make informed choices between embedding go-luca as a library or running it as a service.</p>
+<p>Key questions:</p>
 <ul>
-<li><strong>C file</strong>: Individual account records (one row per account, pipe-delimited)</li>
-<li><strong>D file</strong>: Aggregate customer balances with compensatable amounts capped at £85,000</li>
+<li>How fast is MemLedger vs SQLLedger for core operations?</li>
+<li>What is the per-call overhead of the HTTP/JSON API layer?</li>
+<li>How does overhead scale with pre-loaded data volume?</li>
 </ul>
-<p>The benchmark scales from 1K to 1M accounts. Customers have 1–100 accounts each with
-random balances 0–100K GBP. Products are randomly assigned from IAA, ISA, NA, and FD1.</p>
-<p>Each iteration performs a full SCV generation: query all liability accounts with computed
-balances, group by customer, write pipe-delimited C and D files with the FSCS footer.</p>
+<h2 id="analysis">Analysis</h2>
+<p><em>Run <code>task bench:api</code> to generate results, then update this file with analysis.</em></p>
 
             </div>
         </div>

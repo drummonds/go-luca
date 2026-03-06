@@ -24,6 +24,11 @@
             padding: 0.125em 0.375em;
             border-radius: 3px;
         }
+        pre.mermaid {
+            background-color: #ffffff;
+            color: #333;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -50,12 +55,7 @@ benchmarks/
   analysis/                 # Narrative analysis per topic (purpose, findings, AI summary)
   reports/                  # Timestamped raw reports with data tables and SQL queries
 </code></pre>
-<p>Each benchmark topic produces three analysis files:</p>
-<ul>
-<li><code>&lt;topic&gt;-purpose.md</code> — what scenario it simulates and why</li>
-<li><code>&lt;topic&gt;-analysis.md</code> — conclusions and recommendations</li>
-<li><code>&lt;topic&gt;-ai-summary.md</code> — compact summary</li>
-</ul>
+<p>Each benchmark topic has a single <code>&lt;topic&gt;.md</code> file containing purpose, analysis, and summary sections.</p>
 <p>Reports in <code>benchmarks/reports/</code> include full SQL queries, schema, raw output, and results tables (TPS).</p>
 <h2 id="writing-benchmarks">Writing Benchmarks</h2>
 <ul>
@@ -116,26 +116,25 @@ benchmarks/
 <tr>
 <td><code>bench-balance-types</code></td>
 <td>BIGINT vs DOUBLE vs NUMERIC for point-in-time lookup</td>
-<td><a href="benchmarks/analysis/balance-types-purpose.html">purpose</a> · <a href="benchmarks/analysis/balance-types-analysis.html">analysis</a> · <a href="benchmarks/analysis/balance-types-ai-summary.html">AI summary</a></td>
+<td><a href="benchmarks/analysis/balance-types.html">balance-types</a></td>
 </tr>
 <tr>
 <td><code>bench-compound-movements</code></td>
 <td>Simple vs compound movement throughput</td>
-<td><a href="benchmarks/analysis/compound-movements-purpose.html">purpose</a> · <a href="benchmarks/analysis/compound-movements-analysis.html">analysis</a> · <a href="benchmarks/analysis/compound-movements-ai-summary.html">AI summary</a></td>
+<td><a href="benchmarks/analysis/compound-movements.html">compound-movements</a></td>
 </tr>
 <tr>
 <td><code>bench-scv</code></td>
 <td>Single Customer View generation</td>
-<td><a href="benchmarks/analysis/scv-purpose.html">purpose</a> · <a href="benchmarks/analysis/scv-analysis.html">analysis</a></td>
+<td><a href="benchmarks/analysis/scv.html">scv</a></td>
 </tr>
 <tr>
 <td><code>bench-api</code></td>
 <td>Direct library calls vs HTTP API</td>
-<td><a href="benchmarks/analysis/direct-vs-api-purpose.html">purpose</a></td>
+<td><a href="benchmarks/analysis/ledger-backends.html">ledger-backends</a></td>
 </tr>
 </tbody>
 </table>
-<p>See <a href="index.html">front page</a> for links to individual analysis reports.</p>
 
             </div>
         </div>
