@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.9] - 2026-03-07
+
+ - Adding numbers section
+
 ## [0.2.8] - 2026-03-06
 
  - add ing DB tables docuemntation
