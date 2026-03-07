@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.10] - 2026-03-07
+
+ - Updating versions
+
 ## [0.2.9] - 2026-03-07
 
  - Adding numbers section
