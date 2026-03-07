@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Balance Type Comparison - go-luca</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        pre {
+            background-color: #2b2b2b;
+            color: #f8f8f2;
+            padding: 1.25em 1.5em;
+            overflow-x: auto;
+        }
+        pre code {
+            color: inherit;
+            background: none;
+            padding: 0;
+            font-size: 0.875em;
+        }
+        code {
+            background-color: #f5f5f5;
+            color: #e83e8c;
+            padding: 0.125em 0.375em;
+            border-radius: 3px;
+        }
+        pre.mermaid {
+            background-color: #ffffff;
+            color: #333;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <section class="section">
+        <div class="container">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+                <ul>
+                    <li><a href="../index.html">go-luca</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">Balance Type Comparison</a></li>
+                </ul>
+            </nav>
+            <div class="content">
+<h1>Balance Type Comparison</h1>
+<p><strong>Date:</strong> 2026-03-04 21:28:14</p>
+<p><strong>Purpose:</strong> Compare point-in-time balance lookup performance across BIGINT, DOUBLE PRECISION, and NUMERIC(20,7) data types</p>
+<h2>Database</h2>
+<ul>
+<li>Source: external (BENCH_PG_DSN)</li>
+<li>DSN: <code>postgres://bench:***@localhost:15432/bench?sslmode=disable</code></li>
+</ul>
+<h2>SQL: Point-in-time balance lookup</h2>
+<pre><code class="language-sql">SELECT value, pending_in, pending_out FROM balances_&lt;type&gt;
+  WHERE account_id = $1 AND value_time &lt;= $2
+  ORDER BY value_time DESC LIMIT 1
+</code></pre>
+<h2>Methods</h2>
+<ul>
+<li><strong>Data types tested:</strong> BIGINT (int64), DOUBLE PRECISION (float64), NUMERIC(20,7) (arbitrary precision)</li>
+<li><strong>Schema:</strong> Each balance row has <code>value</code>, <code>pending_in</code>, <code>pending_out</code> columns</li>
+<li><strong>N:</strong> Rows per account (balance snapshots over time)</li>
+<li><strong>M:</strong> Number of accounts. Total rows = N * M</li>
+<li><strong>Data generation:</strong> Fixed random seed (42), one row per account per time step</li>
+<li><strong>Bulk load:</strong> pgx CopyFrom in 10K-row batches, ANALYZE after load</li>
+<li><strong>Warmup:</strong> None — first iteration included (captures cold-cache behaviour)</li>
+<li><strong>Timing:</strong> Per-iteration wall-clock, statistics over all iterations</li>
+<li><strong>Query:</strong> Point-in-time lookup — latest balance at or before a given timestamp for one account</li>
+</ul>
+<h3>Table DDL</h3>
+<p>One table per type per (N, M) scenario:</p>
+<pre><code class="language-sql">CREATE TABLE balances_&lt;type&gt;_&lt;N&gt;_&lt;M&gt; (
+    id SERIAL PRIMARY KEY,
+    account_id INT NOT NULL,
+    value_time TIMESTAMP NOT NULL,
+    value       &lt;TYPE&gt; NOT NULL,
+    pending_in  &lt;TYPE&gt; NOT NULL,
+    pending_out &lt;TYPE&gt; NOT NULL
+);
+CREATE INDEX ON balances_&lt;type&gt;_&lt;N&gt;_&lt;M&gt; (account_id, value_time DESC);
+</code></pre>
+<h2>Results: Point-in-time lookup (N=10, M=10_000)</h2>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>N</th>
+<th>M</th>
+<th>Mean</th>
+<th>P50</th>
+<th>P99</th>
+<th>Min</th>
+<th>Max</th>
+<th>Iters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>bigint</td>
+<td>10</td>
+<td>10_000</td>
+<td>130.3us</td>
+<td>70.3us</td>
+<td>1.72ms</td>
+<td>59.2us</td>
+<td>2.11ms</td>
+<td>100</td>
+</tr>
+<tr>
+<td>double</td>
+<td>10</td>
+<td>10_000</td>
+<td>163.8us</td>
+<td>144.1us</td>
+<td>646.3us</td>
+<td>77.7us</td>
+<td>786.5us</td>
+<td>100</td>
+</tr>
+<tr>
+<td>numeric</td>
+<td>10</td>
+<td>10_000</td>
+<td>246.6us</td>
+<td>218.1us</td>
+<td>849.3us</td>
+<td>88.9us</td>
+<td>1.56ms</td>
+<td>100</td>
+</tr>
+</tbody>
+</table>
+<h2>Results: Point-in-time lookup (N=2, M=1_000_000)</h2>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>N</th>
+<th>M</th>
+<th>Mean</th>
+<th>P50</th>
+<th>P99</th>
+<th>Min</th>
+<th>Max</th>
+<th>Iters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>bigint</td>
+<td>2</td>
+<td>1_000_000</td>
+<td>201.2us</td>
+<td>132.5us</td>
+<td>962.2us</td>
+<td>87.6us</td>
+<td>1.36ms</td>
+<td>100</td>
+</tr>
+<tr>
+<td>double</td>
+<td>2</td>
+<td>1_000_000</td>
+<td>183.6us</td>
+<td>121.2us</td>
+<td>1.10ms</td>
+<td>68.3us</td>
+<td>1.21ms</td>
+<td>100</td>
+</tr>
+<tr>
+<td>numeric</td>
+<td>2</td>
+<td>1_000_000</td>
+<td>277.4us</td>
+<td>84.9us</td>
+<td>1.30ms</td>
+<td>64.3us</td>
+<td>1.70ms</td>
+<td>100</td>
+</tr>
+</tbody>
+</table>
+<h2>Results: Point-in-time lookup (N=30, M=1_000_000)</h2>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>N</th>
+<th>M</th>
+<th>Mean</th>
+<th>P50</th>
+<th>P99</th>
+<th>Min</th>
+<th>Max</th>
+<th>Iters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>bigint</td>
+<td>30</td>
+<td>1_000_000</td>
+<td>216.4us</td>
+<td>121.8us</td>
+<td>1.16ms</td>
+<td>59.1us</td>
+<td>2.12ms</td>
+<td>100</td>
+</tr>
+<tr>
+<td>double</td>
+<td>30</td>
+<td>1_000_000</td>
+<td>174.3us</td>
+<td>128.4us</td>
+<td>359.8us</td>
+<td>100.7us</td>
+<td>2.97ms</td>
+<td>100</td>
+</tr>
+<tr>
+<td>numeric</td>
+<td>30</td>
+<td>1_000_000</td>
+<td>184.3us</td>
+<td>140.8us</td>
+<td>1.09ms</td>
+<td>86.3us</td>
+<td>1.29ms</td>
+<td>100</td>
+</tr>
+</tbody>
+</table>
+<h2>Results: Point-in-time lookup (N=365, M=100_000)</h2>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>N</th>
+<th>M</th>
+<th>Mean</th>
+<th>P50</th>
+<th>P99</th>
+<th>Min</th>
+<th>Max</th>
+<th>Iters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>bigint</td>
+<td>365</td>
+<td>100_000</td>
+<td>115.5us</td>
+<td>83.2us</td>
+<td>511.0us</td>
+<td>58.6us</td>
+<td>1.18ms</td>
+<td>100</td>
+</tr>
+<tr>
+<td>double</td>
+<td>365</td>
+<td>100_000</td>
+<td>140.9us</td>
+<td>124.7us</td>
+<td>327.4us</td>
+<td>57.8us</td>
+<td>1.10ms</td>
+<td>100</td>
+</tr>
+<tr>
+<td>numeric</td>
+<td>365</td>
+<td>100_000</td>
+<td>196.3us</td>
+<td>163.2us</td>
+<td>936.6us</td>
+<td>102.2us</td>
+<td>1.10ms</td>
+<td>100</td>
+</tr>
+</tbody>
+</table>
+<h2>Purpose</h2>
+<p>This is a simulation of realtime balance lookup without caching. In a bank the most
+time critical element is movement in of money and then movement out of money. This is
+where this query starts to be realistic.</p>
+<p>This started out testing summing  three PostgreSQL data types (BIGINT, DOUBLE PRECISION, NUMERIC) for calculated balances or sums.  However it is clear that sum is about 40-50% slower for NUMERIC and the other two are about the same speed.</p>
+<p>This is a test of how much it slows down a calculation if you have live balances with only a single row or you have to query with a date.  The idea is that there will be a balance with todays date and balance with tomorrows date.  As the query rolls over midnight you will return different data due to future dated postings.   I want a realistic test with up to a million accounts in the table.</p>
+<h2>Analysis</h2>
+<p>This shows that future date timing has marginal effect on accessing balance information
+for millions of accounts so it  is practical from this point of view.</p>
+<p>With the (account_id, value_time DESC) index, all three types deliver sub-millisecond
+point-in-time lookups even at 36.5M rows. The data type choice has negligible impact
+on indexed single-row retrieval.</p>
+<p>Use BIGINT (integer cents/pence) for balance storage. It matches go-luca's existing
+int64 amount model, avoids floating-point rounding (DOUBLE), and has no NUMERIC
+overhead. Reserve NUMERIC for external reporting views where decimal display formatting
+is needed.</p>
+<h2>AI Summary</h2>
+<p>All three data types (BIGINT, DOUBLE PRECISION, NUMERIC) perform equivalently for
+indexed point-in-time balance lookups across all tested scales (100K to 36.5M rows).
+P50 latencies remain 100-220us regardless of type or table size, confirming that the
+B-tree index dominates query cost — the arithmetic type is irrelevant for single-row
+retrieval.</p>
+<p>BIGINT is recommended: zero precision loss, smallest storage footprint, and native
+alignment with go-luca's int64 amount representation.</p>
+
+            </div>
+        </div>
+    </section>
+</body>
+</html>

@@ -83,7 +83,7 @@ type pageData struct {
 
 func main() {
 	docsDir := flag.String("docs", "docs", "directory containing doc markdown files")
-	benchDir := flag.String("benchmarks", "benchmarks/analysis", "directory containing benchmark analysis files")
+	benchDir := flag.String("benchmarks", "benchmarks", "directory containing benchmark subdirectories")
 	schemaDir := flag.String("schema", "docs/schema", "directory containing schema markdown files")
 	flag.Parse()
 
@@ -103,42 +103,51 @@ func main() {
 		fmt.Printf("%s -> %s\n", mdPath, outPath)
 	}
 
-	// 2. Benchmark analysis (split files merged per topic)
-	purposes, _ := filepath.Glob(filepath.Join(*benchDir, "*-purpose.md"))
-	for _, pf := range purposes {
-		base := filepath.Base(pf)
-		topic := strings.TrimSuffix(base, "-purpose.md")
+	// 2. Benchmarks: each subdirectory of benchDir is a benchmark.
+	//    If results.md exists, render it directly. Otherwise merge purpose + analysis + summary.
+	entries, _ := os.ReadDir(*benchDir)
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		topic := e.Name()
+		subDir := filepath.Join(*benchDir, topic)
 
-		var md strings.Builder
-		// Title from topic name: hyphens to spaces, title-cased
-		title := titleCase(strings.ReplaceAll(topic, "-", " "))
-		md.WriteString("# " + title + " Benchmark\n\n")
+		// Prefer results.md (complete assembled report from bench run)
+		var src []byte
+		resultsPath := filepath.Join(subDir, "results.md")
+		if data, err := os.ReadFile(resultsPath); err == nil {
+			src = data
+		} else {
+			// Fallback: merge component files
+			var md strings.Builder
+			title := titleCase(strings.ReplaceAll(topic, "-", " "))
+			md.WriteString("# " + title + " Benchmark\n\n")
 
-		md.WriteString("## Purpose\n\n")
-		appendFileContents(&md, pf)
+			md.WriteString("## Purpose\n\n")
+			appendFileContents(&md, filepath.Join(subDir, "purpose.md"))
 
-		analysisPath := filepath.Join(*benchDir, topic+"-analysis.md")
-		if data, err := os.ReadFile(analysisPath); err == nil {
-			md.WriteString("\n## Analysis\n\n")
-			md.Write(data)
+			if data, err := os.ReadFile(filepath.Join(subDir, "analysis.md")); err == nil {
+				md.WriteString("\n## Analysis\n\n")
+				md.Write(data)
+			}
+			if data, err := os.ReadFile(filepath.Join(subDir, "summary.md")); err == nil {
+				md.WriteString("\n## Summary\n\n")
+				md.Write(data)
+			}
+			src = []byte(md.String())
 		}
 
-		summaryPath := filepath.Join(*benchDir, topic+"-ai-summary.md")
-		if data, err := os.ReadFile(summaryPath); err == nil {
-			md.WriteString("\n## Summary\n\n")
-			md.Write(data)
-		}
-
-		outDir := filepath.Join(*docsDir, "benchmarks", "analysis")
+		outDir := filepath.Join(*docsDir, "benchmarks")
 		os.MkdirAll(outDir, 0o755)
 		outPath := filepath.Join(outDir, topic+".html")
 
-		if err := renderMarkdown(tmpl, []byte(md.String()), outPath, "../../"); err != nil {
+		if err := renderMarkdown(tmpl, src, outPath, "../"); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %s: %v\n", topic, err)
 			failed = true
 			continue
 		}
-		fmt.Printf("%s/%s -> %s\n", *benchDir, topic, outPath)
+		fmt.Printf("%s -> %s\n", subDir, outPath)
 	}
 
 	// 3. Schema docs

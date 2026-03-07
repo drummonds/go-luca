@@ -79,7 +79,7 @@ func main() {
 		"CREATE INDEX ON balances_<type>_<N>_<M> (account_id, value_time DESC);\n" +
 		"```")
 
-	analysisDir := "benchmarks/analysis"
+	benchDir := "benchmarks/balance-types"
 
 	for _, sc := range scenarios {
 		totalRows := sc.n * sc.m
@@ -129,11 +129,11 @@ func main() {
 		}
 	}
 
-	report.AddFileSection("Purpose", filepath.Join(analysisDir, "balance-types-purpose.md"))
-	report.AddFileSection("Analysis", filepath.Join(analysisDir, "balance-types-analysis.md"))
-	report.AddFileSection("AI Summary", filepath.Join(analysisDir, "balance-types-ai-summary.md"))
+	report.AddFileSection("Purpose", filepath.Join(benchDir, "purpose.md"))
+	report.AddFileSection("Analysis", filepath.Join(benchDir, "analysis.md"))
+	report.AddFileSection("AI Summary", filepath.Join(benchDir, "summary.md"))
 
-	path, err := report.Write()
+	path, err := report.Write("balance-types")
 	if err != nil {
 		log.Fatalf("write report: %v", err)
 	}

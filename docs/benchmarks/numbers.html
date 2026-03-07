@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Numbers Benchmark - go-luca</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        pre {
+            background-color: #2b2b2b;
+            color: #f8f8f2;
+            padding: 1.25em 1.5em;
+            overflow-x: auto;
+        }
+        pre code {
+            color: inherit;
+            background: none;
+            padding: 0;
+            font-size: 0.875em;
+        }
+        code {
+            background-color: #f5f5f5;
+            color: #e83e8c;
+            padding: 0.125em 0.375em;
+            border-radius: 3px;
+        }
+        pre.mermaid {
+            background-color: #ffffff;
+            color: #333;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <section class="section">
+        <div class="container">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+                <ul>
+                    <li><a href="../index.html">go-luca</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">Numbers Benchmark</a></li>
+                </ul>
+            </nav>
+            <div class="content">
+<h1>Numbers Benchmark</h1>
+<h2>Purpose</h2>
+<p>Reexamine numeric format choices for go-luca's amount representation.</p>
+<p>go-luca currently uses int64 in smallest currency unit with Account.Exponent
+(TigerBeetle-inspired). shopspring/decimal is used for display and interest
+calculations. This benchmark evaluates whether the format choices remain optimal
+by comparing all major Go decimal/money libraries across performance, precision,
+database compatibility, and ecosystem support.</p>
+<p>Key questions:</p>
+<ul>
+<li>Is shopspring/decimal still the right choice for calculations, or is govalues/decimal better?</li>
+<li>How do the libraries integrate with pgx for PostgreSQL NUMERIC columns?</li>
+<li>How do they round-trip through pglike's SQLite backend (where NUMERIC currently becomes REAL)?</li>
+<li>Should pglike translate NUMERIC to TEXT instead of REAL to preserve precision?</li>
+<li>Does the int64+exponent core model remain sound vs arbitrary-precision alternatives?</li>
+</ul>
+<h2>Analysis</h2>
+<h2>Go Decimal/Money Library Comparison</h2>
+<table>
+<thead>
+<tr>
+<th>Library</th>
+<th>Stars</th>
+<th>Internal Type</th>
+<th>Precision</th>
+<th>Immutable</th>
+<th>pgx Adapter</th>
+<th>SQLite/pglike</th>
+<th>License</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/shopspring/decimal">shopspring/decimal</a></td>
+<td>~7,300</td>
+<td>big.Int + int32 exp</td>
+<td>Arbitrary</td>
+<td>Yes</td>
+<td>Official (<a href="https://github.com/jackc/pgx-shopspring-decimal">jackc/pgx-shopspring-decimal</a>)</td>
+<td>TEXT via Valuer/Scanner</td>
+<td>MIT</td>
+<td>Slow maintenance</td>
+</tr>
+<tr>
+<td><a href="https://github.com/cockroachdb/apd">cockroachdb/apd</a></td>
+<td>~780</td>
+<td>BigInt + exp + Context</td>
+<td>Arbitrary (configurable)</td>
+<td>No</td>
+<td>None official</td>
+<td>TEXT via Valuer/Scanner</td>
+<td>Apache-2.0</td>
+<td>Stable, low-freq</td>
+</tr>
+<tr>
+<td><a href="https://github.com/alpacahq/alpacadecimal">alpacahq/alpacadecimal</a></td>
+<td>~53</td>
+<td>int64 fixed 12dp (fallback: shopspring)</td>
+<td>12 digits / +/-9.2M</td>
+<td>Yes</td>
+<td>Via shopspring adapter</td>
+<td>TEXT via Valuer/Scanner</td>
+<td>MIT</td>
+<td>Niche, low activity</td>
+</tr>
+<tr>
+<td><a href="https://github.com/ericlagergren/decimal">ericlagergren/decimal</a></td>
+<td>~577</td>
+<td>uint64 / big.Int modes</td>
+<td>Arbitrary</td>
+<td>No</td>
+<td>None</td>
+<td>TEXT via string</td>
+<td>BSD-3</td>
+<td>Dormant</td>
+</tr>
+<tr>
+<td><a href="https://github.com/govalues/decimal">govalues/decimal</a></td>
+<td>~224</td>
+<td>uint64 + scale</td>
+<td>19 significant digits</td>
+<td>Yes</td>
+<td>Community (<a href="https://github.com/ColeBurch/pgx-govalues-decimal">ColeBurch/pgx-govalues-decimal</a>)</td>
+<td>TEXT via Valuer/Scanner</td>
+<td>MIT</td>
+<td>Active</td>
+</tr>
+<tr>
+<td><a href="https://github.com/govalues/money">govalues/money</a></td>
+<td>~49</td>
+<td>govalues/decimal + ISO 4217</td>
+<td>19 digits</td>
+<td>Yes</td>
+<td>Via govalues/decimal</td>
+<td>TEXT via Valuer/Scanner</td>
+<td>MIT</td>
+<td>Active</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Rhymond/go-money">Rhymond/go-money</a></td>
+<td>~1,900</td>
+<td>int64 (minor units)</td>
+<td>Currency minor units only</td>
+<td>Yes</td>
+<td>None</td>
+<td>INTEGER</td>
+<td>MIT</td>
+<td>Flagged inactive</td>
+</tr>
+<tr>
+<td><a href="https://github.com/bojanz/currency">bojanz/currency</a></td>
+<td>~627</td>
+<td>apd (wrapped) + currency code</td>
+<td>Arbitrary</td>
+<td>Yes</td>
+<td>Via sql interfaces</td>
+<td>TEXT via Valuer/Scanner</td>
+<td>MIT</td>
+<td>Active (CLDR v48.1)</td>
+</tr>
+</tbody>
+</table>
+<h3>Performance ranking (from govalues benchmarks)</h3>
+<p>govalues/decimal &gt; alpacadecimal &gt; cockroachdb/apd &gt; shopspring/decimal</p>
+<ul>
+<li>govalues: 3-8x faster than shopspring, zero heap allocations for typical ops</li>
+<li>alpacadecimal: 5-100x faster than shopspring within int64 range, falls back to shopspring on overflow</li>
+<li>apd: ~1.5-3.5x faster than shopspring</li>
+</ul>
+<h3>pgx NUMERIC integration</h3>
+<p>pgx's built-in <code>pgtype.Numeric</code> can scan to <code>float64</code> or <code>string</code>. For proper decimal support:</p>
+<ul>
+<li><strong>shopspring</strong>: Official <code>jackc/pgx-shopspring-decimal</code> — register via <code>pgxdecimal.Register(conn.TypeMap())</code></li>
+<li><strong>govalues</strong>: Community adapter exists (v0.1.0, Feb 2026)</li>
+<li><strong>apd</strong>: No adapter. Would need custom <code>NumericCodec</code>. CockroachDB uses apd natively through its own driver path.</li>
+<li><strong>ericlagergren</strong>: No adapter</li>
+</ul>
+<h3>pglike NUMERIC → SQLite translation (CRITICAL)</h3>
+<p>In <code>go-postgres/translate_ddl.go</code>:</p>
+<pre><code class="language-go">case &quot;NUMERIC&quot;, &quot;DECIMAL&quot;:
+    out = append(out, Token{Kind: TokKeyword, Value: &quot;REAL&quot;, Raw: &quot;REAL&quot;})
+</code></pre>
+<p><strong>This loses precision.</strong> SQLite REAL is IEEE 754 double (~15-16 significant digits). PostgreSQL NUMERIC supports up to 131,072 digits before and 16,383 after the decimal.</p>
+<p><strong>Fix needed</strong>: Translate <code>NUMERIC(p,s)</code> to <code>TEXT</code> instead of <code>REAL</code>. All Go decimal libraries round-trip losslessly through text strings. This matches how pglike already handles <code>TIMESTAMP</code> → <code>TEXT</code>.</p>
+<p>SQLite's NUMERIC affinity is also unsafe — it tries to coerce text to INTEGER or REAL. TEXT affinity is the only safe choice for exact decimal storage.</p>
+<h3>Approach comparison for go-luca</h3>
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>Representation</th>
+<th>Pros</th>
+<th>Cons</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>int64 + exponent</strong> (current)</td>
+<td>10050 with exp=-2 = 100.50</td>
+<td>Fastest. No allocations. Exact. Native SQL INTEGER.</td>
+<td>Fixed range (~18 digits). Cross-exponent ops need scaling.</td>
+</tr>
+<tr>
+<td><strong>shopspring/decimal</strong></td>
+<td>big.Int + exp</td>
+<td>Arbitrary precision. De facto standard. Official pgx adapter.</td>
+<td>Slow (big.Int allocations every op).</td>
+</tr>
+<tr>
+<td><strong>govalues/decimal</strong></td>
+<td>uint64 + scale</td>
+<td>Fast (3-8x shopspring). Immutable. 19 digits. Zero alloc.</td>
+<td>Smaller community. 19-digit limit. Community pgx adapter only.</td>
+</tr>
+<tr>
+<td><strong>int64 core + govalues display</strong></td>
+<td>int64 storage, govalues for calc/display</td>
+<td>Best of both: fast storage, fast calculation</td>
+<td>Two representations to bridge</td>
+</tr>
+</tbody>
+</table>
+<h3>The &quot;coin&quot; approach (mkobetic/coin)</h3>
+<p>Uses <code>*big.Int + *Commodity</code> where Commodity defines decimal places. Truncates at every step to commodity precision. Conceptually identical to go-luca's <code>int64 + Account.Exponent</code> but with big.Int (arbitrary range, slower).</p>
+<h3>Recommendation</h3>
+<ol>
+<li><strong>Keep int64 + exponent for storage and core movement recording</strong> — it's the fastest, most compact representation and matches TigerBeetle's design</li>
+<li><strong>Consider govalues/decimal to replace shopspring/decimal</strong> for interest calculations and display — 3-8x faster, immutable, zero-allocation, 19 digits covers all practical financial amounts</li>
+<li><strong>Fix pglike</strong>: change NUMERIC translation from REAL to TEXT to preserve precision</li>
+<li><strong>Benchmark the switchover</strong>: measure shopspring vs govalues for go-luca's actual interest calculation workload before committing</li>
+</ol>
+
+            </div>
+        </div>
+    </section>
+</body>
+</html>

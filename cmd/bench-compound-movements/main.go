@@ -130,7 +130,7 @@ COMMIT;`)
 			"- **Warmup:** None — first iteration included\n" +
 			"- **Transaction:** Both simple and compound wrapped in explicit pgx transactions")
 
-	analysisDir := "benchmarks/analysis"
+	benchDir := "benchmarks/compound-movements"
 
 	for _, sc := range scenarios {
 		totalMov := sc.n * sc.m
@@ -185,11 +185,11 @@ COMMIT;`)
 			results)
 	}
 
-	report.AddFileSection("Purpose", filepath.Join(analysisDir, "compound-movements-purpose.md"))
-	report.AddFileSection("Analysis", filepath.Join(analysisDir, "compound-movements-analysis.md"))
-	report.AddFileSection("AI Summary", filepath.Join(analysisDir, "compound-movements-ai-summary.md"))
+	report.AddFileSection("Purpose", filepath.Join(benchDir, "purpose.md"))
+	report.AddFileSection("Analysis", filepath.Join(benchDir, "analysis.md"))
+	report.AddFileSection("AI Summary", filepath.Join(benchDir, "summary.md"))
 
-	path, err := report.Write()
+	path, err := report.Write("compound-movements")
 	if err != nil {
 		log.Fatalf("write report: %v", err)
 	}

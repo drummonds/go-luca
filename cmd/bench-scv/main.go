@@ -111,7 +111,7 @@ WHERE a.account_type = 'Liability'`)
 			"- **D file:** Pipe-delimited per-customer aggregate, compensatable capped at \u00a385,000\n" +
 			"- **Footer:** FSCS standard `99999999999999999999`")
 
-	analysisDir := "benchmarks/analysis"
+	benchDir := "benchmarks/scv"
 	tmpDir := os.TempDir()
 
 	for _, sc := range scenarios {
@@ -146,10 +146,10 @@ WHERE a.account_type = 'Liability'`)
 		os.Remove(dPath)
 	}
 
-	report.AddFileSection("Purpose", filepath.Join(analysisDir, "scv-purpose.md"))
-	report.AddFileSection("Analysis", filepath.Join(analysisDir, "scv-analysis.md"))
+	report.AddFileSection("Purpose", filepath.Join(benchDir, "purpose.md"))
+	report.AddFileSection("Analysis", filepath.Join(benchDir, "analysis.md"))
 
-	path, err := report.Write()
+	path, err := report.Write("scv")
 	if err != nil {
 		log.Fatalf("write report: %v", err)
 	}

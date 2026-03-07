@@ -86,17 +86,14 @@ func (r *Report) AddFileSection(heading, path string) {
 	r.sections = append(r.sections, fmt.Sprintf("## %s\n\n%s\n\n", heading, strings.TrimSpace(string(data))))
 }
 
-// Write outputs the report to benchmarks/reports/<slug>.md, overwriting any previous run.
+// Write outputs the report to benchmarks/<benchName>/results.md, overwriting any previous run.
 // Returns the file path written.
-func (r *Report) Write() (string, error) {
-	slug := strings.ReplaceAll(strings.ToLower(r.Title), " ", "-")
-	filename := fmt.Sprintf("%s.md", slug)
-
-	dir := filepath.Join("benchmarks", "reports")
+func (r *Report) Write(benchName string) (string, error) {
+	dir := filepath.Join("benchmarks", benchName)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
-	path := filepath.Join(dir, filename)
+	path := filepath.Join(dir, "results.md")
 
 	var b strings.Builder
 	fmt.Fprintf(&b, "# %s\n\n", r.Title)

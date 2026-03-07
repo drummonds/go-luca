@@ -102,11 +102,11 @@ func main() {
 			results)
 	}
 
-	analysisDir := "benchmarks/analysis"
-	report.AddFileSection("Purpose", filepath.Join(analysisDir, "ledger-backends-purpose.md"))
-	report.AddFileSection("Analysis", filepath.Join(analysisDir, "ledger-backends-analysis.md"))
+	benchDir := "benchmarks/ledger-backends"
+	report.AddFileSection("Purpose", filepath.Join(benchDir, "purpose.md"))
+	report.AddFileSection("Analysis", filepath.Join(benchDir, "analysis.md"))
 
-	path, err := report.Write()
+	path, err := report.Write("ledger-backends")
 	if err != nil {
 		log.Fatalf("write report: %v", err)
 	}

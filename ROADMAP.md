@@ -31,7 +31,7 @@ Compare performance of direct method calls against the HTTP/JSON API layer.
 
 - `cmd/bench-api/` — standalone benchmark using `internal/benchutil`
 - Measures: single movement TPS, balance query latency, linked movement batch throughput
-- Reports to `benchmarks/reports/` and analysis in `benchmarks/analysis/`
+- Reports and analysis in `benchmarks/ledger-backends/`
 - Appears in docs documentation table
 
 ## Planned

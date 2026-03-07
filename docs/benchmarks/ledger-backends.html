@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ledger Backends - go-luca</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        pre {
+            background-color: #2b2b2b;
+            color: #f8f8f2;
+            padding: 1.25em 1.5em;
+            overflow-x: auto;
+        }
+        pre code {
+            color: inherit;
+            background: none;
+            padding: 0;
+            font-size: 0.875em;
+        }
+        code {
+            background-color: #f5f5f5;
+            color: #e83e8c;
+            padding: 0.125em 0.375em;
+            border-radius: 3px;
+        }
+        pre.mermaid {
+            background-color: #ffffff;
+            color: #333;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <section class="section">
+        <div class="container">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+                <ul>
+                    <li><a href="../index.html">go-luca</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">Ledger Backends</a></li>
+                </ul>
+            </nav>
+            <div class="content">
+<h1>Ledger Backends</h1>
+<p><strong>Date:</strong> 2026-03-05 00:47:25</p>
+<p><strong>Purpose:</strong> Compare Ledger performance across backends: MemLedger, SQLLedger (pglike), and HTTP/JSON API</p>
+<h2>Methods</h2>
+<ul>
+<li><strong>mem:</strong> Pure Go in-memory MemLedger</li>
+<li><strong>sql:</strong> SQLLedger with pglike/SQLite :memory:</li>
+<li><strong>api:</strong> api.Client → httptest.Server → api.Server → SQLLedger :memory:</li>
+<li><strong>N:</strong> Number of movements (pre-loaded for balance queries)</li>
+<li><strong>M:</strong> Number of accounts</li>
+<li>Each scenario creates a fresh ledger to avoid cross-contamination</li>
+<li>Warmup: None — first iteration included</li>
+</ul>
+<h2>Results: RecordMovement (small, M=10)</h2>
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>N</th>
+<th>M</th>
+<th>Mean</th>
+<th>TPS</th>
+<th>P50</th>
+<th>P99</th>
+<th>Min</th>
+<th>Max</th>
+<th>Iters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>mem</td>
+<td>0</td>
+<td>10</td>
+<td>0.3us</td>
+<td>2_949_852</td>
+<td>0.1us</td>
+<td>0.1us</td>
+<td>0.1us</td>
+<td>2.4us</td>
+<td>10</td>
+</tr>
+<tr>
+<td>sql</td>
+<td>0</td>
+<td>10</td>
+<td>553.4us</td>
+<td>1_807</td>
+<td>278.4us</td>
+<td>538.1us</td>
+<td>225.2us</td>
+<td>2.47ms</td>
+<td>10</td>
+</tr>
+<tr>
+<td>api</td>
+<td>0</td>
+<td>10</td>
+<td>1.11ms</td>
+<td>904</td>
+<td>840.0us</td>
+<td>1.86ms</td>
+<td>443.4us</td>
+<td>2.07ms</td>
+<td>10</td>
+</tr>
+</tbody>
+</table>
+<h2>Results: RecordMovement (medium, M=100)</h2>
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>N</th>
+<th>M</th>
+<th>Mean</th>
+<th>TPS</th>
+<th>P50</th>
+<th>P99</th>
+<th>Min</th>
+<th>Max</th>
+<th>Iters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>mem</td>
+<td>0</td>
+<td>100</td>
+<td>0.3us</td>
+<td>3_003_003</td>
+<td>0.2us</td>
+<td>0.4us</td>
+<td>0.1us</td>
+<td>1.5us</td>
+<td>10</td>
+</tr>
+<tr>
+<td>sql</td>
+<td>0</td>
+<td>100</td>
+<td>2.30ms</td>
+<td>435</td>
+<td>1.95ms</td>
+<td>2.56ms</td>
+<td>1.43ms</td>
+<td>5.33ms</td>
+<td>10</td>
+</tr>
+<tr>
+<td>api</td>
+<td>0</td>
+<td>100</td>
+<td>4.00ms</td>
+<td>249</td>
+<td>3.17ms</td>
+<td>5.93ms</td>
+<td>945.2us</td>
+<td>8.90ms</td>
+<td>10</td>
+</tr>
+</tbody>
+</table>
+<h2>Results: RecordMovement (large, M=1_000)</h2>
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>N</th>
+<th>M</th>
+<th>Mean</th>
+<th>TPS</th>
+<th>P50</th>
+<th>P99</th>
+<th>Min</th>
+<th>Max</th>
+<th>Iters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>mem</td>
+<td>0</td>
+<td>1_000</td>
+<td>0.6us</td>
+<td>1_700_680</td>
+<td>0.3us</td>
+<td>1.1us</td>
+<td>0.2us</td>
+<td>2.3us</td>
+<td>10</td>
+</tr>
+<tr>
+<td>sql</td>
+<td>0</td>
+<td>1_000</td>
+<td>467.5us</td>
+<td>2_139</td>
+<td>344.8us</td>
+<td>1.01ms</td>
+<td>264.4us</td>
+<td>1.03ms</td>
+<td>10</td>
+</tr>
+<tr>
+<td>api</td>
+<td>0</td>
+<td>1_000</td>
+<td>1.46ms</td>
+<td>685</td>
+<td>1.17ms</td>
+<td>2.47ms</td>
+<td>489.8us</td>
+<td>3.53ms</td>
+<td>10</td>
+</tr>
+</tbody>
+</table>
+<h2>Results: Balance query (small, N=100, M=10)</h2>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>N</th>
+<th>M</th>
+<th>Mean</th>
+<th>P50</th>
+<th>P99</th>
+<th>Min</th>
+<th>Max</th>
+<th>Iters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>mem</td>
+<td>100</td>
+<td>10</td>
+<td>0.2us</td>
+<td>0.2us</td>
+<td>0.3us</td>
+<td>0.2us</td>
+<td>0.8us</td>
+<td>10</td>
+</tr>
+<tr>
+<td>sql</td>
+<td>100</td>
+<td>10</td>
+<td>240.4us</td>
+<td>157.3us</td>
+<td>184.4us</td>
+<td>144.6us</td>
+<td>960.7us</td>
+<td>10</td>
+</tr>
+<tr>
+<td>api</td>
+<td>100</td>
+<td>10</td>
+<td>395.0us</td>
+<td>310.8us</td>
+<td>358.9us</td>
+<td>298.1us</td>
+<td>1.04ms</td>
+<td>10</td>
+</tr>
+</tbody>
+</table>
+<h2>Results: Balance query (medium, N=1_000, M=100)</h2>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>N</th>
+<th>M</th>
+<th>Mean</th>
+<th>P50</th>
+<th>P99</th>
+<th>Min</th>
+<th>Max</th>
+<th>Iters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>mem</td>
+<td>1_000</td>
+<td>100</td>
+<td>1.4us</td>
+<td>1.3us</td>
+<td>1.3us</td>
+<td>1.3us</td>
+<td>1.9us</td>
+<td>10</td>
+</tr>
+<tr>
+<td>sql</td>
+<td>1_000</td>
+<td>100</td>
+<td>441.0us</td>
+<td>365.3us</td>
+<td>473.3us</td>
+<td>339.1us</td>
+<td>916.1us</td>
+<td>10</td>
+</tr>
+<tr>
+<td>api</td>
+<td>1_000</td>
+<td>100</td>
+<td>555.1us</td>
+<td>475.5us</td>
+<td>656.5us</td>
+<td>435.3us</td>
+<td>1.11ms</td>
+<td>10</td>
+</tr>
+</tbody>
+</table>
+<h2>Results: Balance query (large, N=10_000, M=1_000)</h2>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>N</th>
+<th>M</th>
+<th>Mean</th>
+<th>P50</th>
+<th>P99</th>
+<th>Min</th>
+<th>Max</th>
+<th>Iters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>mem</td>
+<td>10_000</td>
+<td>1_000</td>
+<td>15.6us</td>
+<td>11.8us</td>
+<td>17.4us</td>
+<td>11.7us</td>
+<td>42.9us</td>
+<td>10</td>
+</tr>
+<tr>
+<td>sql</td>
+<td>10_000</td>
+<td>1_000</td>
+<td>7.84ms</td>
+<td>5.99ms</td>
+<td>13.88ms</td>
+<td>2.32ms</td>
+<td>14.56ms</td>
+<td>10</td>
+</tr>
+<tr>
+<td>api</td>
+<td>10_000</td>
+<td>1_000</td>
+<td>5.79ms</td>
+<td>3.22ms</td>
+<td>14.95ms</td>
+<td>2.35ms</td>
+<td>17.01ms</td>
+<td>10</td>
+</tr>
+</tbody>
+</table>
+<h2>Purpose</h2>
+<p>Compare Ledger performance across backends: MemLedger (pure Go), SQLLedger (pglike/SQLite),
+and the HTTP/JSON API layer. This quantifies the cost of each abstraction level so users can
+make informed choices between embedding go-luca as a library or running it as a service.</p>
+<p>Key questions:</p>
+<ul>
+<li>How fast is MemLedger vs SQLLedger for core operations?</li>
+<li>What is the per-call overhead of the HTTP/JSON API layer?</li>
+<li>How does overhead scale with pre-loaded data volume?</li>
+</ul>
+<h2>Analysis</h2>
+<p><em>Run <code>task bench:api</code> to generate results, then update this file with analysis.</em></p>
+
+            </div>
+        </div>
+    </section>
+</body>
+</html>
