@@ -43,4 +43,11 @@ Each account address can also be :Pending
 
 You should be able to report every day on any level of an account.
 
+## Links
 
+| | |
+|---|---|
+| Documentation | https://h3-go-luca.statichost.page/ |
+| Source (Codeberg) | https://codeberg.org/hum3/go-luca |
+| Mirror (GitHub) | https://github.com/drummonds/go-luca |
+| Docs repo | https://codeberg.org/hum3/go-luca-docs |
