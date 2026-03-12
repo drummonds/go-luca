@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.12] - 2026-03-12
+
+ - Adding numbers
+
 ## [0.2.11] - 2026-03-12
 
  - Merging in decimal research
