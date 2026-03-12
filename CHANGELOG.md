@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.11] - 2026-03-12
+
+ - Merging in decimal research
+
 ## [0.2.10] - 2026-03-07
 
  - Updating versions
