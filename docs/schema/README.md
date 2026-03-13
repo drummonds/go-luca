@@ -25,7 +25,7 @@ erDiagram
   TEXT account_id "Specific account identifier within the product"
   TEXT account_type "One of: Asset, Liability, Equity, Income, Expense"
   TEXT address "Sub-address within the account (e.g. branch). 'Pending' marks pending accounts"
-  REAL annual_interest_rate "Annual interest rate as a decimal (0.045 = 4.5%)"
+  TEXT annual_interest_rate "Annual interest rate as a decimal (0.045 = 4.5%)"
   TEXT created_at "Timestamp when the account was created"
   TEXT currency "ISO 4217 currency code (e.g. GBP, USD)"
   INTEGER exponent "Decimal exponent for amount precision (-2 = pence, -5 = high precision)"

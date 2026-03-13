@@ -19,7 +19,7 @@ CREATE TABLE accounts (
     is_pending INTEGER DEFAULT 0,
     currency TEXT NOT NULL DEFAULT 'GBP',
     exponent INTEGER NOT NULL DEFAULT -2,
-    annual_interest_rate REAL NOT NULL DEFAULT 0,
+    annual_interest_rate TEXT NOT NULL DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
 )
 ```
@@ -33,7 +33,7 @@ CREATE TABLE accounts (
 | account_id           | TEXT    | ''              | false    |                                                             |         | Specific account identifier within the product                                 |
 | account_type         | TEXT    |                 | false    |                                                             |         | One of: Asset, Liability, Equity, Income, Expense                              |
 | address              | TEXT    | ''              | false    |                                                             |         | Sub-address within the account (e.g. branch). 'Pending' marks pending accounts |
-| annual_interest_rate | REAL    | 0               | false    |                                                             |         | Annual interest rate as a decimal (0.045 = 4.5%)                               |
+| annual_interest_rate | TEXT    | 0               | false    |                                                             |         | Annual interest rate as a decimal (0.045 = 4.5%)                               |
 | created_at           | TEXT    | datetime('now') | true     |                                                             |         | Timestamp when the account was created                                         |
 | currency             | TEXT    | 'GBP'           | false    |                                                             |         | ISO 4217 currency code (e.g. GBP, USD)                                         |
 | exponent             | INTEGER | -2              | false    |                                                             |         | Decimal exponent for amount precision (-2 = pence, -5 = high precision)        |
@@ -68,7 +68,7 @@ erDiagram
   TEXT account_id "Specific account identifier within the product"
   TEXT account_type "One of: Asset, Liability, Equity, Income, Expense"
   TEXT address "Sub-address within the account (e.g. branch). 'Pending' marks pending accounts"
-  REAL annual_interest_rate "Annual interest rate as a decimal (0.045 = 4.5%)"
+  TEXT annual_interest_rate "Annual interest rate as a decimal (0.045 = 4.5%)"
   TEXT created_at "Timestamp when the account was created"
   TEXT currency "ISO 4217 currency code (e.g. GBP, USD)"
   INTEGER exponent "Decimal exponent for amount precision (-2 = pence, -5 = high precision)"

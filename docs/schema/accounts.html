@@ -56,7 +56,7 @@
     is_pending INTEGER DEFAULT 0,
     currency TEXT NOT NULL DEFAULT 'GBP',
     exponent INTEGER NOT NULL DEFAULT -2,
-    annual_interest_rate REAL NOT NULL DEFAULT 0,
+    annual_interest_rate TEXT NOT NULL DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
 )
 </code></pre>
@@ -104,7 +104,7 @@
 </tr>
 <tr>
 <td>annual_interest_rate</td>
-<td>REAL</td>
+<td>TEXT</td>
 <td>0</td>
 <td>false</td>
 <td></td>
@@ -224,7 +224,7 @@
   TEXT account_id &quot;Specific account identifier within the product&quot;
   TEXT account_type &quot;One of: Asset, Liability, Equity, Income, Expense&quot;
   TEXT address &quot;Sub-address within the account (e.g. branch). 'Pending' marks pending accounts&quot;
-  REAL annual_interest_rate &quot;Annual interest rate as a decimal (0.045 = 4.5%)&quot;
+  TEXT annual_interest_rate &quot;Annual interest rate as a decimal (0.045 = 4.5%)&quot;
   TEXT created_at &quot;Timestamp when the account was created&quot;
   TEXT currency &quot;ISO 4217 currency code (e.g. GBP, USD)&quot;
   INTEGER exponent &quot;Decimal exponent for amount precision (-2 = pence, -5 = high precision)&quot;

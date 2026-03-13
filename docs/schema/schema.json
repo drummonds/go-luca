@@ -29,7 +29,7 @@
         },
         {
           "name": "annual_interest_rate",
-          "type": "REAL",
+          "type": "TEXT",
           "nullable": false,
           "default": "0",
           "comment": "Annual interest rate as a decimal (0.045 = 4.5%)"
@@ -112,7 +112,7 @@
           ]
         }
       ],
-      "def": "CREATE TABLE accounts (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    full_path TEXT NOT NULL UNIQUE,\n    account_type TEXT NOT NULL,\n    product TEXT NOT NULL DEFAULT '',\n    account_id TEXT NOT NULL DEFAULT '',\n    address TEXT NOT NULL DEFAULT '',\n    is_pending INTEGER DEFAULT 0,\n    currency TEXT NOT NULL DEFAULT 'GBP',\n    exponent INTEGER NOT NULL DEFAULT -2,\n    annual_interest_rate REAL NOT NULL DEFAULT 0,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+      "def": "CREATE TABLE accounts (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    full_path TEXT NOT NULL UNIQUE,\n    account_type TEXT NOT NULL,\n    product TEXT NOT NULL DEFAULT '',\n    account_id TEXT NOT NULL DEFAULT '',\n    address TEXT NOT NULL DEFAULT '',\n    is_pending INTEGER DEFAULT 0,\n    currency TEXT NOT NULL DEFAULT 'GBP',\n    exponent INTEGER NOT NULL DEFAULT -2,\n    annual_interest_rate TEXT NOT NULL DEFAULT 0,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
     },
     {
       "name": "balances_live",
