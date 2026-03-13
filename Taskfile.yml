@@ -94,7 +94,7 @@ tasks:
     cmds:
       - go run ./cmd/bench-api
 
-  docs:
+  docs:build:
     desc: Build all documentation (markdown to HTML, schema, benchmarks)
     deps: [tbls:doc]
     cmds:
@@ -126,4 +126,4 @@ tasks:
       - task: bench:balance-types
       - task: bench:compound-movements
       - task: bench:scv
-      - task: docs
+      - task: docs:build
