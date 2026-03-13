@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.14] - 2026-03-13
+
+ - Just updating docs
+
 ## [0.2.13] - 2026-03-12
 
  - Just refreshe
