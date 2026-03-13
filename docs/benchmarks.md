@@ -53,6 +53,8 @@ Each benchmark directory is rendered to a single HTML page by `task docs`.
 
 ### Research
 
-| Topic | What it covers | Analysis |
+| Topic | What it covers | Document |
 |-------|---------------|----------|
-| Numbers | Go decimal/money library comparison for amount representation | [numbers](benchmarks/numbers.html) |
+| Numbers | Go decimal/money library comparison for amount representation | [numbers](research/numbers.html) |
+| Interest | Daily interest calculation design: AER, day-count, rounding, integer formula | [interest](research/interest.html) |
+| AER | UK AER regulation, formulae, rounding rules, and worked examples | [aer](research/aer.html) |

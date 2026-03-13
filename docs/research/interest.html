@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Interest Calculation Design - go-luca</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        pre {
+            background-color: #2b2b2b;
+            color: #f8f8f2;
+            padding: 1.25em 1.5em;
+            overflow-x: auto;
+        }
+        pre code {
+            color: inherit;
+            background: none;
+            padding: 0;
+            font-size: 0.875em;
+        }
+        code {
+            background-color: #f5f5f5;
+            color: #e83e8c;
+            padding: 0.125em 0.375em;
+            border-radius: 3px;
+        }
+        pre.mermaid {
+            background-color: #ffffff;
+            color: #333;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <section class="section">
+        <div class="container">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+                <ul>
+                    <li><a href="../index.html">go-luca</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">Interest Calculation Design</a></li>
+                </ul>
+            </nav>
+            <div class="content">
+<h1>Interest Calculation Design</h1>
+<p>Research the design of daily interest calculation for go-luca, covering AER,
+day-count conventions, rounding strategies, and a discrete-integer formula
+that is uniform, fair, and correct for small balances over long periods.</p>
+<h2>1. AER and Gross Rates</h2>
+<p><strong>AER (Annual Equivalent Rate)</strong> is the effective annual return including the effect of compounding. It is the standard comparison rate quoted to consumers (FCA BCOBS). A <strong>gross rate</strong> is the simple annual rate before tax, which may or may not equal AER depending on compounding frequency.</p>
+<p>The relationship:</p>
+<pre><code>AER = (1 + gross_rate / n)^n - 1
+</code></pre>
+<p>where <code>n</code> is the number of compounding periods per year. When interest is compounded daily (<code>n = 365</code> or <code>366</code>):</p>
+<pre><code>AER = (1 + gross_daily_rate)^365 - 1
+</code></pre>
+<p>Conversely, to derive the gross daily rate from an AER:</p>
+<pre><code>gross_daily_rate = (1 + AER)^(1/365) - 1
+</code></pre>
+<p>For small rates this is very close to <code>AER / 365</code>, but the difference matters over long periods and for regulatory accuracy.</p>
+<p><strong>Should systems quote gross daily rates?</strong> Generally no. Products are quoted as AER or gross annual rate. The daily rate is an internal calculation detail. However the <em>precision</em> of the internally derived daily rate is critical (see Section 4).</p>
+<h2>2. Day-Count Conventions</h2>
+<p>Day-count conventions determine how many days of interest accrue over a period. The two most relevant for UK banking:</p>
+<h3>Actual/365 (fixed)</h3>
+<ul>
+<li>Numerator: actual number of calendar days in the period.</li>
+<li>Denominator: always 365, regardless of leap years.</li>
+<li>Used by most UK banks for savings and loan interest.</li>
+<li>In a leap year, a full year accrues 366/365 of the annual rate — the customer earns slightly more.</li>
+<li>Simple and predictable. No special leap-year logic needed in the daily engine.</li>
+</ul>
+<h3>Actual/Actual (ISDA)</h3>
+<ul>
+<li>Numerator: actual days.</li>
+<li>Denominator: 365 in a non-leap year, 366 in a leap year (or pro-rated if the period spans both).</li>
+<li>Used in some bond markets and interbank lending (ISDA conventions).</li>
+<li>A full year always accrues exactly the annual rate, regardless of leap years.</li>
+<li>More complex: when a period spans a year boundary (e.g. 28 Dec – 3 Jan across a leap/non-leap transition), days must be split and weighted.</li>
+</ul>
+<h3>Leap year implications</h3>
+<table>
+<thead>
+<tr>
+<th>Convention</th>
+<th>Daily rate (non-leap)</th>
+<th>Daily rate (leap)</th>
+<th>Full year interest</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Actual/365</td>
+<td>rate / 365</td>
+<td>rate / 365</td>
+<td>366/365 * rate ≈ 1.00274 * rate</td>
+</tr>
+<tr>
+<td>Actual/Actual</td>
+<td>rate / 365</td>
+<td>rate / 366</td>
+<td>exactly rate</td>
+</tr>
+</tbody>
+</table>
+<p>For go-luca, <strong>Actual/365 (fixed)</strong> is the right default — it matches UK retail banking practice, requires no leap-year branching in the daily engine, and is the convention behind the discrete formula in Section 4.</p>
+<h2>3. Daily Interest and AER Comparison</h2>
+<p>When interest is calculated daily and added to the balance (compounded daily), the effective rate over a year exceeds the gross rate due to compounding.</p>
+<p>Example: 4.00% gross, Actual/365, non-leap year.</p>
+<pre><code>Daily rate     = 0.04 / 365 = 0.00010958904...
+Daily interest = balance * daily_rate
+</code></pre>
+<p>After 365 days of compounding on £10,000.00:</p>
+<pre><code>Final balance = 10000 * (1 + 0.04/365)^365 = 10,408.08
+Effective AER = 4.0808%
+</code></pre>
+<p>The gap between gross rate and AER grows with the rate:</p>
+<table>
+<thead>
+<tr>
+<th>Gross rate</th>
+<th>AER (daily compound)</th>
+<th>Difference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.01%</td>
+<td>0.01%</td>
+<td>&lt; 0.001%</td>
+</tr>
+<tr>
+<td>1.00%</td>
+<td>1.005%</td>
+<td>0.005%</td>
+</tr>
+<tr>
+<td>4.00%</td>
+<td>4.081%</td>
+<td>0.081%</td>
+</tr>
+<tr>
+<td>10.00%</td>
+<td>10.516%</td>
+<td>0.516%</td>
+</tr>
+</tbody>
+</table>
+<h3>Rounding limits</h3>
+<p>The core problem: at 2-decimal-place precision (pence), daily interest on small balances rounds to zero.</p>
+<ul>
+<li>£1.00 at 4.00% gross: daily interest = £0.000109589... → rounds to £0.00.</li>
+<li>The balance <strong>never grows</strong>. Interest is silently lost.</li>
+</ul>
+<p>This is the &quot;rounding trap&quot; — it is not a numerical curiosity but a fairness issue. A customer with £1 in a savings account earning 4% should eventually see interest credited.</p>
+<p><strong>Threshold for 1p daily interest at 2dp:</strong></p>
+<pre><code>balance * rate / 365 &gt;= 0.005  (rounds up to 0.01)
+balance &gt;= 0.005 * 365 / rate
+</code></pre>
+<p>At 4% gross: balance &gt;= £45.63. Below this, daily interest rounds to zero every day forever.</p>
+<h3>The 10,000-year test</h3>
+<p>At 0.01% gross on 1p (£0.01), using exact arithmetic:</p>
+<pre><code>0.01 * 0.0001 / 365 = 0.00000000027397...
+</code></pre>
+<p>At 2dp, this rounds to £0.00 — no interest ever accrues. Even at 4dp (£0.0001 precision), daily interest = £0.0000000027... which still rounds to zero.</p>
+<p>To earn 1p of interest on 1p at 0.01% with no rounding loss requires continuous/exact accumulation over ~10,000 years:</p>
+<pre><code>0.01 / (0.01 * 0.0001 / 365) ≈ 3,650,000 days ≈ 10,000 years
+</code></pre>
+<p>This motivates the need for an accumulation method that preserves fractional interest across days.</p>
+<h2>4. Discrete Interest Formula</h2>
+<h3>The problem with naive daily rounding</h3>
+<p>If we round interest to the account's exponent (e.g. 2dp) each day, small balances lose interest permanently. If we use arbitrary-precision decimals, we lose the uniformity and auditability of integer arithmetic.</p>
+<h3>The intermediate-precision approach</h3>
+<p>Use 4-digit precision (exponent -4, i.e. hundredths of a penny) as the <strong>interest accumulator</strong>, while keeping account balances at their native exponent (e.g. -2 for GBP).</p>
+<p>The formula for daily interest at 4-digit precision, using only integer arithmetic:</p>
+<pre><code>interest_4dp = (daily_amount * num_days * gross_rate_scaled) / divisor
+</code></pre>
+<p>where:</p>
+<pre><code>gross_rate_scaled = gross_annual_rate * 365 * 100000    (integer)
+divisor           = 365 * 10000                         (integer, = 3650000)
+</code></pre>
+<p>Worked example: £100.00 at 4.00% gross, 1 day.</p>
+<pre><code>daily_amount      = 10000        (£100.00 in pence, at exponent -2)
+                  = 1000000      (at exponent -4: 10000 * 100)
+num_days          = 1
+gross_rate_scaled = 0.04 * 365 * 100000 = 1460000
+divisor           = 365 * 10000 = 3650000
+
+interest_4dp = (1000000 * 1 * 1460000) / 3650000
+             = 1460000000000 / 3650000
+             = 400000
+             → £0.0400 per day (i.e. 400000 at exponent -6? No...)
+</code></pre>
+<p>Let's restate more carefully. Express amounts in the 4dp unit (1 unit = £0.0001):</p>
+<pre><code>balance_4dp       = 1000000      (£100.00 = 1,000,000 units of £0.0001)
+gross_rate_int    = 4000         (4.00% expressed as rate * 100000)
+daily_interest_4dp = balance_4dp * gross_rate_int / (365 * 100000)
+                   = 1000000 * 4000 / 36500000
+                   = 4000000000 / 36500000
+                   = 109 (truncated)
+                   → £0.0109 per day
+</code></pre>
+<p>Check: £100.00 * 0.04 / 365 = £0.01095890... → at 4dp this is £0.0109 (truncated) or £0.0110 (rounded). The integer formula gives 109 units of £0.0001 = £0.0109. Correct.</p>
+<h3>The accumulator pattern</h3>
+<p>Each account maintains an <strong>interest accumulator</strong> at exponent -4 (or whatever extended precision is chosen). Each day:</p>
+<ol>
+<li>Compute <code>daily_interest_4dp</code> using integer arithmetic.</li>
+<li>Add to the accumulator: <code>accumulator += daily_interest_4dp</code>.</li>
+<li>When <code>accumulator &gt;= rounding_threshold</code> (e.g. 50 units of £0.0001 = £0.005, the half-penny that rounds up), extract whole pence and post as a movement.</li>
+</ol>
+<p>Alternatively, accumulate for a fixed period (monthly, quarterly) and round once at posting.</p>
+<h3>Small balance behaviour</h3>
+<p>£0.01 at 0.01% gross, per day:</p>
+<pre><code>balance_4dp    = 100          (£0.01 = 100 units of £0.0001)
+gross_rate_int = 10           (0.01% * 100000)
+daily_4dp      = 100 * 10 / 36500000 = 0 (truncated)
+</code></pre>
+<p>Even at 4dp, £0.01 at 0.01% produces zero daily interest. The accumulator stays at zero. This is mathematically correct — the amount is so small and the rate so low that even 4dp cannot represent it.</p>
+<p>To handle this extreme case, either:</p>
+<ul>
+<li>Accept it (£0.01 at 0.01% = £0.000001/year — below any reasonable materiality threshold).</li>
+<li>Use 6dp or 8dp accumulators for extreme precision (but adds complexity for negligible real-world benefit).</li>
+</ul>
+<p>For practical rates (&gt;= 0.1%) and practical balances (&gt;= £1.00):</p>
+<pre><code>balance_4dp    = 10000        (£1.00)
+gross_rate_int = 100          (0.1%)
+daily_4dp      = 10000 * 100 / 36500000 = 0 (still zero)
+
+balance_4dp    = 100000       (£10.00)
+gross_rate_int = 100          (0.1%)
+daily_4dp      = 100000 * 100 / 36500000 = 0 (still zero)
+
+balance_4dp    = 100000       (£10.00)
+gross_rate_int = 4000         (4.00%)
+daily_4dp      = 100000 * 4000 / 36500000 = 10
+               → £0.0010/day. Accumulates to £0.01 in 10 days. ✓
+</code></pre>
+<p>At 4dp, the minimum balance to accrue non-zero daily interest at 4.00% is:</p>
+<pre><code>balance_4dp * 4000 / 36500000 &gt;= 1
+balance_4dp &gt;= 36500000 / 4000 = 9125
+→ £0.9125, i.e. about 91p
+</code></pre>
+<p>This is a substantial improvement over the 2dp threshold of £45.63.</p>
+<h3>Properties of this approach</h3>
+<ul>
+<li><strong>Uniform</strong>: same formula for every account, every day. No special cases.</li>
+<li><strong>Fair</strong>: fractional interest accumulates rather than being silently discarded.</li>
+<li><strong>Integer-only</strong>: no floating point in the hot path. Deterministic, auditable, reproducible.</li>
+<li><strong>Works with small values</strong>: the 4dp accumulator captures interest that 2dp would lose.</li>
+<li><strong>Carries forward</strong>: the accumulator persists across days, so sub-unit interest is never lost (only deferred until it's large enough to round).</li>
+<li><strong>Discrete</strong>: at any point, the accumulator contains an exact integer. No representation error.</li>
+</ul>
+<h3>Bank practice: adjusting the gross rate</h3>
+<p>Banks sometimes achieve the same effect differently: they adjust the quoted gross rate slightly so that daily interest at 2dp precision matches the target AER over a year. This avoids accumulators but means:</p>
+<ul>
+<li>The effective rate varies by balance band (since rounding effects differ).</li>
+<li>Very small balances still earn nothing.</li>
+<li>The adjusted rate must be recalculated whenever the base rate changes.</li>
+</ul>
+<p>The accumulator approach is more principled and treats all customers uniformly.</p>
+<h2>5. Methods of Calculating Interest</h2>
+<h3>Method 1: Simple daily (current go-luca)</h3>
+<pre><code>interest = balance * annual_rate / 365
+</code></pre>
+<p>Round to account precision each day. Post as movement. Subject to the rounding trap for small balances.</p>
+<h3>Method 2: Daily with extended-precision accumulator (recommended)</h3>
+<pre><code>daily_interest_4dp = balance_4dp * rate_int / (365 * 100000)
+accumulator += daily_interest_4dp
+</code></pre>
+<p>Post to account when accumulator exceeds rounding threshold. Eliminates the rounding trap for all practical balances and rates.</p>
+<h3>Method 3: Product-of-sums (batch)</h3>
+<p>For Actual/365:</p>
+<pre><code>interest = SUM(daily_balance * num_days_at_that_balance) * annual_rate / 365
+</code></pre>
+<p>Compute the weighted sum over a period (e.g. a month), then round once. Minimises rounding events. Commonly used in bank batch processing. Compatible with the 4dp accumulator approach.</p>
+<h3>Method 4: Continuous compounding</h3>
+<pre><code>interest = balance * (e^(rate * days/365) - 1)
+</code></pre>
+<p>Theoretical maximum. Not used in retail banking. Included for completeness.</p>
+<h2>6. Recommendations for go-luca</h2>
+<ol>
+<li>
+<p><strong>Adopt the 4dp accumulator</strong> as the core interest engine. Store the accumulator as a field on the account (or a separate interest_accrual table) at exponent -4.</p>
+</li>
+<li>
+<p><strong>Keep Actual/365 (fixed)</strong> as the default day-count convention. Support Actual/Actual as an option for bond/interbank use cases.</p>
+</li>
+<li>
+<p><strong>Derive daily rate from gross annual rate</strong> using integer arithmetic as shown in Section 4. Do not store or quote daily rates.</p>
+</li>
+<li>
+<p><strong>Post accumulated interest</strong> on a configurable schedule (daily/monthly/quarterly/annually). The posting rounds the accumulator to account precision and records a movement.</p>
+</li>
+<li>
+<p><strong>The interest rate field</strong> (<code>annual_interest_rate</code> on Account) should remain the gross annual rate. AER is a derived/display value computed from the gross rate and compounding frequency.</p>
+</li>
+<li>
+<p><strong>Validate with the benchmark</strong>: run 10,000 years at 0.01% on 1p — the accumulator should eventually reach 1p without loss (at sufficient accumulator precision), confirming no systematic rounding drain.</p>
+</li>
+</ol>
+
+            </div>
+        </div>
+    </section>
+</body>
+</html>

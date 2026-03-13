@@ -84,6 +84,7 @@ type pageData struct {
 func main() {
 	docsDir := flag.String("docs", "docs", "directory containing doc markdown files")
 	benchDir := flag.String("benchmarks", "benchmarks", "directory containing benchmark subdirectories")
+	researchDir := flag.String("research", "research", "directory containing research markdown files")
 	schemaDir := flag.String("schema", "docs/schema", "directory containing schema markdown files")
 	flag.Parse()
 
@@ -150,7 +151,24 @@ func main() {
 		fmt.Printf("%s -> %s\n", subDir, outPath)
 	}
 
-	// 3. Schema docs
+	// 3. Research: each .md file in researchDir is a standalone research document.
+	researchMDs, _ := filepath.Glob(filepath.Join(*researchDir, "*.md"))
+	if len(researchMDs) > 0 {
+		outDir := filepath.Join(*docsDir, "research")
+		os.MkdirAll(outDir, 0o755)
+		for _, mdPath := range researchMDs {
+			base := strings.TrimSuffix(filepath.Base(mdPath), ".md")
+			outPath := filepath.Join(outDir, base+".html")
+			if err := convertFile(tmpl, mdPath, outPath, "../"); err != nil {
+				fmt.Fprintf(os.Stderr, "error: %s: %v\n", mdPath, err)
+				failed = true
+				continue
+			}
+			fmt.Printf("%s -> %s\n", mdPath, outPath)
+		}
+	}
+
+	// 4. Schema docs
 	schemaMDs, _ := filepath.Glob(filepath.Join(*schemaDir, "*.md"))
 	for _, mdPath := range schemaMDs {
 		outPath := strings.TrimSuffix(mdPath, ".md") + ".html"
