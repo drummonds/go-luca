@@ -26,7 +26,7 @@ func TestMovementExponent(t *testing.T) {
 
 func TestIntToDecimal(t *testing.T) {
 	tests := []struct {
-		amount   int64
+		amount   Amount
 		exponent int
 		want     string
 	}{
@@ -47,7 +47,7 @@ func TestDecimalToInt(t *testing.T) {
 	tests := []struct {
 		d        string
 		exponent int
-		want     int64
+		want     Amount
 	}{
 		{"15.00", -2, 1500},
 		{"1.00000", -5, 100000},
@@ -65,9 +65,9 @@ func TestDecimalToInt(t *testing.T) {
 
 func TestScaleAmount(t *testing.T) {
 	tests := []struct {
-		amount   int64
+		amount   Amount
 		from, to int
-		want     int64
+		want     Amount
 	}{
 		{1500, -2, -2, 1500},    // same exponent
 		{1500, -2, -5, 1500000}, // scale up precision

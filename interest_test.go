@@ -78,7 +78,7 @@ func TestInterestCompounding(t *testing.T) {
 
 	// After 30 days, compound balance should exceed simple interest
 	bal, _ := l.Balance(savings.ID)
-	simpleInterest := int64(10000000) + 30*day1Interest
+	simpleInterest := Amount(10000000) + 30*day1Interest
 	if bal <= simpleInterest {
 		t.Errorf("balance %d should exceed simple interest %d due to compounding", bal, simpleInterest)
 	}

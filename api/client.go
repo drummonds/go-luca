@@ -87,7 +87,7 @@ func (c *Client) ListAccounts(typeFilter luca.AccountType) ([]*luca.Account, err
 
 // --- movement methods ---
 
-func (c *Client) RecordMovement(fromAccountID, toAccountID int64, amount int64, valueTime time.Time, description string) (*luca.Movement, error) {
+func (c *Client) RecordMovement(fromAccountID, toAccountID int64, amount luca.Amount, valueTime time.Time, description string) (*luca.Movement, error) {
 	var mov luca.Movement
 	err := c.post("/movements/record", recordMovementReq{
 		FromAccountID: fromAccountID,
@@ -116,7 +116,7 @@ func (c *Client) RecordLinkedMovements(movements []luca.MovementInput, valueTime
 
 // --- balance methods ---
 
-func (c *Client) Balance(accountID int64) (int64, error) {
+func (c *Client) Balance(accountID int64) (luca.Amount, error) {
 	var resp balanceResp
 	err := c.get("/balances/balance", url.Values{"account_id": {strconv.FormatInt(accountID, 10)}}, &resp)
 	if err != nil {
@@ -125,7 +125,7 @@ func (c *Client) Balance(accountID int64) (int64, error) {
 	return resp.Balance, nil
 }
 
-func (c *Client) BalanceAt(accountID int64, at time.Time) (int64, error) {
+func (c *Client) BalanceAt(accountID int64, at time.Time) (luca.Amount, error) {
 	var resp balanceResp
 	err := c.get("/balances/balance-at", url.Values{
 		"account_id": {strconv.FormatInt(accountID, 10)},
@@ -152,11 +152,11 @@ func (c *Client) DailyBalances(accountID int64, from, to time.Time) ([]luca.Dail
 
 // --- stubbed methods (not exposed via API yet) ---
 
-func (c *Client) RecordMovementWithProjections(fromAccountID, toAccountID int64, amount int64, valueTime time.Time, description string) (*luca.Movement, error) {
+func (c *Client) RecordMovementWithProjections(fromAccountID, toAccountID int64, amount luca.Amount, valueTime time.Time, description string) (*luca.Movement, error) {
 	return nil, luca.ErrNotImplemented
 }
 
-func (c *Client) BalanceByPath(pathPrefix string, at time.Time) (int64, int, error) {
+func (c *Client) BalanceByPath(pathPrefix string, at time.Time) (luca.Amount, int, error) {
 	return 0, 0, luca.ErrNotImplemented
 }
 

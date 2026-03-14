@@ -155,7 +155,7 @@ func (l *SQLLedger) validateSameExponent(fromAccountID, toAccountID int64) error
 // RecordMovement inserts a single movement and returns it.
 // Both accounts must have the same exponent; cross-exponent transfers are rejected.
 // amount is an integer in the smallest currency unit at the accounts' shared exponent.
-func (l *SQLLedger) RecordMovement(fromAccountID, toAccountID int64, amount int64, valueTime time.Time, description string) (*Movement, error) {
+func (l *SQLLedger) RecordMovement(fromAccountID, toAccountID int64, amount Amount, valueTime time.Time, description string) (*Movement, error) {
 	if err := l.validateSameExponent(fromAccountID, toAccountID); err != nil {
 		return nil, err
 	}
@@ -248,8 +248,8 @@ func endOfDayTime(t time.Time) time.Time {
 
 // txBalance computes the balance for accountID within a transaction,
 // seeing all writes made so far in that tx.
-func txBalance(tx *sql.Tx, accountID int64, at time.Time) (int64, error) {
-	var balance int64
+func txBalance(tx *sql.Tx, accountID int64, at time.Time) (Amount, error) {
+	var balance Amount
 	err := tx.QueryRow(
 		`SELECT
 			COALESCE((SELECT SUM(amount) FROM movements WHERE to_account_id = $1 AND value_time <= $2), 0)
@@ -262,7 +262,7 @@ func txBalance(tx *sql.Tx, accountID int64, at time.Time) (int64, error) {
 // RecordMovementWithProjections records a movement and, in the same transaction,
 // pre-computes interest accrual and the end-of-day live balance for the
 // to-account. This avoids separate end-of-day batch processing.
-func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID int64, amount int64, valueTime time.Time, description string) (*Movement, error) {
+func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID int64, amount Amount, valueTime time.Time, description string) (*Movement, error) {
 	if err := l.validateSameExponent(fromAccountID, toAccountID); err != nil {
 		return nil, err
 	}
@@ -316,7 +316,7 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID int
 	}
 
 	// 3. If account has interest rate, compute and upsert the accrual
-	var interestAmount int64
+	var interestAmount Amount
 	if toAcct.AnnualInterestRate != 0 {
 		balDec := IntToDecimal(balance, toAcct.Exponent)
 		rate := decimal.NewFromFloat(toAcct.AnnualInterestRate)

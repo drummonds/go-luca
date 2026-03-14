@@ -160,7 +160,7 @@ func TestDailyBalances(t *testing.T) {
 		t.Fatalf("got %d daily balances, want 3", len(balances))
 	}
 	// Day 1: 100000, Day 2: 100000, Day 3: 150000
-	expected := []int64{100000, 100000, 150000}
+	expected := []Amount{100000, 100000, 150000}
 	for i, want := range expected {
 		if balances[i].Balance != want {
 			t.Errorf("day %d balance = %d, want %d", i+1, balances[i].Balance, want)
@@ -233,7 +233,7 @@ func TestMixedExponentBalanceByPath(t *testing.T) {
 	if exp != -5 {
 		t.Errorf("report exponent = %d, want -5", exp)
 	}
-	want := int64(100100000) // 1001.00000 at -5
+	want := Amount(100100000) // 1001.00000 at -5
 	if bal != want {
 		t.Errorf("BalanceByPath(Asset) = %d, want %d (1001.00000)", bal, want)
 	}

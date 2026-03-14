@@ -8,14 +8,14 @@ import (
 // DailyBalance represents the closing balance on a specific date.
 type DailyBalance struct {
 	Date    time.Time
-	Balance int64
+	Balance Amount
 }
 
 // Balance returns the current balance of an account (all movements, all time).
 // Since movements are only allowed between same-exponent accounts,
 // SUM(amount) is always in the account's own exponent.
-func (l *SQLLedger) Balance(accountID int64) (int64, error) {
-	var balance int64
+func (l *SQLLedger) Balance(accountID int64) (Amount, error) {
+	var balance Amount
 	err := l.db.QueryRow(
 		`SELECT
 			COALESCE((SELECT SUM(amount) FROM movements WHERE to_account_id = $1), 0)
@@ -30,8 +30,8 @@ func (l *SQLLedger) Balance(accountID int64) (int64, error) {
 
 // BalanceAt returns the balance of an account as of a specific point in time.
 // Only considers movements with value_time <= the given time.
-func (l *SQLLedger) BalanceAt(accountID int64, at time.Time) (int64, error) {
-	var balance int64
+func (l *SQLLedger) BalanceAt(accountID int64, at time.Time) (Amount, error) {
+	var balance Amount
 	err := l.db.QueryRow(
 		`SELECT
 			COALESCE((SELECT SUM(amount) FROM movements WHERE to_account_id = $1 AND value_time <= $2), 0)
@@ -50,7 +50,7 @@ func (l *SQLLedger) BalanceAt(accountID int64, at time.Time) (int64, error) {
 // When all matched accounts share the same exponent, this is a simple SUM.
 // When they differ (e.g. aggregating across ledger partitions), each movement
 // is scaled from its accounts' exponent to the reporting exponent in Go.
-func (l *SQLLedger) BalanceByPath(pathPrefix string, at time.Time) (int64, int, error) {
+func (l *SQLLedger) BalanceByPath(pathPrefix string, at time.Time) (Amount, int, error) {
 	pattern := pathPrefix + "%"
 
 	// Get the reporting exponent (min of all matched accounts)
@@ -75,7 +75,7 @@ func (l *SQLLedger) BalanceByPath(pathPrefix string, at time.Time) (int64, int, 
 
 	if reportExponent == maxExponent {
 		// All same exponent — use simple SUM
-		var balance int64
+		var balance Amount
 		err = l.db.QueryRow(
 			`SELECT
 				COALESCE(SUM(CASE WHEN a.id = m.to_account_id THEN m.amount ELSE 0 END), 0)
@@ -109,9 +109,10 @@ func (l *SQLLedger) BalanceByPath(pathPrefix string, at time.Time) (int64, int, 
 	}
 	defer rows.Close()
 
-	var total int64
+	var total Amount
 	for rows.Next() {
-		var amount, matchedAcctID, fromAcctID, toAcctID int64
+		var amount Amount
+		var matchedAcctID, fromAcctID, toAcctID int64
 		var fromExp, toExp int
 		if err := rows.Scan(&amount, &matchedAcctID, &fromAcctID, &toAcctID, &fromExp, &toExp); err != nil {
 			return 0, 0, fmt.Errorf("scan movement: %w", err)

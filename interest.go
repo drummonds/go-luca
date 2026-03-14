@@ -11,9 +11,9 @@ import (
 type InterestResult struct {
 	AccountID      int64
 	Date           time.Time
-	OpeningBalance int64
-	InterestAmount int64
-	ClosingBalance int64
+	OpeningBalance Amount
+	InterestAmount Amount
+	ClosingBalance Amount
 	Exponent       int
 }
 

@@ -11,6 +11,10 @@ import (
 // ErrNotImplemented is returned by Ledger backends that don't support a method.
 var ErrNotImplemented = errors.New("not implemented")
 
+// Amount represents a monetary value in the smallest currency unit (e.g. pence).
+// Currently backed by int64; designed for future migration to 128-bit.
+type Amount int64
+
 // Movement code constants (TigerBeetle-inspired).
 const (
 	CodeNormal          int16 = 0
@@ -28,14 +32,14 @@ type Ledger interface {
 	ListAccounts(typeFilter AccountType) ([]*Account, error)
 
 	// Movements
-	RecordMovement(fromAccountID, toAccountID int64, amount int64, valueTime time.Time, description string) (*Movement, error)
+	RecordMovement(fromAccountID, toAccountID int64, amount Amount, valueTime time.Time, description string) (*Movement, error)
 	RecordLinkedMovements(movements []MovementInput, valueTime time.Time) (int64, error)
-	RecordMovementWithProjections(fromAccountID, toAccountID int64, amount int64, valueTime time.Time, description string) (*Movement, error)
+	RecordMovementWithProjections(fromAccountID, toAccountID int64, amount Amount, valueTime time.Time, description string) (*Movement, error)
 
 	// Balances
-	Balance(accountID int64) (int64, error)
-	BalanceAt(accountID int64, at time.Time) (int64, error)
-	BalanceByPath(pathPrefix string, at time.Time) (int64, int, error)
+	Balance(accountID int64) (Amount, error)
+	BalanceAt(accountID int64, at time.Time) (Amount, error)
+	BalanceByPath(pathPrefix string, at time.Time) (Amount, int, error)
 	DailyBalances(accountID int64, from, to time.Time) ([]DailyBalance, error)
 	GetLiveBalance(accountID int64, date time.Time) (*LiveBalance, error)
 
@@ -56,7 +60,7 @@ type Ledger interface {
 type LiveBalance struct {
 	AccountID   int64
 	BalanceDate time.Time
-	Balance     int64
+	Balance     Amount
 }
 
 // AccountType represents one of the five fundamental account categories.
@@ -102,7 +106,7 @@ type Movement struct {
 	BatchID       int64
 	FromAccountID int64
 	ToAccountID   int64
-	Amount        int64
+	Amount        Amount
 	Code          int16 // category/reason enum (TB-inspired)
 	Ledger        int32 // partition identifier (TB-inspired)
 	PendingID     int64 // two-phase post/void; 0 = N/A (TB-inspired)
@@ -116,7 +120,7 @@ type Movement struct {
 type MovementInput struct {
 	FromAccountID int64
 	ToAccountID   int64
-	Amount        int64
+	Amount        Amount
 	Code          int16
 	Ledger        int32
 	PendingID     int64

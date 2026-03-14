@@ -121,7 +121,7 @@ func (m *MemLedger) getAccountByIDLocked(id int64) (*Account, error) {
 	return m.accounts[id-1], nil
 }
 
-func (m *MemLedger) RecordMovement(fromAccountID, toAccountID int64, amount int64, valueTime time.Time, description string) (*Movement, error) {
+func (m *MemLedger) RecordMovement(fromAccountID, toAccountID int64, amount Amount, valueTime time.Time, description string) (*Movement, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -187,11 +187,11 @@ func (m *MemLedger) RecordLinkedMovements(movements []MovementInput, valueTime t
 	return batchID, nil
 }
 
-func (m *MemLedger) Balance(accountID int64) (int64, error) {
+func (m *MemLedger) Balance(accountID int64) (Amount, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	var balance int64
+	var balance Amount
 	for _, mov := range m.movements {
 		if mov.ToAccountID == accountID {
 			balance += mov.Amount
@@ -203,11 +203,11 @@ func (m *MemLedger) Balance(accountID int64) (int64, error) {
 	return balance, nil
 }
 
-func (m *MemLedger) BalanceAt(accountID int64, at time.Time) (int64, error) {
+func (m *MemLedger) BalanceAt(accountID int64, at time.Time) (Amount, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	var balance int64
+	var balance Amount
 	for _, mov := range m.movements {
 		if mov.ValueTime.After(at) {
 			continue
@@ -240,11 +240,11 @@ func (m *MemLedger) DailyBalances(accountID int64, from, to time.Time) ([]DailyB
 
 // --- Stubbed methods ---
 
-func (m *MemLedger) RecordMovementWithProjections(fromAccountID, toAccountID int64, amount int64, valueTime time.Time, description string) (*Movement, error) {
+func (m *MemLedger) RecordMovementWithProjections(fromAccountID, toAccountID int64, amount Amount, valueTime time.Time, description string) (*Movement, error) {
 	return nil, ErrNotImplemented
 }
 
-func (m *MemLedger) BalanceByPath(pathPrefix string, at time.Time) (int64, int, error) {
+func (m *MemLedger) BalanceByPath(pathPrefix string, at time.Time) (Amount, int, error) {
 	return 0, 0, ErrNotImplemented
 }
 

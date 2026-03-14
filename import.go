@@ -51,7 +51,7 @@ func (l *SQLLedger) importTransaction(txn Transaction, opts ImportOptions) error
 	type resolvedMovement struct {
 		fromID      int64
 		toID        int64
-		amount      int64
+		amount      Amount
 		description string
 		pendingID   int64
 	}

@@ -125,7 +125,7 @@ func insertSampleData(db *sql.DB) error {
 		batchID     int
 		fromID      int
 		toID        int
-		amount      int64
+		amount      Amount
 		code        int16
 		ledger      int32
 		pendingID   int64
