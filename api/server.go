@@ -54,8 +54,8 @@ type recordMovementReq struct {
 	FromAccountID int64       `json:"from_account_id"`
 	ToAccountID   int64       `json:"to_account_id"`
 	Amount        luca.Amount `json:"amount"`
-	ValueTime     string `json:"value_time"` // RFC3339
-	Description   string `json:"description"`
+	ValueTime     string      `json:"value_time"` // RFC3339
+	Description   string      `json:"description"`
 }
 
 type recordLinkedReq struct {
