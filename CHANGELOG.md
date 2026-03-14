@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.16] - 2026-03-14
+
+ - Changing to number
+
 ## [0.2.15] - 2026-03-13
 
  - Adding AER research
