@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.20] - 2026-03-16
+
+ - Adding movement codes
+
 ## [0.2.19] - 2026-03-16
 
  - Forcing UTC time
