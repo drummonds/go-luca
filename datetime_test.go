@@ -134,7 +134,7 @@ func TestDateTimeToTimeTimezones(t *testing.T) {
 		t.Fatalf("ToTime: %v", err)
 	}
 	_, offset2 := got2.Zone()
-	if offset2 != -(5*3600+30*60) {
+	if offset2 != -(5*3600 + 30*60) {
 		t.Errorf("timezone offset = %d, want %d", offset2, -(5*3600 + 30*60))
 	}
 }

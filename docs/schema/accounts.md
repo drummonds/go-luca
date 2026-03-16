@@ -10,7 +10,7 @@ Chart of accounts. Each account has a hierarchical path (Type:Product:AccountID:
 
 ```sql
 CREATE TABLE accounts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT PRIMARY KEY,
     full_path TEXT NOT NULL UNIQUE,
     account_type TEXT NOT NULL,
     product TEXT NOT NULL DEFAULT '',
@@ -20,6 +20,7 @@ CREATE TABLE accounts (
     currency TEXT NOT NULL DEFAULT 'GBP',
     exponent INTEGER NOT NULL DEFAULT -2,
     annual_interest_rate TEXT NOT NULL DEFAULT 0,
+    opened_at TEXT,
     created_at TEXT DEFAULT (datetime('now'))
 )
 ```
@@ -38,8 +39,9 @@ CREATE TABLE accounts (
 | currency             | TEXT    | 'GBP'           | false    |                                                             |         | ISO 4217 currency code (e.g. GBP, USD)                                         |
 | exponent             | INTEGER | -2              | false    |                                                             |         | Decimal exponent for amount precision (-2 = pence, -5 = high precision)        |
 | full_path            | TEXT    |                 | false    |                                                             |         | Hierarchical account path, e.g. Asset:Bank:Current:Main                        |
-| id                   | INTEGER |                 | true     | [balances_live](balances_live.md) [movements](movements.md) |         | Auto-incrementing primary key                                                  |
+| id                   | TEXT    |                 | true     | [balances_live](balances_live.md) [movements](movements.md) |         | Auto-incrementing primary key                                                  |
 | is_pending           | INTEGER | 0               | true     |                                                             |         | True if this is a pending/suspense account                                     |
+| opened_at            | TEXT    |                 | true     |                                                             |         |                                                                                |
 | product              | TEXT    | ''              | false    |                                                             |         | Product category within the account type                                       |
 
 ## Constraints
@@ -47,13 +49,15 @@ CREATE TABLE accounts (
 | Name                        | Type        | Definition         |
 | --------------------------- | ----------- | ------------------ |
 | id                          | PRIMARY KEY | PRIMARY KEY (id)   |
-| sqlite_autoindex_accounts_1 | UNIQUE      | UNIQUE (full_path) |
+| sqlite_autoindex_accounts_1 | PRIMARY KEY | PRIMARY KEY (id)   |
+| sqlite_autoindex_accounts_2 | UNIQUE      | UNIQUE (full_path) |
 
 ## Indexes
 
 | Name                        | Definition         |
 | --------------------------- | ------------------ |
-| sqlite_autoindex_accounts_1 | UNIQUE (full_path) |
+| sqlite_autoindex_accounts_1 | PRIMARY KEY (id)   |
+| sqlite_autoindex_accounts_2 | UNIQUE (full_path) |
 
 ## Relations
 
@@ -73,28 +77,30 @@ erDiagram
   TEXT currency "ISO 4217 currency code (e.g. GBP, USD)"
   INTEGER exponent "Decimal exponent for amount precision (-2 = pence, -5 = high precision)"
   TEXT full_path "Hierarchical account path, e.g. Asset:Bank:Current:Main"
-  INTEGER id "Auto-incrementing primary key"
+  TEXT id PK "Auto-incrementing primary key"
   INTEGER is_pending "True if this is a pending/suspense account"
+  TEXT opened_at ""
   TEXT product "Product category within the account type"
 }
 "balances_live" {
-  INTEGER account_id "Account this balance belongs to (references accounts.id)"
+  TEXT account_id "Account this balance belongs to (references accounts.id)"
   INTEGER balance "End-of-day balance in smallest currency unit"
   TEXT balance_date "Date of the balance snapshot (start of day)"
-  INTEGER id "Auto-incrementing primary key"
+  TEXT id PK "Auto-incrementing primary key"
   TEXT updated_at "When this balance was last recomputed"
 }
 "movements" {
   INTEGER amount "Transfer amount in smallest currency unit (integer at account exponent)"
-  INTEGER batch_id "Groups related movements into a single atomic transaction"
+  TEXT batch_id "Groups related movements into a single atomic transaction"
   INTEGER code "Movement category: 0=normal, 1=interest accrual (TigerBeetle-inspired)"
   TEXT description "Human-readable description of the movement"
-  INTEGER from_account_id "Source account (references accounts.id)"
-  INTEGER id "Auto-incrementing primary key"
+  TEXT from_account_id "Source account (references accounts.id)"
+  TEXT id PK "Auto-incrementing primary key"
   TEXT knowledge_time "When the system recorded this movement (knowledge date)"
   INTEGER ledger "Partition identifier for multi-ledger setups (TigerBeetle-inspired)"
   INTEGER pending_id "Two-phase commit: references pending movement to post/void (0=N/A)"
-  INTEGER to_account_id "Destination account (references accounts.id)"
+  TEXT period_anchor ""
+  TEXT to_account_id "Destination account (references accounts.id)"
   INTEGER user_data_64 "Arbitrary external reference for application use"
   TEXT value_time "When the movement economically occurred (value date)"
 }

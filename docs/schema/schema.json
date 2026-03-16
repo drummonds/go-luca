@@ -63,7 +63,7 @@
         },
         {
           "name": "id",
-          "type": "INTEGER",
+          "type": "TEXT",
           "nullable": true,
           "comment": "Auto-incrementing primary key"
         },
@@ -73,6 +73,11 @@
           "nullable": true,
           "default": "0",
           "comment": "True if this is a pending/suspense account"
+        },
+        {
+          "name": "opened_at",
+          "type": "TEXT",
+          "nullable": true
         },
         {
           "name": "product",
@@ -85,6 +90,14 @@
       "indexes": [
         {
           "name": "sqlite_autoindex_accounts_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "accounts",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_accounts_2",
           "def": "UNIQUE (full_path)",
           "table": "accounts",
           "columns": [
@@ -104,6 +117,15 @@
         },
         {
           "name": "sqlite_autoindex_accounts_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "accounts",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_accounts_2",
           "type": "UNIQUE",
           "def": "UNIQUE (full_path)",
           "table": "accounts",
@@ -112,7 +134,82 @@
           ]
         }
       ],
-      "def": "CREATE TABLE accounts (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    full_path TEXT NOT NULL UNIQUE,\n    account_type TEXT NOT NULL,\n    product TEXT NOT NULL DEFAULT '',\n    account_id TEXT NOT NULL DEFAULT '',\n    address TEXT NOT NULL DEFAULT '',\n    is_pending INTEGER DEFAULT 0,\n    currency TEXT NOT NULL DEFAULT 'GBP',\n    exponent INTEGER NOT NULL DEFAULT -2,\n    annual_interest_rate TEXT NOT NULL DEFAULT 0,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+      "def": "CREATE TABLE accounts (\n    id TEXT PRIMARY KEY,\n    full_path TEXT NOT NULL UNIQUE,\n    account_type TEXT NOT NULL,\n    product TEXT NOT NULL DEFAULT '',\n    account_id TEXT NOT NULL DEFAULT '',\n    address TEXT NOT NULL DEFAULT '',\n    is_pending INTEGER DEFAULT 0,\n    currency TEXT NOT NULL DEFAULT 'GBP',\n    exponent INTEGER NOT NULL DEFAULT -2,\n    annual_interest_rate TEXT NOT NULL DEFAULT 0,\n    opened_at TEXT,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+    },
+    {
+      "name": "aliases",
+      "type": "table",
+      "columns": [
+        {
+          "name": "account_path",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "TEXT",
+          "nullable": true,
+          "default": "datetime('now')"
+        },
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "sqlite_autoindex_aliases_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "aliases",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_aliases_2",
+          "def": "UNIQUE (name)",
+          "table": "aliases",
+          "columns": [
+            "name"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "aliases",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_aliases_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "aliases",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_aliases_2",
+          "type": "UNIQUE",
+          "def": "UNIQUE (name)",
+          "table": "aliases",
+          "columns": [
+            "name"
+          ]
+        }
+      ],
+      "def": "CREATE TABLE aliases (\n    id TEXT PRIMARY KEY,\n    name TEXT NOT NULL UNIQUE,\n    account_path TEXT NOT NULL,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
     },
     {
       "name": "balances_live",
@@ -121,7 +218,7 @@
       "columns": [
         {
           "name": "account_id",
-          "type": "INTEGER",
+          "type": "TEXT",
           "nullable": false,
           "comment": "Account this balance belongs to (references accounts.id)"
         },
@@ -139,7 +236,7 @@
         },
         {
           "name": "id",
-          "type": "INTEGER",
+          "type": "TEXT",
           "nullable": true,
           "comment": "Auto-incrementing primary key"
         },
@@ -160,6 +257,14 @@
             "account_id",
             "balance_date"
           ]
+        },
+        {
+          "name": "sqlite_autoindex_balances_live_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "balances_live",
+          "columns": [
+            "id"
+          ]
         }
       ],
       "constraints": [
@@ -171,9 +276,467 @@
           "columns": [
             "id"
           ]
+        },
+        {
+          "name": "sqlite_autoindex_balances_live_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "balances_live",
+          "columns": [
+            "id"
+          ]
         }
       ],
-      "def": "CREATE TABLE balances_live (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    account_id INTEGER NOT NULL,\n    balance_date TEXT NOT NULL,\n    balance INTEGER NOT NULL,\n    updated_at TEXT DEFAULT (datetime('now'))\n)"
+      "def": "CREATE TABLE balances_live (\n    id TEXT PRIMARY KEY,\n    account_id TEXT NOT NULL,\n    balance_date TEXT NOT NULL,\n    balance INTEGER NOT NULL,\n    updated_at TEXT DEFAULT (datetime('now'))\n)"
+    },
+    {
+      "name": "commodities",
+      "type": "table",
+      "columns": [
+        {
+          "name": "code",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "TEXT",
+          "nullable": true,
+          "default": "datetime('now')"
+        },
+        {
+          "name": "datetime",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "sqlite_autoindex_commodities_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "commodities",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_commodities_2",
+          "def": "UNIQUE (code)",
+          "table": "commodities",
+          "columns": [
+            "code"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "commodities",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_commodities_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "commodities",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_commodities_2",
+          "type": "UNIQUE",
+          "def": "UNIQUE (code)",
+          "table": "commodities",
+          "columns": [
+            "code"
+          ]
+        }
+      ],
+      "def": "CREATE TABLE commodities (\n    id TEXT PRIMARY KEY,\n    code TEXT NOT NULL UNIQUE,\n    datetime TEXT,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+    },
+    {
+      "name": "commodity_metadata",
+      "type": "table",
+      "columns": [
+        {
+          "name": "commodity_id",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "key",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "value",
+          "type": "TEXT",
+          "nullable": false,
+          "default": "''"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_commodity_metadata_unique",
+          "def": "CREATE UNIQUE INDEX idx_commodity_metadata_unique ON commodity_metadata(commodity_id, key)",
+          "table": "commodity_metadata",
+          "columns": [
+            "commodity_id",
+            "key"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_commodity_metadata_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "commodity_metadata",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "commodity_metadata",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_commodity_metadata_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "commodity_metadata",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "def": "CREATE TABLE commodity_metadata (\n    id TEXT PRIMARY KEY,\n    commodity_id TEXT NOT NULL,\n    key TEXT NOT NULL,\n    value TEXT NOT NULL DEFAULT ''\n)"
+    },
+    {
+      "name": "customer_metadata",
+      "type": "table",
+      "columns": [
+        {
+          "name": "customer_id",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "key",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "value",
+          "type": "TEXT",
+          "nullable": false,
+          "default": "''"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_customer_metadata_unique",
+          "def": "CREATE UNIQUE INDEX idx_customer_metadata_unique ON customer_metadata(customer_id, key)",
+          "table": "customer_metadata",
+          "columns": [
+            "customer_id",
+            "key"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_customer_metadata_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "customer_metadata",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "customer_metadata",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_customer_metadata_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "customer_metadata",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "def": "CREATE TABLE customer_metadata (\n    id TEXT PRIMARY KEY,\n    customer_id TEXT NOT NULL,\n    key TEXT NOT NULL,\n    value TEXT NOT NULL DEFAULT ''\n)"
+    },
+    {
+      "name": "customers",
+      "type": "table",
+      "columns": [
+        {
+          "name": "account_path",
+          "type": "TEXT",
+          "nullable": false,
+          "default": "''"
+        },
+        {
+          "name": "created_at",
+          "type": "TEXT",
+          "nullable": true,
+          "default": "datetime('now')"
+        },
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "max_balance_amount",
+          "type": "TEXT",
+          "nullable": false,
+          "default": "''"
+        },
+        {
+          "name": "max_balance_commodity",
+          "type": "TEXT",
+          "nullable": false,
+          "default": "''"
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "sqlite_autoindex_customers_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "customers",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_customers_2",
+          "def": "UNIQUE (name)",
+          "table": "customers",
+          "columns": [
+            "name"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "customers",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_customers_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "customers",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_customers_2",
+          "type": "UNIQUE",
+          "def": "UNIQUE (name)",
+          "table": "customers",
+          "columns": [
+            "name"
+          ]
+        }
+      ],
+      "def": "CREATE TABLE customers (\n    id TEXT PRIMARY KEY,\n    name TEXT NOT NULL UNIQUE,\n    account_path TEXT NOT NULL DEFAULT '',\n    max_balance_amount TEXT NOT NULL DEFAULT '',\n    max_balance_commodity TEXT NOT NULL DEFAULT '',\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+    },
+    {
+      "name": "data_points",
+      "type": "table",
+      "columns": [
+        {
+          "name": "created_at",
+          "type": "TEXT",
+          "nullable": true,
+          "default": "datetime('now')"
+        },
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "knowledge_time",
+          "type": "TEXT",
+          "nullable": true,
+          "default": "datetime('now')"
+        },
+        {
+          "name": "param_name",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "param_type",
+          "type": "TEXT",
+          "nullable": false,
+          "default": "'string'"
+        },
+        {
+          "name": "param_value",
+          "type": "TEXT",
+          "nullable": false,
+          "default": "''"
+        },
+        {
+          "name": "value_time",
+          "type": "TEXT",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_data_points_name_time",
+          "def": "CREATE INDEX idx_data_points_name_time ON data_points(param_name, value_time)",
+          "table": "data_points",
+          "columns": [
+            "param_name",
+            "value_time"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_data_points_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "data_points",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "data_points",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_data_points_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "data_points",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "def": "CREATE TABLE data_points (\n    id TEXT PRIMARY KEY,\n    value_time TEXT NOT NULL,\n    knowledge_time TEXT DEFAULT (datetime('now')),\n    param_name TEXT NOT NULL,\n    param_type TEXT NOT NULL DEFAULT 'string',\n    param_value TEXT NOT NULL DEFAULT '',\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+    },
+    {
+      "name": "movement_metadata",
+      "type": "table",
+      "columns": [
+        {
+          "name": "batch_id",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "key",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "value",
+          "type": "TEXT",
+          "nullable": false,
+          "default": "''"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_movement_metadata_unique",
+          "def": "CREATE UNIQUE INDEX idx_movement_metadata_unique ON movement_metadata(batch_id, key)",
+          "table": "movement_metadata",
+          "columns": [
+            "batch_id",
+            "key"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_movement_metadata_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "movement_metadata",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "movement_metadata",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_movement_metadata_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "movement_metadata",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "def": "CREATE TABLE movement_metadata (\n    id TEXT PRIMARY KEY,\n    batch_id TEXT NOT NULL,\n    key TEXT NOT NULL,\n    value TEXT NOT NULL DEFAULT ''\n)"
     },
     {
       "name": "movements",
@@ -188,7 +751,7 @@
         },
         {
           "name": "batch_id",
-          "type": "INTEGER",
+          "type": "TEXT",
           "nullable": false,
           "comment": "Groups related movements into a single atomic transaction"
         },
@@ -208,13 +771,13 @@
         },
         {
           "name": "from_account_id",
-          "type": "INTEGER",
+          "type": "TEXT",
           "nullable": false,
           "comment": "Source account (references accounts.id)"
         },
         {
           "name": "id",
-          "type": "INTEGER",
+          "type": "TEXT",
           "nullable": true,
           "comment": "Auto-incrementing primary key"
         },
@@ -240,8 +803,14 @@
           "comment": "Two-phase commit: references pending movement to post/void (0=N/A)"
         },
         {
+          "name": "period_anchor",
+          "type": "TEXT",
+          "nullable": false,
+          "default": "''"
+        },
+        {
           "name": "to_account_id",
-          "type": "INTEGER",
+          "type": "TEXT",
           "nullable": false,
           "comment": "Destination account (references accounts.id)"
         },
@@ -295,6 +864,14 @@
             "to_account_id",
             "value_time"
           ]
+        },
+        {
+          "name": "sqlite_autoindex_movements_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "movements",
+          "columns": [
+            "id"
+          ]
         }
       ],
       "constraints": [
@@ -306,9 +883,94 @@
           "columns": [
             "id"
           ]
+        },
+        {
+          "name": "sqlite_autoindex_movements_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "movements",
+          "columns": [
+            "id"
+          ]
         }
       ],
-      "def": "CREATE TABLE movements (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    batch_id INTEGER NOT NULL,\n    from_account_id INTEGER NOT NULL,\n    to_account_id INTEGER NOT NULL,\n    amount INTEGER NOT NULL,\n    code INTEGER NOT NULL DEFAULT 0,\n    ledger INTEGER NOT NULL DEFAULT 0,\n    pending_id INTEGER NOT NULL DEFAULT 0,\n    user_data_64 INTEGER NOT NULL DEFAULT 0,\n    value_time TEXT NOT NULL,\n    knowledge_time TEXT DEFAULT (datetime('now')),\n    description TEXT NOT NULL DEFAULT ''\n)"
+      "def": "CREATE TABLE movements (\n    id TEXT PRIMARY KEY,\n    batch_id TEXT NOT NULL,\n    from_account_id TEXT NOT NULL,\n    to_account_id TEXT NOT NULL,\n    amount INTEGER NOT NULL,\n    code INTEGER NOT NULL DEFAULT 0,\n    ledger INTEGER NOT NULL DEFAULT 0,\n    pending_id INTEGER NOT NULL DEFAULT 0,\n    user_data_64 INTEGER NOT NULL DEFAULT 0,\n    value_time TEXT NOT NULL,\n    knowledge_time TEXT DEFAULT (datetime('now')),\n    description TEXT NOT NULL DEFAULT '',\n    period_anchor TEXT NOT NULL DEFAULT ''\n)"
+    },
+    {
+      "name": "options",
+      "type": "table",
+      "columns": [
+        {
+          "name": "created_at",
+          "type": "TEXT",
+          "nullable": true,
+          "default": "datetime('now')"
+        },
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "key",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "value",
+          "type": "TEXT",
+          "nullable": false,
+          "default": "''"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "sqlite_autoindex_options_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "options",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_options_2",
+          "def": "UNIQUE (key)",
+          "table": "options",
+          "columns": [
+            "key"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "options",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_options_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "options",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_options_2",
+          "type": "UNIQUE",
+          "def": "UNIQUE (key)",
+          "table": "options",
+          "columns": [
+            "key"
+          ]
+        }
+      ],
+      "def": "CREATE TABLE options (\n    id TEXT PRIMARY KEY,\n    key TEXT NOT NULL UNIQUE,\n    value TEXT NOT NULL DEFAULT '',\n    created_at TEXT DEFAULT (datetime('now'))\n)"
     }
   ],
   "relations": [

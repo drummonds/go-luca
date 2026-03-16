@@ -47,10 +47,10 @@
 <details>
 <summary><strong>Table Definition</strong></summary>
 <pre><code class="language-sql">CREATE TABLE movements (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    batch_id INTEGER NOT NULL,
-    from_account_id INTEGER NOT NULL,
-    to_account_id INTEGER NOT NULL,
+    id TEXT PRIMARY KEY,
+    batch_id TEXT NOT NULL,
+    from_account_id TEXT NOT NULL,
+    to_account_id TEXT NOT NULL,
     amount INTEGER NOT NULL,
     code INTEGER NOT NULL DEFAULT 0,
     ledger INTEGER NOT NULL DEFAULT 0,
@@ -58,7 +58,8 @@
     user_data_64 INTEGER NOT NULL DEFAULT 0,
     value_time TEXT NOT NULL,
     knowledge_time TEXT DEFAULT (datetime('now')),
-    description TEXT NOT NULL DEFAULT ''
+    description TEXT NOT NULL DEFAULT '',
+    period_anchor TEXT NOT NULL DEFAULT ''
 )
 </code></pre>
 </details>
@@ -87,7 +88,7 @@
 </tr>
 <tr>
 <td>batch_id</td>
-<td>INTEGER</td>
+<td>TEXT</td>
 <td></td>
 <td>false</td>
 <td></td>
@@ -114,7 +115,7 @@
 </tr>
 <tr>
 <td>from_account_id</td>
-<td>INTEGER</td>
+<td>TEXT</td>
 <td></td>
 <td>false</td>
 <td></td>
@@ -123,7 +124,7 @@
 </tr>
 <tr>
 <td>id</td>
-<td>INTEGER</td>
+<td>TEXT</td>
 <td></td>
 <td>true</td>
 <td></td>
@@ -158,8 +159,17 @@
 <td>Two-phase commit: references pending movement to post/void (0=N/A)</td>
 </tr>
 <tr>
+<td>period_anchor</td>
+<td>TEXT</td>
+<td>''</td>
+<td>false</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
 <td>to_account_id</td>
-<td>INTEGER</td>
+<td>TEXT</td>
 <td></td>
 <td>false</td>
 <td></td>
@@ -201,6 +211,11 @@
 <td>PRIMARY KEY</td>
 <td>PRIMARY KEY (id)</td>
 </tr>
+<tr>
+<td>sqlite_autoindex_movements_1</td>
+<td>PRIMARY KEY</td>
+<td>PRIMARY KEY (id)</td>
+</tr>
 </tbody>
 </table>
 <h2>Indexes</h2>
@@ -228,6 +243,10 @@
 <td>idx_movements_to</td>
 <td>CREATE INDEX idx_movements_to ON movements(to_account_id, value_time)</td>
 </tr>
+<tr>
+<td>sqlite_autoindex_movements_1</td>
+<td>PRIMARY KEY (id)</td>
+</tr>
 </tbody>
 </table>
 <h2>Relations</h2>
@@ -238,15 +257,16 @@
 
 &quot;movements&quot; {
   INTEGER amount &quot;Transfer amount in smallest currency unit (integer at account exponent)&quot;
-  INTEGER batch_id &quot;Groups related movements into a single atomic transaction&quot;
+  TEXT batch_id &quot;Groups related movements into a single atomic transaction&quot;
   INTEGER code &quot;Movement category: 0=normal, 1=interest accrual (TigerBeetle-inspired)&quot;
   TEXT description &quot;Human-readable description of the movement&quot;
-  INTEGER from_account_id &quot;Source account (references accounts.id)&quot;
-  INTEGER id &quot;Auto-incrementing primary key&quot;
+  TEXT from_account_id &quot;Source account (references accounts.id)&quot;
+  TEXT id PK &quot;Auto-incrementing primary key&quot;
   TEXT knowledge_time &quot;When the system recorded this movement (knowledge date)&quot;
   INTEGER ledger &quot;Partition identifier for multi-ledger setups (TigerBeetle-inspired)&quot;
   INTEGER pending_id &quot;Two-phase commit: references pending movement to post/void (0=N/A)&quot;
-  INTEGER to_account_id &quot;Destination account (references accounts.id)&quot;
+  TEXT period_anchor &quot;&quot;
+  TEXT to_account_id &quot;Destination account (references accounts.id)&quot;
   INTEGER user_data_64 &quot;Arbitrary external reference for application use&quot;
   TEXT value_time &quot;When the movement economically occurred (value date)&quot;
 }
@@ -259,8 +279,9 @@
   TEXT currency &quot;ISO 4217 currency code (e.g. GBP, USD)&quot;
   INTEGER exponent &quot;Decimal exponent for amount precision (-2 = pence, -5 = high precision)&quot;
   TEXT full_path &quot;Hierarchical account path, e.g. Asset:Bank:Current:Main&quot;
-  INTEGER id &quot;Auto-incrementing primary key&quot;
+  TEXT id PK &quot;Auto-incrementing primary key&quot;
   INTEGER is_pending &quot;True if this is a pending/suspense account&quot;
+  TEXT opened_at &quot;&quot;
   TEXT product &quot;Product category within the account type&quot;
 }
 </pre>

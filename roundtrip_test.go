@@ -388,9 +388,9 @@ func TestRoundTripDataPointTypes(t *testing.T) {
 	}
 	// Values should survive (stored as text)
 	values := map[string]string{
-		"rate:annual":  "5.25",
-		"flag:active":  "true",
-		"label:name":   "some-text",
+		"rate:annual": "5.25",
+		"flag:active": "true",
+		"label:name":  "some-text",
 	}
 	for _, dp := range gf.DataPoints {
 		want, ok := values[dp.ParamName]

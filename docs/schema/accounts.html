@@ -47,7 +47,7 @@
 <details>
 <summary><strong>Table Definition</strong></summary>
 <pre><code class="language-sql">CREATE TABLE accounts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT PRIMARY KEY,
     full_path TEXT NOT NULL UNIQUE,
     account_type TEXT NOT NULL,
     product TEXT NOT NULL DEFAULT '',
@@ -57,6 +57,7 @@
     currency TEXT NOT NULL DEFAULT 'GBP',
     exponent INTEGER NOT NULL DEFAULT -2,
     annual_interest_rate TEXT NOT NULL DEFAULT 0,
+    opened_at TEXT,
     created_at TEXT DEFAULT (datetime('now'))
 )
 </code></pre>
@@ -149,7 +150,7 @@
 </tr>
 <tr>
 <td>id</td>
-<td>INTEGER</td>
+<td>TEXT</td>
 <td></td>
 <td>true</td>
 <td><a href="balances_live.html">balances_live</a> <a href="movements.html">movements</a></td>
@@ -164,6 +165,15 @@
 <td></td>
 <td></td>
 <td>True if this is a pending/suspense account</td>
+</tr>
+<tr>
+<td>opened_at</td>
+<td>TEXT</td>
+<td></td>
+<td>true</td>
+<td></td>
+<td></td>
+<td></td>
 </tr>
 <tr>
 <td>product</td>
@@ -193,6 +203,11 @@
 </tr>
 <tr>
 <td>sqlite_autoindex_accounts_1</td>
+<td>PRIMARY KEY</td>
+<td>PRIMARY KEY (id)</td>
+</tr>
+<tr>
+<td>sqlite_autoindex_accounts_2</td>
 <td>UNIQUE</td>
 <td>UNIQUE (full_path)</td>
 </tr>
@@ -209,6 +224,10 @@
 <tbody>
 <tr>
 <td>sqlite_autoindex_accounts_1</td>
+<td>PRIMARY KEY (id)</td>
+</tr>
+<tr>
+<td>sqlite_autoindex_accounts_2</td>
 <td>UNIQUE (full_path)</td>
 </tr>
 </tbody>
@@ -229,28 +248,30 @@
   TEXT currency &quot;ISO 4217 currency code (e.g. GBP, USD)&quot;
   INTEGER exponent &quot;Decimal exponent for amount precision (-2 = pence, -5 = high precision)&quot;
   TEXT full_path &quot;Hierarchical account path, e.g. Asset:Bank:Current:Main&quot;
-  INTEGER id &quot;Auto-incrementing primary key&quot;
+  TEXT id PK &quot;Auto-incrementing primary key&quot;
   INTEGER is_pending &quot;True if this is a pending/suspense account&quot;
+  TEXT opened_at &quot;&quot;
   TEXT product &quot;Product category within the account type&quot;
 }
 &quot;balances_live&quot; {
-  INTEGER account_id &quot;Account this balance belongs to (references accounts.id)&quot;
+  TEXT account_id &quot;Account this balance belongs to (references accounts.id)&quot;
   INTEGER balance &quot;End-of-day balance in smallest currency unit&quot;
   TEXT balance_date &quot;Date of the balance snapshot (start of day)&quot;
-  INTEGER id &quot;Auto-incrementing primary key&quot;
+  TEXT id PK &quot;Auto-incrementing primary key&quot;
   TEXT updated_at &quot;When this balance was last recomputed&quot;
 }
 &quot;movements&quot; {
   INTEGER amount &quot;Transfer amount in smallest currency unit (integer at account exponent)&quot;
-  INTEGER batch_id &quot;Groups related movements into a single atomic transaction&quot;
+  TEXT batch_id &quot;Groups related movements into a single atomic transaction&quot;
   INTEGER code &quot;Movement category: 0=normal, 1=interest accrual (TigerBeetle-inspired)&quot;
   TEXT description &quot;Human-readable description of the movement&quot;
-  INTEGER from_account_id &quot;Source account (references accounts.id)&quot;
-  INTEGER id &quot;Auto-incrementing primary key&quot;
+  TEXT from_account_id &quot;Source account (references accounts.id)&quot;
+  TEXT id PK &quot;Auto-incrementing primary key&quot;
   TEXT knowledge_time &quot;When the system recorded this movement (knowledge date)&quot;
   INTEGER ledger &quot;Partition identifier for multi-ledger setups (TigerBeetle-inspired)&quot;
   INTEGER pending_id &quot;Two-phase commit: references pending movement to post/void (0=N/A)&quot;
-  INTEGER to_account_id &quot;Destination account (references accounts.id)&quot;
+  TEXT period_anchor &quot;&quot;
+  TEXT to_account_id &quot;Destination account (references accounts.id)&quot;
   INTEGER user_data_64 &quot;Arbitrary external reference for application use&quot;
   TEXT value_time &quot;When the movement economically occurred (value date)&quot;
 }

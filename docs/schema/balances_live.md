@@ -10,8 +10,8 @@ Pre-computed end-of-day balance snapshots. Updated transactionally when movement
 
 ```sql
 CREATE TABLE balances_live (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    account_id INTEGER NOT NULL,
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
     balance_date TEXT NOT NULL,
     balance INTEGER NOT NULL,
     updated_at TEXT DEFAULT (datetime('now'))
@@ -24,23 +24,25 @@ CREATE TABLE balances_live (
 
 | Name         | Type    | Default         | Nullable | Children | Parents                 | Comment                                                  |
 | ------------ | ------- | --------------- | -------- | -------- | ----------------------- | -------------------------------------------------------- |
-| account_id   | INTEGER |                 | false    |          | [accounts](accounts.md) | Account this balance belongs to (references accounts.id) |
+| account_id   | TEXT    |                 | false    |          | [accounts](accounts.md) | Account this balance belongs to (references accounts.id) |
 | balance      | INTEGER |                 | false    |          |                         | End-of-day balance in smallest currency unit             |
 | balance_date | TEXT    |                 | false    |          |                         | Date of the balance snapshot (start of day)              |
-| id           | INTEGER |                 | true     |          |                         | Auto-incrementing primary key                            |
+| id           | TEXT    |                 | true     |          |                         | Auto-incrementing primary key                            |
 | updated_at   | TEXT    | datetime('now') | true     |          |                         | When this balance was last recomputed                    |
 
 ## Constraints
 
-| Name | Type        | Definition       |
-| ---- | ----------- | ---------------- |
-| id   | PRIMARY KEY | PRIMARY KEY (id) |
+| Name                             | Type        | Definition       |
+| -------------------------------- | ----------- | ---------------- |
+| id                               | PRIMARY KEY | PRIMARY KEY (id) |
+| sqlite_autoindex_balances_live_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
-| Name                     | Definition                                                                                       |
-| ------------------------ | ------------------------------------------------------------------------------------------------ |
-| idx_balances_live_unique | CREATE UNIQUE INDEX idx_balances_live_unique<br />    ON balances_live(account_id, balance_date) |
+| Name                             | Definition                                                                                       |
+| -------------------------------- | ------------------------------------------------------------------------------------------------ |
+| idx_balances_live_unique         | CREATE UNIQUE INDEX idx_balances_live_unique<br />    ON balances_live(account_id, balance_date) |
+| sqlite_autoindex_balances_live_1 | PRIMARY KEY (id)                                                                                 |
 
 ## Relations
 
@@ -50,10 +52,10 @@ erDiagram
 "balances_live" }o--|| "accounts" : "balances_live.account_id -> accounts.id"
 
 "balances_live" {
-  INTEGER account_id "Account this balance belongs to (references accounts.id)"
+  TEXT account_id "Account this balance belongs to (references accounts.id)"
   INTEGER balance "End-of-day balance in smallest currency unit"
   TEXT balance_date "Date of the balance snapshot (start of day)"
-  INTEGER id "Auto-incrementing primary key"
+  TEXT id PK "Auto-incrementing primary key"
   TEXT updated_at "When this balance was last recomputed"
 }
 "accounts" {
@@ -65,8 +67,9 @@ erDiagram
   TEXT currency "ISO 4217 currency code (e.g. GBP, USD)"
   INTEGER exponent "Decimal exponent for amount precision (-2 = pence, -5 = high precision)"
   TEXT full_path "Hierarchical account path, e.g. Asset:Bank:Current:Main"
-  INTEGER id "Auto-incrementing primary key"
+  TEXT id PK "Auto-incrementing primary key"
   INTEGER is_pending "True if this is a pending/suspense account"
+  TEXT opened_at ""
   TEXT product "Product category within the account type"
 }
 ```

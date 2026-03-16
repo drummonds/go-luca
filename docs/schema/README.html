@@ -57,8 +57,14 @@
 <tbody>
 <tr>
 <td><a href="accounts.html">accounts</a></td>
-<td>11</td>
+<td>12</td>
 <td>Chart of accounts. Each account has a hierarchical path (Type:Product:AccountID:Address) and belongs to one of five fundamental types: Asset, Liability, Equity, Income, Expense. Amounts are stored as integers at the precision defined by exponent (e.g. -2 for pence).<br /></td>
+<td>table</td>
+</tr>
+<tr>
+<td><a href="aliases.html">aliases</a></td>
+<td>4</td>
+<td></td>
 <td>table</td>
 </tr>
 <tr>
@@ -68,9 +74,51 @@
 <td>table</td>
 </tr>
 <tr>
+<td><a href="commodities.html">commodities</a></td>
+<td>4</td>
+<td></td>
+<td>table</td>
+</tr>
+<tr>
+<td><a href="commodity_metadata.html">commodity_metadata</a></td>
+<td>4</td>
+<td></td>
+<td>table</td>
+</tr>
+<tr>
+<td><a href="customer_metadata.html">customer_metadata</a></td>
+<td>4</td>
+<td></td>
+<td>table</td>
+</tr>
+<tr>
+<td><a href="customers.html">customers</a></td>
+<td>6</td>
+<td></td>
+<td>table</td>
+</tr>
+<tr>
+<td><a href="data_points.html">data_points</a></td>
+<td>7</td>
+<td></td>
+<td>table</td>
+</tr>
+<tr>
+<td><a href="movement_metadata.html">movement_metadata</a></td>
+<td>4</td>
+<td></td>
+<td>table</td>
+</tr>
+<tr>
 <td><a href="movements.html">movements</a></td>
-<td>12</td>
+<td>13</td>
 <td>Core transaction records. Each movement transfers an integer amount from one account to another. Movements with the same batch_id form a linked transaction (compound entry). Inspired by TigerBeetle's transfer model with code, ledger, and pending_id fields.<br /></td>
+<td>table</td>
+</tr>
+<tr>
+<td><a href="options.html">options</a></td>
+<td>4</td>
+<td></td>
 <td>table</td>
 </tr>
 </tbody>
@@ -91,30 +139,85 @@
   TEXT currency &quot;ISO 4217 currency code (e.g. GBP, USD)&quot;
   INTEGER exponent &quot;Decimal exponent for amount precision (-2 = pence, -5 = high precision)&quot;
   TEXT full_path &quot;Hierarchical account path, e.g. Asset:Bank:Current:Main&quot;
-  INTEGER id &quot;Auto-incrementing primary key&quot;
+  TEXT id PK &quot;Auto-incrementing primary key&quot;
   INTEGER is_pending &quot;True if this is a pending/suspense account&quot;
+  TEXT opened_at &quot;&quot;
   TEXT product &quot;Product category within the account type&quot;
 }
+&quot;aliases&quot; {
+  TEXT account_path &quot;&quot;
+  TEXT created_at &quot;&quot;
+  TEXT id PK &quot;&quot;
+  TEXT name &quot;&quot;
+}
 &quot;balances_live&quot; {
-  INTEGER account_id &quot;Account this balance belongs to (references accounts.id)&quot;
+  TEXT account_id &quot;Account this balance belongs to (references accounts.id)&quot;
   INTEGER balance &quot;End-of-day balance in smallest currency unit&quot;
   TEXT balance_date &quot;Date of the balance snapshot (start of day)&quot;
-  INTEGER id &quot;Auto-incrementing primary key&quot;
+  TEXT id PK &quot;Auto-incrementing primary key&quot;
   TEXT updated_at &quot;When this balance was last recomputed&quot;
+}
+&quot;commodities&quot; {
+  TEXT code &quot;&quot;
+  TEXT created_at &quot;&quot;
+  TEXT datetime &quot;&quot;
+  TEXT id PK &quot;&quot;
+}
+&quot;commodity_metadata&quot; {
+  TEXT commodity_id &quot;&quot;
+  TEXT id PK &quot;&quot;
+  TEXT key &quot;&quot;
+  TEXT value &quot;&quot;
+}
+&quot;customer_metadata&quot; {
+  TEXT customer_id &quot;&quot;
+  TEXT id PK &quot;&quot;
+  TEXT key &quot;&quot;
+  TEXT value &quot;&quot;
+}
+&quot;customers&quot; {
+  TEXT account_path &quot;&quot;
+  TEXT created_at &quot;&quot;
+  TEXT id PK &quot;&quot;
+  TEXT max_balance_amount &quot;&quot;
+  TEXT max_balance_commodity &quot;&quot;
+  TEXT name &quot;&quot;
+}
+&quot;data_points&quot; {
+  TEXT created_at &quot;&quot;
+  TEXT id PK &quot;&quot;
+  TEXT knowledge_time &quot;&quot;
+  TEXT param_name &quot;&quot;
+  TEXT param_type &quot;&quot;
+  TEXT param_value &quot;&quot;
+  TEXT value_time &quot;&quot;
+}
+&quot;movement_metadata&quot; {
+  TEXT batch_id &quot;&quot;
+  TEXT id PK &quot;&quot;
+  TEXT key &quot;&quot;
+  TEXT value &quot;&quot;
 }
 &quot;movements&quot; {
   INTEGER amount &quot;Transfer amount in smallest currency unit (integer at account exponent)&quot;
-  INTEGER batch_id &quot;Groups related movements into a single atomic transaction&quot;
+  TEXT batch_id &quot;Groups related movements into a single atomic transaction&quot;
   INTEGER code &quot;Movement category: 0=normal, 1=interest accrual (TigerBeetle-inspired)&quot;
   TEXT description &quot;Human-readable description of the movement&quot;
-  INTEGER from_account_id &quot;Source account (references accounts.id)&quot;
-  INTEGER id &quot;Auto-incrementing primary key&quot;
+  TEXT from_account_id &quot;Source account (references accounts.id)&quot;
+  TEXT id PK &quot;Auto-incrementing primary key&quot;
   TEXT knowledge_time &quot;When the system recorded this movement (knowledge date)&quot;
   INTEGER ledger &quot;Partition identifier for multi-ledger setups (TigerBeetle-inspired)&quot;
   INTEGER pending_id &quot;Two-phase commit: references pending movement to post/void (0=N/A)&quot;
-  INTEGER to_account_id &quot;Destination account (references accounts.id)&quot;
+  TEXT period_anchor &quot;&quot;
+  TEXT to_account_id &quot;Destination account (references accounts.id)&quot;
   INTEGER user_data_64 &quot;Arbitrary external reference for application use&quot;
   TEXT value_time &quot;When the movement economically occurred (value date)&quot;
+}
+&quot;options&quot; {
+  TEXT created_at &quot;&quot;
+  TEXT id PK &quot;&quot;
+  TEXT key &quot;&quot;
+  TEXT value &quot;&quot;
 }
 </pre>
 <hr>

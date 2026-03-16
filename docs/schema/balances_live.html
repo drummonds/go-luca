@@ -47,8 +47,8 @@
 <details>
 <summary><strong>Table Definition</strong></summary>
 <pre><code class="language-sql">CREATE TABLE balances_live (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    account_id INTEGER NOT NULL,
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
     balance_date TEXT NOT NULL,
     balance INTEGER NOT NULL,
     updated_at TEXT DEFAULT (datetime('now'))
@@ -71,7 +71,7 @@
 <tbody>
 <tr>
 <td>account_id</td>
-<td>INTEGER</td>
+<td>TEXT</td>
 <td></td>
 <td>false</td>
 <td></td>
@@ -98,7 +98,7 @@
 </tr>
 <tr>
 <td>id</td>
-<td>INTEGER</td>
+<td>TEXT</td>
 <td></td>
 <td>true</td>
 <td></td>
@@ -131,6 +131,11 @@
 <td>PRIMARY KEY</td>
 <td>PRIMARY KEY (id)</td>
 </tr>
+<tr>
+<td>sqlite_autoindex_balances_live_1</td>
+<td>PRIMARY KEY</td>
+<td>PRIMARY KEY (id)</td>
+</tr>
 </tbody>
 </table>
 <h2>Indexes</h2>
@@ -146,6 +151,10 @@
 <td>idx_balances_live_unique</td>
 <td>CREATE UNIQUE INDEX idx_balances_live_unique<br />    ON balances_live(account_id, balance_date)</td>
 </tr>
+<tr>
+<td>sqlite_autoindex_balances_live_1</td>
+<td>PRIMARY KEY (id)</td>
+</tr>
 </tbody>
 </table>
 <h2>Relations</h2>
@@ -154,10 +163,10 @@
 &quot;balances_live&quot; }o--|| &quot;accounts&quot; : &quot;balances_live.account_id -&gt; accounts.id&quot;
 
 &quot;balances_live&quot; {
-  INTEGER account_id &quot;Account this balance belongs to (references accounts.id)&quot;
+  TEXT account_id &quot;Account this balance belongs to (references accounts.id)&quot;
   INTEGER balance &quot;End-of-day balance in smallest currency unit&quot;
   TEXT balance_date &quot;Date of the balance snapshot (start of day)&quot;
-  INTEGER id &quot;Auto-incrementing primary key&quot;
+  TEXT id PK &quot;Auto-incrementing primary key&quot;
   TEXT updated_at &quot;When this balance was last recomputed&quot;
 }
 &quot;accounts&quot; {
@@ -169,8 +178,9 @@
   TEXT currency &quot;ISO 4217 currency code (e.g. GBP, USD)&quot;
   INTEGER exponent &quot;Decimal exponent for amount precision (-2 = pence, -5 = high precision)&quot;
   TEXT full_path &quot;Hierarchical account path, e.g. Asset:Bank:Current:Main&quot;
-  INTEGER id &quot;Auto-incrementing primary key&quot;
+  TEXT id PK &quot;Auto-incrementing primary key&quot;
   INTEGER is_pending &quot;True if this is a pending/suspense account&quot;
+  TEXT opened_at &quot;&quot;
   TEXT product &quot;Product category within the account type&quot;
 }
 </pre>

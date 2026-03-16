@@ -99,8 +99,8 @@ func (l *SQLLedger) Export(w io.Writer) error {
 	}
 	for _, dp := range dataPoints {
 		gfDP := DataPoint{
-			DateTime:  DateTimeFromTime(dp.ValueTime),
-			ParamName: dp.ParamName,
+			DateTime:   DateTimeFromTime(dp.ValueTime),
+			ParamName:  dp.ParamName,
 			ParamValue: dp.Value.Raw,
 		}
 		if !dp.KnowledgeTime.IsZero() && !dp.KnowledgeTime.Equal(dp.ValueTime) {

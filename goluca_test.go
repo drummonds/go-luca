@@ -143,9 +143,9 @@ func TestInferExponent(t *testing.T) {
 
 func TestParseDateTimeVariants(t *testing.T) {
 	tests := []struct {
-		name string
+		name  string
 		input string
-		want DateTime
+		want  DateTime
 	}{
 		{
 			"date only",
