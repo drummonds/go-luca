@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS movements (
     from_account_id TEXT NOT NULL,
     to_account_id TEXT NOT NULL,
     amount BIGINT NOT NULL,
-    code SMALLINT NOT NULL DEFAULT 0,
+    code VARCHAR(14) NOT NULL,
     ledger INTEGER NOT NULL DEFAULT 0,
     pending_id BIGINT NOT NULL DEFAULT 0,
     user_data_64 BIGINT NOT NULL DEFAULT 0,
@@ -199,7 +199,7 @@ func insertSampleData(db *sql.DB) error {
 		fromID      string
 		toID        string
 		amount      Amount
-		code        int16
+		code        string
 		ledger      int32
 		pendingID   int64
 		userData64  int64
@@ -207,12 +207,12 @@ func insertSampleData(db *sql.DB) error {
 		description string
 	}
 	movements := []sampleMovement{
-		{uuid.New().String(), uuid.New().String(), accounts[3].id, accounts[0].id, 250000, 0, 0, 0, 0, today, "Opening balance"},
-		{uuid.New().String(), uuid.New().String(), accounts[4].id, accounts[0].id, 350000, 0, 0, 0, 0, today, "March salary"},
-		{uuid.New().String(), linkedBatch, accounts[0].id, accounts[5].id, 4523, 0, 0, 0, 0, today, "Weekly shop"},
-		{uuid.New().String(), linkedBatch, accounts[0].id, accounts[5].id, 1299, 0, 0, 0, 0, today, "Coffee and snacks"},
-		{uuid.New().String(), uuid.New().String(), accounts[0].id, accounts[1].id, 100000, 0, 0, 0, 0, today, "Transfer to savings"},
-		{uuid.New().String(), uuid.New().String(), accounts[6].id, accounts[1].id, 12, 1, 0, 0, 0, today, "Daily interest for savings"},
+		{uuid.New().String(), uuid.New().String(), accounts[3].id, accounts[0].id, 250000, CodeOpeningBalance, 0, 0, 0, today, "Opening balance"},
+		{uuid.New().String(), uuid.New().String(), accounts[4].id, accounts[0].id, 350000, CodeCreditReceived, 0, 0, 0, today, "March salary"},
+		{uuid.New().String(), linkedBatch, accounts[0].id, accounts[5].id, 4523, CodeCreditIssued, 0, 0, 0, today, "Weekly shop"},
+		{uuid.New().String(), linkedBatch, accounts[0].id, accounts[5].id, 1299, CodeCreditIssued, 0, 0, 0, today, "Coffee and snacks"},
+		{uuid.New().String(), uuid.New().String(), accounts[0].id, accounts[1].id, 100000, CodeBookTransfer, 0, 0, 0, today, "Transfer to savings"},
+		{uuid.New().String(), uuid.New().String(), accounts[6].id, accounts[1].id, 12, CodeInterestAccrual, 0, 0, 0, today, "Daily interest for savings"},
 	}
 
 	for _, m := range movements {

@@ -15,7 +15,7 @@ func TestBalanceSimple(t *testing.T) {
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
 	// Equity -> Cash 200.00 GBP = 20000 pence
-	l.RecordMovement(equity.ID, cash.ID, 20000, now, "Initial capital")
+	l.RecordMovement(equity.ID, cash.ID, 20000, CodeBookTransfer, now, "Initial capital")
 
 	// Cash balance should be +20000 (inflow)
 	cashBal, err := l.Balance(cash.ID)
@@ -57,8 +57,8 @@ func TestBalanceMultipleMovements(t *testing.T) {
 	expenses, _ := l.CreateAccount("Expense:Rent", "GBP", -2, 0)
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	l.RecordMovement(equity.ID, cash.ID, 100000, now, "Capital")              // 1000.00
-	l.RecordMovement(cash.ID, expenses.ID, 30000, now.Add(time.Hour), "Rent") // 300.00
+	l.RecordMovement(equity.ID, cash.ID, 100000, CodeBookTransfer, now, "Capital")              // 1000.00
+	l.RecordMovement(cash.ID, expenses.ID, 30000, CodeBookTransfer, now.Add(time.Hour), "Rent") // 300.00
 
 	// Cash: +100000 - 30000 = 70000 (700.00)
 	cashBal, err := l.Balance(cash.ID)
@@ -80,8 +80,8 @@ func TestBalanceAt(t *testing.T) {
 	day1 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	day2 := time.Date(2026, 1, 2, 12, 0, 0, 0, time.UTC)
 
-	l.RecordMovement(equity.ID, cash.ID, 100000, day1, "Capital") // 1000.00
-	l.RecordMovement(cash.ID, expenses.ID, 30000, day2, "Rent")   // 300.00
+	l.RecordMovement(equity.ID, cash.ID, 100000, CodeBookTransfer, day1, "Capital") // 1000.00
+	l.RecordMovement(cash.ID, expenses.ID, 30000, CodeBookTransfer, day2, "Rent")   // 300.00
 
 	// Balance at end of day 1: should be 100000 (rent not yet paid)
 	endOfDay1 := time.Date(2026, 1, 1, 23, 59, 59, 999999999, time.UTC)
@@ -112,8 +112,8 @@ func TestBalanceByPathPrefix(t *testing.T) {
 	savings2, _ := l.CreateAccount("Liability:Savings:0002", "GBP", -2, 0)
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	l.RecordMovement(equity.ID, savings1.ID, 100000, now, "Deposit 1") // 1000.00
-	l.RecordMovement(equity.ID, savings2.ID, 200000, now, "Deposit 2") // 2000.00
+	l.RecordMovement(equity.ID, savings1.ID, 100000, CodeBookTransfer, now, "Deposit 1") // 1000.00
+	l.RecordMovement(equity.ID, savings2.ID, 200000, CodeBookTransfer, now, "Deposit 2") // 2000.00
 
 	// Total liabilities
 	endOfDay := time.Date(2026, 1, 1, 23, 59, 59, 999999999, time.UTC)
@@ -147,8 +147,8 @@ func TestDailyBalances(t *testing.T) {
 	day1 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	day3 := time.Date(2026, 1, 3, 12, 0, 0, 0, time.UTC)
 
-	l.RecordMovement(equity.ID, cash.ID, 100000, day1, "Capital")     // 1000.00
-	l.RecordMovement(equity.ID, cash.ID, 50000, day3, "More capital") // 500.00
+	l.RecordMovement(equity.ID, cash.ID, 100000, CodeBookTransfer, day1, "Capital")     // 1000.00
+	l.RecordMovement(equity.ID, cash.ID, 50000, CodeBookTransfer, day3, "More capital") // 500.00
 
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2026, 1, 3, 0, 0, 0, 0, time.UTC)
@@ -177,7 +177,7 @@ func TestCrossExponentMovementRejected(t *testing.T) {
 	hip, _ := l.CreateAccount("Asset:HiPrec", "GBP", -5, 0)
 
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
-	_, err := l.RecordMovement(std.ID, hip.ID, 100000, now, "Should fail")
+	_, err := l.RecordMovement(std.ID, hip.ID, 100000, CodeBookTransfer, now, "Should fail")
 	if err == nil {
 		t.Fatal("expected error for cross-exponent movement, got nil")
 	}
@@ -193,7 +193,7 @@ func TestCrossExponentLinkedMovementRejected(t *testing.T) {
 
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	_, err := l.RecordLinkedMovements([]MovementInput{
-		{FromAccountID: std.ID, ToAccountID: hip.ID, Amount: 100000, Description: "Should fail"},
+		{FromAccountID: std.ID, ToAccountID: hip.ID, Amount: 100000, Code: CodeBookTransfer, Description: "Should fail"},
 	}, now)
 	if err == nil {
 		t.Fatal("expected error for cross-exponent linked movement, got nil")
@@ -213,10 +213,10 @@ func TestMixedExponentBalanceByPath(t *testing.T) {
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
 	// 1000.00 into standard: equity2(-2) → standard(-2), same exponent
-	l.RecordMovement(equity2.ID, standard.ID, 100000, now, "Deposit std")
+	l.RecordMovement(equity2.ID, standard.ID, 100000, CodeBookTransfer, now, "Deposit std")
 
 	// 1.00000 into hiPrec: equity5(-5) → hiPrec(-5), same exponent
-	l.RecordMovement(equity5.ID, hiPrec.ID, 100000, now, "Deposit hip")
+	l.RecordMovement(equity5.ID, hiPrec.ID, 100000, CodeBookTransfer, now, "Deposit hip")
 
 	endOfDay := time.Date(2026, 1, 1, 23, 59, 59, 999999999, time.UTC)
 

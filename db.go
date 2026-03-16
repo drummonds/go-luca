@@ -180,7 +180,10 @@ func (l *SQLLedger) validateSameExponent(fromAccountID, toAccountID string) erro
 // RecordMovement inserts a single movement and returns it.
 // Both accounts must have the same exponent; cross-exponent transfers are rejected.
 // amount is an integer in the smallest currency unit at the accounts' shared exponent.
-func (l *SQLLedger) RecordMovement(fromAccountID, toAccountID string, amount Amount, valueTime time.Time, description string) (*Movement, error) {
+func (l *SQLLedger) RecordMovement(fromAccountID, toAccountID string, amount Amount, code string, valueTime time.Time, description string) (*Movement, error) {
+	if code == "" {
+		return nil, fmt.Errorf("movement code is required")
+	}
 	if err := l.validateSameExponent(fromAccountID, toAccountID); err != nil {
 		return nil, err
 	}
@@ -195,9 +198,9 @@ func (l *SQLLedger) RecordMovement(fromAccountID, toAccountID string, amount Amo
 	movID := uuid.New().String()
 
 	_, err = tx.Exec(
-		`INSERT INTO movements (id, batch_id, from_account_id, to_account_id, amount, value_time, description)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		movID, batchID, fromAccountID, toAccountID, amount, utc(valueTime), description,
+		`INSERT INTO movements (id, batch_id, from_account_id, to_account_id, amount, code, value_time, description)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		movID, batchID, fromAccountID, toAccountID, amount, code, utc(valueTime), description,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("insert movement: %w", err)
@@ -213,6 +216,7 @@ func (l *SQLLedger) RecordMovement(fromAccountID, toAccountID string, amount Amo
 		FromAccountID: fromAccountID,
 		ToAccountID:   toAccountID,
 		Amount:        amount,
+		Code:          code,
 		ValueTime:     valueTime,
 		KnowledgeTime: time.Now(),
 		Description:   description,
@@ -228,6 +232,9 @@ func (l *SQLLedger) RecordLinkedMovements(movements []MovementInput, valueTime t
 	}
 
 	for _, m := range movements {
+		if m.Code == "" {
+			return "", fmt.Errorf("movement code is required")
+		}
 		if err := l.validateSameExponent(m.FromAccountID, m.ToAccountID); err != nil {
 			return "", err
 		}
@@ -339,7 +346,7 @@ func txBalance(tx *sql.Tx, accountID string, at time.Time) (Amount, error) {
 // RecordMovementWithProjections records a movement and, in the same transaction,
 // pre-computes interest accrual and the end-of-day live balance for the
 // to-account. This avoids separate end-of-day batch processing.
-func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID string, amount Amount, valueTime time.Time, description string) (*Movement, error) {
+func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID string, amount Amount, code string, valueTime time.Time, description string) (*Movement, error) {
 	if err := l.validateSameExponent(fromAccountID, toAccountID); err != nil {
 		return nil, err
 	}
@@ -370,11 +377,11 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID str
 	batchID := uuid.New().String()
 	movID := uuid.New().String()
 
-	// 1. Insert the real movement (code=0)
+	// 1. Insert the real movement
 	_, err = tx.Exec(
 		`INSERT INTO movements (id, batch_id, from_account_id, to_account_id, amount, code, value_time, description)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-		movID, batchID, fromAccountID, toAccountID, amount, CodeNormal, utc(valueTime), description,
+		movID, batchID, fromAccountID, toAccountID, amount, code, utc(valueTime), description,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("insert movement: %w", err)
@@ -458,7 +465,7 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID str
 		FromAccountID: fromAccountID,
 		ToAccountID:   toAccountID,
 		Amount:        amount,
-		Code:          CodeNormal,
+		Code:          code,
 		ValueTime:     valueTime,
 		KnowledgeTime: time.Now(),
 		Description:   description,

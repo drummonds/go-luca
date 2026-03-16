@@ -77,6 +77,7 @@ type recordMovementReq struct {
 	FromAccountID string      `json:"from_account_id"`
 	ToAccountID   string      `json:"to_account_id"`
 	Amount        luca.Amount `json:"amount"`
+	Code          string      `json:"code"`
 	ValueTime     string      `json:"value_time"` // RFC3339
 	Description   string      `json:"description"`
 }
@@ -233,7 +234,7 @@ func (s *Server) handleRecordMovement(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid value_time: "+err.Error())
 		return
 	}
-	mov, err := s.ledger.RecordMovement(req.FromAccountID, req.ToAccountID, req.Amount, vt, req.Description)
+	mov, err := s.ledger.RecordMovement(req.FromAccountID, req.ToAccountID, req.Amount, req.Code, vt, req.Description)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -309,13 +310,7 @@ func (s *Server) handleSearchMovements(w http.ResponseWriter, r *http.Request) {
 		}
 		q.ToTime = &t
 	}
-	if codeStr := r.URL.Query().Get("code"); codeStr != "" {
-		v, err := strconv.ParseInt(codeStr, 10, 16)
-		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid code: "+err.Error())
-			return
-		}
-		code := int16(v)
+	if code := r.URL.Query().Get("code"); code != "" {
 		q.Code = &code
 	}
 	if minStr := r.URL.Query().Get("min_amount"); minStr != "" {

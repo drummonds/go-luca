@@ -15,10 +15,14 @@ var ErrNotImplemented = errors.New("not implemented")
 // Currently backed by int64; designed for future migration to 128-bit.
 type Amount int64
 
-// Movement code constants (TigerBeetle-inspired).
+// Movement code constants — ISO 20022 BTC mnemonics in DOMAIN:FAMILY:SUBFAMILY format.
 const (
-	CodeNormal          int16 = 0
-	CodeInterestAccrual int16 = 1
+	CodeBookTransfer    = "PMNT:RCDT:BOOK" // internal book transfer
+	CodeInterestAccrual = "LDAS:FTDP:INTR" // deposit interest accrual
+	CodeCreditReceived  = "PMNT:RCDT:DMCT" // received domestic credit transfer
+	CodeCreditIssued    = "PMNT:ICDT:DMCT" // issued domestic credit transfer
+	CodeFee             = "ACMT:MDOP:FEES" // fee charge
+	CodeOpeningBalance  = "ACMT:MCOP:OTHR" // opening balance / adjustment
 )
 
 // Ledger is the interface for all ledger backends.
@@ -32,9 +36,9 @@ type Ledger interface {
 	ListAccounts(typeFilter AccountType) ([]*Account, error)
 
 	// Movements
-	RecordMovement(fromAccountID, toAccountID string, amount Amount, valueTime time.Time, description string) (*Movement, error)
+	RecordMovement(fromAccountID, toAccountID string, amount Amount, code string, valueTime time.Time, description string) (*Movement, error)
 	RecordLinkedMovements(movements []MovementInput, valueTime time.Time) (string, error)
-	RecordMovementWithProjections(fromAccountID, toAccountID string, amount Amount, valueTime time.Time, description string) (*Movement, error)
+	RecordMovementWithProjections(fromAccountID, toAccountID string, amount Amount, code string, valueTime time.Time, description string) (*Movement, error)
 
 	// Balances
 	Balance(accountID string) (Amount, error)
@@ -108,7 +112,7 @@ type Movement struct {
 	FromAccountID string
 	ToAccountID   string
 	Amount        Amount
-	Code          int16 // category/reason enum (TB-inspired)
+	Code          string // ISO 20022 BTC mnemonic (DOMAIN:FAMILY:SUBFAMILY)
 	Ledger        int32 // partition identifier (TB-inspired)
 	PendingID     int64 // two-phase post/void; 0 = N/A (TB-inspired)
 	UserData64    int64 // external reference (TB-inspired)
@@ -123,7 +127,7 @@ type MovementInput struct {
 	FromAccountID string
 	ToAccountID   string
 	Amount        Amount
-	Code          int16
+	Code          string
 	Ledger        int32
 	PendingID     int64
 	UserData64    int64

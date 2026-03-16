@@ -263,7 +263,7 @@
 &quot;movements&quot; {
   INTEGER amount &quot;Transfer amount in smallest currency unit (integer at account exponent)&quot;
   TEXT batch_id &quot;Groups related movements into a single atomic transaction&quot;
-  INTEGER code &quot;Movement category: 0=normal, 1=interest accrual (TigerBeetle-inspired)&quot;
+  TEXT code &quot;Movement category: 0=normal, 1=interest accrual (TigerBeetle-inspired)&quot;
   TEXT description &quot;Human-readable description of the movement&quot;
   TEXT from_account_id &quot;Source account (references accounts.id)&quot;
   TEXT id PK &quot;Auto-incrementing primary key&quot;

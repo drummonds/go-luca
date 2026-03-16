@@ -18,7 +18,7 @@ func TestDailyInterestCalculation(t *testing.T) {
 	savings, _ := l.CreateAccount("Liability:Savings:0001", "GBP", -2, 0.0365)
 
 	day1 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
-	l.RecordMovement(equity.ID, savings.ID, 100000, day1, "Deposit") // 1000.00
+	l.RecordMovement(equity.ID, savings.ID, 100000, CodeBookTransfer, day1, "Deposit") // 1000.00
 
 	result, err := l.CalculateDailyInterest(savings.ID, day1)
 	if err != nil {
@@ -60,7 +60,7 @@ func TestInterestCompounding(t *testing.T) {
 	savings, _ := l.CreateAccount("Liability:Savings:0001", "GBP", -2, 0.10)
 
 	day0 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
-	l.RecordMovement(equity.ID, savings.ID, 10000000, day0, "Deposit") // 100000.00
+	l.RecordMovement(equity.ID, savings.ID, 10000000, CodeBookTransfer, day0, "Deposit") // 100000.00
 
 	// Run interest for 30 days
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -101,7 +101,7 @@ func TestZeroRateNoInterest(t *testing.T) {
 	cash, _ := l.CreateAccount("Asset:Cash", "GBP", -2, 0) // zero rate
 
 	day1 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
-	l.RecordMovement(equity.ID, cash.ID, 100000, day1, "Deposit") // 1000.00
+	l.RecordMovement(equity.ID, cash.ID, 100000, CodeBookTransfer, day1, "Deposit") // 1000.00
 
 	result, err := l.CalculateDailyInterest(cash.ID, day1)
 	if err != nil {
@@ -121,8 +121,8 @@ func TestRunDailyInterestMultipleAccounts(t *testing.T) {
 	s2, _ := l.CreateAccount("Liability:Savings:0002", "GBP", -2, 0.03)
 
 	day1 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
-	l.RecordMovement(equity.ID, s1.ID, 1000000, day1, "Deposit 1") // 10000.00
-	l.RecordMovement(equity.ID, s2.ID, 500000, day1, "Deposit 2")  // 5000.00
+	l.RecordMovement(equity.ID, s1.ID, 1000000, CodeBookTransfer, day1, "Deposit 1") // 10000.00
+	l.RecordMovement(equity.ID, s2.ID, 500000, CodeBookTransfer, day1, "Deposit 2")  // 5000.00
 
 	results, err := l.RunDailyInterest(day1)
 	if err != nil {
@@ -185,7 +185,7 @@ func TestIssue1_BalanceAtCrossTimezone(t *testing.T) {
 			savings, _ := l.CreateAccount("Liability:Savings:0001", "GBP", -2, 0)
 
 			depositTime := time.Date(2026, 6, tt.depositDay, tt.depositH, 30, 0, 0, tt.depositTZ)
-			l.RecordMovement(equity.ID, savings.ID, 100000, depositTime, "deposit")
+			l.RecordMovement(equity.ID, savings.ID, 100000, CodeBookTransfer, depositTime, "deposit")
 
 			// Query balance at end of June 15 in query timezone
 			endOfDay := time.Date(2026, 6, 15, 23, 59, 59, 999999999, tt.queryTZ)
@@ -225,7 +225,7 @@ func TestIssue1_InterestCrossTimezone(t *testing.T) {
 	// Deposit at 00:30 BST on June 16 = 23:30 UTC on June 15.
 	// This simulates a real-world app recording time.Now() in BST near midnight.
 	depositTime := time.Date(2026, 6, 16, 0, 30, 0, 0, bst)
-	_, err := l.RecordMovement(equity.ID, savings.ID, 10_000_000, depositTime, "Deposit £100,000")
+	_, err := l.RecordMovement(equity.ID, savings.ID, 10_000_000, CodeBookTransfer, depositTime, "Deposit £100,000")
 	if err != nil {
 		t.Fatalf("RecordMovement: %v", err)
 	}
@@ -258,7 +258,7 @@ func TestRunDailyInterestNoInterestBearingAccounts(t *testing.T) {
 	cash, _ := l.CreateAccount("Asset:Cash", "GBP", -2, 0)
 
 	day1 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
-	l.RecordMovement(equity.ID, cash.ID, 100000, day1, "Deposit") // 1000.00
+	l.RecordMovement(equity.ID, cash.ID, 100000, CodeBookTransfer, day1, "Deposit") // 1000.00
 
 	results, err := l.RunDailyInterest(day1)
 	if err != nil {

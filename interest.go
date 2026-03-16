@@ -84,14 +84,14 @@ func (l *SQLLedger) CalculateDailyInterest(accountID string, date time.Time) (*I
 
 	if interest > 0 {
 		// Interest increases account balance: Expense:Interest → account
-		_, err = l.RecordMovement(expenseAcct.ID, accountID, interest, valueTime, desc)
+		_, err = l.RecordMovement(expenseAcct.ID, accountID, interest, CodeInterestAccrual, valueTime, desc)
 	} else {
 		// Negative interest: account → Income:Interest
 		incomeAcct, err2 := l.GetAccount("Income:Interest")
 		if err2 != nil || incomeAcct == nil {
 			return nil, fmt.Errorf("interest income account not found")
 		}
-		_, err = l.RecordMovement(accountID, incomeAcct.ID, -interest, valueTime, desc)
+		_, err = l.RecordMovement(accountID, incomeAcct.ID, -interest, CodeInterestAccrual, valueTime, desc)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("record interest movement: %w", err)

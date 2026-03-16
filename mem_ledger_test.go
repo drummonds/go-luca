@@ -103,7 +103,7 @@ func TestMemLedgerRecordMovement(t *testing.T) {
 	equity, _ := m.CreateAccount("Equity:Capital", "GBP", -2, 0)
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	mov, err := m.RecordMovement(equity.ID, cash.ID, 20000, now, "Initial capital")
+	mov, err := m.RecordMovement(equity.ID, cash.ID, 20000, CodeBookTransfer, now, "Initial capital")
 	if err != nil {
 		t.Fatalf("RecordMovement: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestMemLedgerRecordMovementExponentMismatch(t *testing.T) {
 	precise, _ := m.CreateAccount("Asset:Precise", "GBP", -5, 0)
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	_, err := m.RecordMovement(cash.ID, precise.ID, 100, now, "mismatch")
+	_, err := m.RecordMovement(cash.ID, precise.ID, 100, CodeBookTransfer, now, "mismatch")
 	if err == nil {
 		t.Fatal("expected exponent mismatch error")
 	}
@@ -137,8 +137,8 @@ func TestMemLedgerRecordLinkedMovements(t *testing.T) {
 	now := time.Date(2026, 1, 2, 12, 0, 0, 0, time.UTC)
 
 	batchID, err := m.RecordLinkedMovements([]MovementInput{
-		{FromAccountID: cash.ID, ToAccountID: purchases.ID, Amount: 50000, Description: "Office supplies"},
-		{FromAccountID: cash.ID, ToAccountID: vat.ID, Amount: 10000, Description: "VAT"},
+		{FromAccountID: cash.ID, ToAccountID: purchases.ID, Amount: 50000, Code: CodeBookTransfer, Description: "Office supplies"},
+		{FromAccountID: cash.ID, ToAccountID: vat.ID, Amount: 10000, Code: CodeBookTransfer, Description: "VAT"},
 	}, now)
 	if err != nil {
 		t.Fatalf("RecordLinkedMovements: %v", err)
@@ -164,8 +164,8 @@ func TestMemLedgerBalance(t *testing.T) {
 	equity, _ := m.CreateAccount("Equity:Capital", "GBP", -2, 0)
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	m.RecordMovement(equity.ID, cash.ID, 20000, now, "deposit")
-	m.RecordMovement(equity.ID, cash.ID, 5000, now, "more")
+	m.RecordMovement(equity.ID, cash.ID, 20000, CodeBookTransfer, now, "deposit")
+	m.RecordMovement(equity.ID, cash.ID, 5000, CodeBookTransfer, now, "more")
 
 	bal, err := m.Balance(cash.ID)
 	if err != nil {
@@ -190,8 +190,8 @@ func TestMemLedgerBalanceAt(t *testing.T) {
 	jan1 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	jan2 := time.Date(2026, 1, 2, 12, 0, 0, 0, time.UTC)
 
-	m.RecordMovement(equity.ID, cash.ID, 10000, jan1, "first")
-	m.RecordMovement(equity.ID, cash.ID, 5000, jan2, "second")
+	m.RecordMovement(equity.ID, cash.ID, 10000, CodeBookTransfer, jan1, "first")
+	m.RecordMovement(equity.ID, cash.ID, 5000, CodeBookTransfer, jan2, "second")
 
 	bal, err := m.BalanceAt(cash.ID, jan1)
 	if err != nil {
@@ -216,8 +216,8 @@ func TestMemLedgerDailyBalances(t *testing.T) {
 	jan1 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	jan2 := time.Date(2026, 1, 2, 12, 0, 0, 0, time.UTC)
 
-	m.RecordMovement(equity.ID, cash.ID, 10000, jan1, "first")
-	m.RecordMovement(equity.ID, cash.ID, 5000, jan2, "second")
+	m.RecordMovement(equity.ID, cash.ID, 10000, CodeBookTransfer, jan1, "first")
+	m.RecordMovement(equity.ID, cash.ID, 5000, CodeBookTransfer, jan2, "second")
 
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2026, 1, 3, 0, 0, 0, 0, time.UTC)
@@ -246,7 +246,7 @@ func TestMemLedgerStubs(t *testing.T) {
 	if err := m.EnsureInterestAccounts(); err != ErrNotImplemented {
 		t.Errorf("EnsureInterestAccounts = %v, want ErrNotImplemented", err)
 	}
-	if _, err := m.RecordMovementWithProjections("", "", 0, time.Now(), ""); err != ErrNotImplemented {
+	if _, err := m.RecordMovementWithProjections("", "", 0, CodeBookTransfer, time.Now(), ""); err != ErrNotImplemented {
 		t.Errorf("RecordMovementWithProjections = %v, want ErrNotImplemented", err)
 	}
 	if _, _, err := m.BalanceByPath("", time.Now()); err != ErrNotImplemented {

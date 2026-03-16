@@ -109,7 +109,7 @@ func TestRecordMovementAndBalance(t *testing.T) {
 	equity, _ := c.CreateAccount("Equity:Capital", "GBP", -2, 0)
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	mov, err := c.RecordMovement(equity.ID, cash.ID, 20000, now, "Initial capital")
+	mov, err := c.RecordMovement(equity.ID, cash.ID, 20000, luca.CodeBookTransfer, now, "Initial capital")
 	if err != nil {
 		t.Fatalf("RecordMovement: %v", err)
 	}
@@ -138,8 +138,8 @@ func TestRecordLinkedMovements(t *testing.T) {
 	now := time.Date(2026, 1, 2, 12, 0, 0, 0, time.UTC)
 
 	batchID, err := c.RecordLinkedMovements([]luca.MovementInput{
-		{FromAccountID: cash.ID, ToAccountID: purchases.ID, Amount: 50000, Description: "Office supplies"},
-		{FromAccountID: cash.ID, ToAccountID: vat.ID, Amount: 10000, Description: "VAT"},
+		{FromAccountID: cash.ID, ToAccountID: purchases.ID, Amount: 50000, Code: luca.CodeBookTransfer, Description: "Office supplies"},
+		{FromAccountID: cash.ID, ToAccountID: vat.ID, Amount: 10000, Code: luca.CodeBookTransfer, Description: "VAT"},
 	}, now)
 	if err != nil {
 		t.Fatalf("RecordLinkedMovements: %v", err)
@@ -163,8 +163,8 @@ func TestBalanceAt(t *testing.T) {
 	jan1 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	jan2 := time.Date(2026, 1, 2, 12, 0, 0, 0, time.UTC)
 
-	c.RecordMovement(equity.ID, cash.ID, 10000, jan1, "first")
-	c.RecordMovement(equity.ID, cash.ID, 5000, jan2, "second")
+	c.RecordMovement(equity.ID, cash.ID, 10000, luca.CodeBookTransfer, jan1, "first")
+	c.RecordMovement(equity.ID, cash.ID, 5000, luca.CodeBookTransfer, jan2, "second")
 
 	bal, err := c.BalanceAt(cash.ID, jan1)
 	if err != nil {
@@ -189,8 +189,8 @@ func TestDailyBalances(t *testing.T) {
 	jan1 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	jan2 := time.Date(2026, 1, 2, 12, 0, 0, 0, time.UTC)
 
-	c.RecordMovement(equity.ID, cash.ID, 10000, jan1, "first")
-	c.RecordMovement(equity.ID, cash.ID, 5000, jan2, "second")
+	c.RecordMovement(equity.ID, cash.ID, 10000, luca.CodeBookTransfer, jan1, "first")
+	c.RecordMovement(equity.ID, cash.ID, 5000, luca.CodeBookTransfer, jan2, "second")
 
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC)

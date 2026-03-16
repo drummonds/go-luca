@@ -25,18 +25,18 @@ func main() {
 	jan1 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
 	// Initial capital injection: Equity → Cash (100000.00 = 10000000 pence)
-	ledger.RecordMovement(equity.ID, cash.ID, 10000000, jan1, "Initial capital")
+	ledger.RecordMovement(equity.ID, cash.ID, 10000000, luca.CodeBookTransfer, jan1, "Initial capital")
 
 	// Customer deposits
-	ledger.RecordMovement(cash.ID, savings1.ID, 1000000, jan1, "Customer 1 deposit") // 10000.00
-	ledger.RecordMovement(cash.ID, savings2.ID, 500000, jan1, "Customer 2 deposit")  // 5000.00
+	ledger.RecordMovement(cash.ID, savings1.ID, 1000000, luca.CodeBookTransfer, jan1, "Customer 1 deposit") // 10000.00
+	ledger.RecordMovement(cash.ID, savings2.ID, 500000, luca.CodeBookTransfer, jan1, "Customer 2 deposit")  // 5000.00
 
 	// Linked movements: purchase with VAT
 	purchases, _ := ledger.CreateAccount("Expense:Purchases", "GBP", -2, 0)
 	vatInput, _ := ledger.CreateAccount("Asset:VATInput", "GBP", -2, 0)
 	ledger.RecordLinkedMovements([]luca.MovementInput{
-		{FromAccountID: cash.ID, ToAccountID: purchases.ID, Amount: 50000, Description: "Office supplies"},       // 500.00
-		{FromAccountID: cash.ID, ToAccountID: vatInput.ID, Amount: 10000, Description: "VAT on office supplies"}, // 100.00
+		{FromAccountID: cash.ID, ToAccountID: purchases.ID, Amount: 50000, Code: luca.CodeBookTransfer, Description: "Office supplies"},       // 500.00
+		{FromAccountID: cash.ID, ToAccountID: vatInput.ID, Amount: 10000, Code: luca.CodeBookTransfer, Description: "VAT on office supplies"}, // 100.00
 	}, time.Date(2026, 1, 2, 10, 0, 0, 0, time.UTC))
 
 	// Run daily interest for January

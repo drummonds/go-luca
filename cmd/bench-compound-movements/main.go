@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS movements (
     from_account_id INTEGER NOT NULL,
     to_account_id INTEGER NOT NULL,
     amount BIGINT NOT NULL,
-    code SMALLINT NOT NULL DEFAULT 0,
+    code VARCHAR(14) NOT NULL,
     ledger INTEGER NOT NULL DEFAULT 0,
     pending_id BIGINT NOT NULL DEFAULT 0,
     user_data_64 BIGINT NOT NULL DEFAULT 0,
@@ -97,7 +97,7 @@ func main() {
 SELECT COALESCE(MAX(batch_id), 0) + 1 FROM movements;
 INSERT INTO movements (batch_id, from_account_id, to_account_id, amount,
     code, value_time, description)
-  VALUES ($1, $2, $3, $4, 0, $5, 'deposit')
+  VALUES ($1, $2, $3, $4, 'PMNT:RCDT:BOOK', $5, 'deposit')
   RETURNING id;
 SELECT
   COALESCE((SELECT SUM(amount) FROM movements WHERE to_account_id = $1), 0)
@@ -109,7 +109,7 @@ SELECT COALESCE(MAX(batch_id), 0) + 1 FROM movements;
 INSERT INTO movements (...) VALUES (...) RETURNING id;
 SELECT ... SUM ... WHERE value_time <= eod;           -- eod balance
 -- (Go: interest = balance * rate / 365)
-DELETE FROM movements WHERE to_account_id=$1 AND code=1
+DELETE FROM movements WHERE to_account_id=$1 AND code='LDAS:FTDP:INTR'
   AND value_time >= $2 AND value_time <= $3;           -- old accrual
 INSERT INTO movements (...) VALUES (...);              -- new accrual
 DELETE FROM balances_live WHERE account_id=$1
@@ -238,7 +238,7 @@ func resetAndSeed(ctx context.Context, pool *pgxpool.Pool, n, m int) error {
 		acctID := firstSavingsID + acctIdx
 		for j := range n {
 			vt := baseTime.Add(time.Duration(j) * time.Hour)
-			batch = append(batch, []any{batchID, equityID, acctID, int64(1000), int16(0), int32(0), int64(0), int64(0), vt, time.Now(), "seed"})
+			batch = append(batch, []any{batchID, equityID, acctID, int64(1000), "PMNT:RCDT:BOOK", int32(0), int64(0), int64(0), vt, time.Now(), "seed"})
 			batchID++
 
 			if len(batch) >= batchSize {
@@ -350,7 +350,7 @@ func runCompound(ctx context.Context, pool *pgxpool.Pool, acctID int, vt time.Ti
 	if interest > 0 {
 		// Delete old accrual for this account+day.
 		if _, err := tx.Exec(ctx,
-			`DELETE FROM movements WHERE to_account_id = $1 AND code = 1
+			`DELETE FROM movements WHERE to_account_id = $1 AND code = 'LDAS:FTDP:INTR'
 			 AND value_time >= $2 AND value_time <= $3`,
 			acctID, bod, eod); err != nil {
 			return fmt.Errorf("delete accrual: %w", err)
@@ -359,7 +359,7 @@ func runCompound(ctx context.Context, pool *pgxpool.Pool, acctID int, vt time.Ti
 		// Insert new accrual.
 		if _, err := tx.Exec(ctx,
 			`INSERT INTO movements (batch_id, from_account_id, to_account_id, amount, code, value_time, description)
-			 VALUES ($1, $2, $3, $4, 1, $5, 'interest accrual')`,
+			 VALUES ($1, $2, $3, $4, 'LDAS:FTDP:INTR', $5, 'interest accrual')`,
 			batchID, expenseInterestID, acctID, interest, accrualTime); err != nil {
 			return fmt.Errorf("insert accrual: %w", err)
 		}

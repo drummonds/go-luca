@@ -86,12 +86,13 @@ func (c *Client) ListAccounts(typeFilter luca.AccountType) ([]*luca.Account, err
 
 // --- movement methods ---
 
-func (c *Client) RecordMovement(fromAccountID, toAccountID string, amount luca.Amount, valueTime time.Time, description string) (*luca.Movement, error) {
+func (c *Client) RecordMovement(fromAccountID, toAccountID string, amount luca.Amount, code string, valueTime time.Time, description string) (*luca.Movement, error) {
 	var mov luca.Movement
 	err := c.post("/movements/record", recordMovementReq{
 		FromAccountID: fromAccountID,
 		ToAccountID:   toAccountID,
 		Amount:        amount,
+		Code:          code,
 		ValueTime:     valueTime.Format(time.RFC3339),
 		Description:   description,
 	}, &mov)
@@ -233,7 +234,7 @@ func (c *Client) ExportText() (string, error) {
 
 // --- stubbed Ledger methods (not exposed via API yet) ---
 
-func (c *Client) RecordMovementWithProjections(fromAccountID, toAccountID string, amount luca.Amount, valueTime time.Time, description string) (*luca.Movement, error) {
+func (c *Client) RecordMovementWithProjections(fromAccountID, toAccountID string, amount luca.Amount, code string, valueTime time.Time, description string) (*luca.Movement, error) {
 	return nil, luca.ErrNotImplemented
 }
 

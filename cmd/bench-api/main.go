@@ -127,7 +127,7 @@ func benchRecordMovement(label string, accountCount int, setup func() (luca.Ledg
 	i := 0
 
 	return benchutil.RunTimed(label, 0, accountCount, 0, func() error {
-		_, err := l.RecordMovement(from.ID, to.ID, 10000, now.Add(time.Duration(i)*time.Minute), "bench")
+		_, err := l.RecordMovement(from.ID, to.ID, 10000, luca.CodeBookTransfer, now.Add(time.Duration(i)*time.Minute), "bench")
 		i++
 		return err
 	})
@@ -145,7 +145,7 @@ func benchBalance(label string, accountCount, movementCount int, setup func() (l
 
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	for i := range movementCount {
-		l.RecordMovement(from.ID, to.ID, 100, now.Add(time.Duration(i)*time.Hour), "")
+		l.RecordMovement(from.ID, to.ID, 100, luca.CodeBookTransfer, now.Add(time.Duration(i)*time.Hour), "")
 	}
 
 	return benchutil.RunTimed(label, movementCount, accountCount, 0, func() error {

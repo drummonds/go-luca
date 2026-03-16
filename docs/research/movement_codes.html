@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Movement Type Codes - go-luca</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        pre {
+            background-color: #2b2b2b;
+            color: #f8f8f2;
+            padding: 1.25em 1.5em;
+            overflow-x: auto;
+        }
+        pre code {
+            color: inherit;
+            background: none;
+            padding: 0;
+            font-size: 0.875em;
+        }
+        code {
+            background-color: #f5f5f5;
+            color: #e83e8c;
+            padding: 0.125em 0.375em;
+            border-radius: 3px;
+        }
+        pre.mermaid {
+            background-color: #ffffff;
+            color: #333;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <section class="section">
+        <div class="container">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+                <ul>
+                    <li><a href="../index.html">go-luca</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">Movement Type Codes</a></li>
+                </ul>
+            </nav>
+            <div class="content">
+<h1>Movement Type Codes</h1>
+<p>Research into designing a compact integer movement type code for go-luca,
+informed by ISO 20022 Bank Transaction Codes, ISO 8583, TigerBeetle, and
+Swedish payment standards.</p>
+<h2>1. Why Movement Codes Matter</h2>
+<p>Every movement in a double-entry ledger has a <em>reason</em>. Without a structured
+code the only explanation is a free-text description, which is impossible to
+filter, aggregate, or reconcile programmatically. A well-designed code field
+answers: &quot;why did this value flow?&quot; — enabling reporting, regulatory
+classification, and automated reconciliation.</p>
+<h2>2. ISO 20022 Bank Transaction Codes (BTC)</h2>
+<p>ISO 20022 uses a <strong>3-level hierarchy</strong> of 4-character alphabetic mnemonics
+carried in camt.052/053/054 messages:</p>
+<pre><code>Domain → Family → Sub-Family
+</code></pre>
+<p>There are <strong>no official numeric codes</strong> — the BTC_Codification spreadsheet
+has row numbers but these are not stable identifiers.</p>
+<h3>2.1 Domains</h3>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Domain</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PMNT</td>
+<td>Payments</td>
+</tr>
+<tr>
+<td>CAMT</td>
+<td>Cash Management</td>
+</tr>
+<tr>
+<td>LDAS</td>
+<td>Loans, Deposits &amp; Syndications</td>
+</tr>
+<tr>
+<td>FORX</td>
+<td>Foreign Exchange</td>
+</tr>
+<tr>
+<td>SECU</td>
+<td>Securities</td>
+</tr>
+<tr>
+<td>DERV</td>
+<td>Derivatives</td>
+</tr>
+<tr>
+<td>TRAD</td>
+<td>Trade Services</td>
+</tr>
+<tr>
+<td>PMET</td>
+<td>Precious Metal</td>
+</tr>
+<tr>
+<td>CMDT</td>
+<td>Commodities</td>
+</tr>
+<tr>
+<td>ACMT</td>
+<td>Account Management</td>
+</tr>
+<tr>
+<td>XTND</td>
+<td>Extended Domain (catch-all)</td>
+</tr>
+</tbody>
+</table>
+<h3>2.2 Payments (PMNT) — Family Codes</h3>
+<table>
+<thead>
+<tr>
+<th>Family</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RCDT</td>
+<td>Received Credit Transfers</td>
+</tr>
+<tr>
+<td>ICDT</td>
+<td>Issued Credit Transfers</td>
+</tr>
+<tr>
+<td>RCCN</td>
+<td>Received Cash Concentration</td>
+</tr>
+<tr>
+<td>ICCN</td>
+<td>Issued Cash Concentration</td>
+</tr>
+<tr>
+<td>RDDT</td>
+<td>Received Direct Debits</td>
+</tr>
+<tr>
+<td>IDDT</td>
+<td>Issued Direct Debits</td>
+</tr>
+<tr>
+<td>RCHQ</td>
+<td>Received Cheques</td>
+</tr>
+<tr>
+<td>ICHQ</td>
+<td>Issued Cheques</td>
+</tr>
+<tr>
+<td>CCRD</td>
+<td>Customer Card Transactions</td>
+</tr>
+<tr>
+<td>MCRD</td>
+<td>Merchant Card Transactions</td>
+</tr>
+<tr>
+<td>LBOX</td>
+<td>Lockbox Transactions</td>
+</tr>
+<tr>
+<td>CNTR</td>
+<td>Counter Transactions (OTC cash)</td>
+</tr>
+<tr>
+<td>DRFT</td>
+<td>Drafts / Bills of Exchange</td>
+</tr>
+<tr>
+<td>MCOP</td>
+<td>Miscellaneous Credit Operations</td>
+</tr>
+<tr>
+<td>MDOP</td>
+<td>Miscellaneous Debit Operations</td>
+</tr>
+</tbody>
+</table>
+<h3>2.3 Key Sub-Family Codes (under RCDT/ICDT)</h3>
+<table>
+<thead>
+<tr>
+<th>Sub-Family</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DMCT</td>
+<td>Domestic Credit Transfer</td>
+</tr>
+<tr>
+<td>XBCT</td>
+<td>Cross-Border Credit Transfer</td>
+</tr>
+<tr>
+<td>ESCT</td>
+<td>SEPA Credit Transfer</td>
+</tr>
+<tr>
+<td>SALA</td>
+<td>Salary/Payroll Payment</td>
+</tr>
+<tr>
+<td>SDVA</td>
+<td>Same-Day Value Credit Transfer</td>
+</tr>
+<tr>
+<td>STDO</td>
+<td>Standing Order</td>
+</tr>
+<tr>
+<td>BOOK</td>
+<td>Internal Book Transfer</td>
+</tr>
+<tr>
+<td>AUTT</td>
+<td>Automatic Transfer</td>
+</tr>
+<tr>
+<td>ATXN</td>
+<td>ACH Transaction</td>
+</tr>
+<tr>
+<td>RRTN</td>
+<td>Return/Reimbursement</td>
+</tr>
+</tbody>
+</table>
+<h3>2.4 Generic Sub-Family Codes (apply across all domains)</h3>
+<p>These are the most relevant for internal accounting:</p>
+<table>
+<thead>
+<tr>
+<th>Sub-Family</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>INTR</td>
+<td>Interest</td>
+</tr>
+<tr>
+<td>CHRG</td>
+<td>Charges</td>
+</tr>
+<tr>
+<td>FEES</td>
+<td>Fees</td>
+</tr>
+<tr>
+<td>COMM</td>
+<td>Commission</td>
+</tr>
+<tr>
+<td>TAXE</td>
+<td>Taxes</td>
+</tr>
+<tr>
+<td>RIMB</td>
+<td>Reimbursements</td>
+</tr>
+<tr>
+<td>ADJT</td>
+<td>Adjustments</td>
+</tr>
+<tr>
+<td>OTHR</td>
+<td>Other</td>
+</tr>
+</tbody>
+</table>
+<h3>2.5 Loans, Deposits &amp; Syndications (LDAS) — Families</h3>
+<table>
+<thead>
+<tr>
+<th>Family</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FTLN</td>
+<td>Fixed Term Loans</td>
+</tr>
+<tr>
+<td>NTLN</td>
+<td>Notice Loans</td>
+</tr>
+<tr>
+<td>FTDP</td>
+<td>Fixed Term Deposits</td>
+</tr>
+<tr>
+<td>NTDP</td>
+<td>Notice Deposits</td>
+</tr>
+<tr>
+<td>MGLN</td>
+<td>Mortgage Loans</td>
+</tr>
+<tr>
+<td>CSLN</td>
+<td>Consumer Loans</td>
+</tr>
+<tr>
+<td>SYDN</td>
+<td>Syndications</td>
+</tr>
+</tbody>
+</table>
+<p>Interest accrual/application: <code>LDAS &gt; FTDP &gt; INTR</code> (deposit interest),
+<code>LDAS &gt; MGLN &gt; INTR</code> (mortgage interest).  Fees: any domain + <code>FEES</code>/<code>CHRG</code>.</p>
+<h3>2.6 Cash Management (CAMT) — Families</h3>
+<table>
+<thead>
+<tr>
+<th>Family</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CAPL</td>
+<td>Cash Pooling</td>
+</tr>
+<tr>
+<td>ACCB</td>
+<td>Account Balancing</td>
+</tr>
+</tbody>
+</table>
+<p>Sub-families under ACCB: ZBAL (zero-balancing), SWEP (sweep), TOPG (top-up),
+ODRF (overdraft).</p>
+<h3>2.7 ISO 20022 Purpose Codes (ExternalPurpose1Code)</h3>
+<p>Separate from BTC, carried in payment messages to indicate payment purpose:</p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>INTE</td>
+<td>Interest Payment</td>
+</tr>
+<tr>
+<td>LOAN</td>
+<td>Loan to Borrower</td>
+</tr>
+<tr>
+<td>LOAR</td>
+<td>Loan Repayment to Lender</td>
+</tr>
+<tr>
+<td>DEPT</td>
+<td>Deposit</td>
+</tr>
+<tr>
+<td>SALA</td>
+<td>Salary Payment</td>
+</tr>
+<tr>
+<td>PENS</td>
+<td>Pension Payment</td>
+</tr>
+<tr>
+<td>BONU</td>
+<td>Bonus Payment</td>
+</tr>
+<tr>
+<td>DIVD</td>
+<td>Dividend</td>
+</tr>
+<tr>
+<td>TAXS</td>
+<td>Tax Payment</td>
+</tr>
+<tr>
+<td>VATX</td>
+<td>VAT Payment</td>
+</tr>
+<tr>
+<td>INTX</td>
+<td>Income Tax</td>
+</tr>
+<tr>
+<td>LICF</td>
+<td>Licence Fee</td>
+</tr>
+<tr>
+<td>INVS</td>
+<td>Investment &amp; Securities</td>
+</tr>
+<tr>
+<td>ACCT</td>
+<td>Account Management</td>
+</tr>
+<tr>
+<td>CASH</td>
+<td>Cash Management</td>
+</tr>
+<tr>
+<td>NETT</td>
+<td>Netting</td>
+</tr>
+<tr>
+<td>INTC</td>
+<td>Intra-Company Payment</td>
+</tr>
+</tbody>
+</table>
+<h2>3. ISO 8583 Processing Codes</h2>
+<p>ISO 8583 (card payment messaging) uses a 6-digit DE3 processing code:
+digits 1–2 = transaction type, 3–4 = from-account type, 5–6 = to-account type.</p>
+<h3>3.1 Transaction Type (digits 1–2)</h3>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>00</td>
+<td>Purchase (Goods and Services)</td>
+</tr>
+<tr>
+<td>01</td>
+<td>Cash Advance / ATM Withdrawal</td>
+</tr>
+<tr>
+<td>02</td>
+<td>Debit Adjustment</td>
+</tr>
+<tr>
+<td>09</td>
+<td>Purchase with Cashback</td>
+</tr>
+<tr>
+<td>20</td>
+<td>Credit Voucher / Refund</td>
+</tr>
+<tr>
+<td>21</td>
+<td>Deposit</td>
+</tr>
+<tr>
+<td>22</td>
+<td>Credit Adjustment</td>
+</tr>
+<tr>
+<td>30</td>
+<td>Available Funds Inquiry</td>
+</tr>
+<tr>
+<td>31</td>
+<td>Balance Inquiry</td>
+</tr>
+<tr>
+<td>40</td>
+<td>Account Transfer</td>
+</tr>
+<tr>
+<td>50</td>
+<td>Bill Payment</td>
+</tr>
+</tbody>
+</table>
+<p>Ranges: 00–19 debits, 20–29 credits, 30–39 inquiries, 40–49 transfers.</p>
+<h3>3.2 Account Type (digits 3–4 and 5–6)</h3>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>00</td>
+<td>Default / Unspecified</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Savings Account</td>
+</tr>
+<tr>
+<td>20</td>
+<td>Cheque / Current</td>
+</tr>
+<tr>
+<td>30</td>
+<td>Credit Facility</td>
+</tr>
+<tr>
+<td>40</td>
+<td>Universal Account</td>
+</tr>
+<tr>
+<td>50</td>
+<td>Investment Account</td>
+</tr>
+</tbody>
+</table>
+<h2>4. Swedish Payment Standards</h2>
+<p>Sweden is migrating from legacy formats (Bankgirot LB, KI, BgMax) to ISO
+20022 XML. The transition is in two phases during 2026:</p>
+<ul>
+<li><strong>Spring 2026</strong>: Account-to-account credit transfers (salaries, pensions)</li>
+<li><strong>Autumn 2026</strong>: Bankgiro and Plusgiro payments</li>
+</ul>
+<p>The P27 Nordic Payment Platform initiative (SEB, Danske Bank, Handelsbanken,
+Nordea, OP Financial Group, Swedbank) was suspended in 2023; Swedish banks now
+focus on domestic infrastructure.</p>
+<h3>4.1 Swedish Payment Systems</h3>
+<table>
+<thead>
+<tr>
+<th>System</th>
+<th>Type</th>
+<th>Settlement</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Bankgirot</td>
+<td>Giro / mass retail</td>
+<td>Same day</td>
+<td>Since 1959, OCR references</td>
+</tr>
+<tr>
+<td>PlusGirot</td>
+<td>Giro (Nordea)</td>
+<td>Same day</td>
+<td>2–8 digit numbers</td>
+</tr>
+<tr>
+<td>Dataclearing</td>
+<td>Account-to-account</td>
+<td>Same day</td>
+<td>4 daily cycles, cut-off 13:30</td>
+</tr>
+<tr>
+<td>Swish</td>
+<td>Mobile instant</td>
+<td>Real-time</td>
+<td>95% adult adoption</td>
+</tr>
+<tr>
+<td>Autogiro</td>
+<td>Direct debit (pull)</td>
+<td>Same day</td>
+<td>80% of Swedes have mandates</td>
+</tr>
+<tr>
+<td>RIX-RTGS</td>
+<td>High-value</td>
+<td>Weekday</td>
+<td>Riksbank-operated</td>
+</tr>
+<tr>
+<td>RIX-INST</td>
+<td>Instant / 24×7</td>
+<td>Real-time</td>
+<td>Launched 2022</td>
+</tr>
+</tbody>
+</table>
+<h3>4.2 Swedish ISO 20022 Interpretation</h3>
+<p>Finance Sweden publishes the <em>Swedish Common Interpretation of ISO 20022
+Payment Messages</em>. Key Swedish category purpose codes:</p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Swedish Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SALA</td>
+<td>Salary (LÖN)</td>
+</tr>
+<tr>
+<td>PENS</td>
+<td>Pension</td>
+</tr>
+</tbody>
+</table>
+<p>These codes affect execution-date rules: banks may modify
+<code>RequestedExecutionDate</code> for salary/pension payments to follow Swedish
+payment-calendar rules.</p>
+<p>The Swedish interpretation uses standard ISO 20022 BTC codes in camt.053
+statements — there are no Sweden-specific BTC domains or families. The
+differentiation is in <em>which</em> sub-families are commonly used and how
+category purpose codes interact with execution timing.</p>
+<h3>4.3 Relevance to go-luca</h3>
+<p>Swedish standards don't define alternative transaction type codes — they adopt
+ISO 20022 directly. The main takeaway: our code field should be able to
+represent ISO 20022 BTC leaf codes so that movements imported from Swedish
+(or any ISO 20022) bank statements can retain their classification.</p>
+<h2>5. TigerBeetle's Approach</h2>
+<p>TigerBeetle uses <code>uint16</code> (0–65535) for <code>Transfer.code</code>. Their guidance:</p>
+<ul>
+<li>Code <code>0</code> means &quot;unset&quot; — cannot be used</li>
+<li>Codes are user-defined enums — no built-in meanings</li>
+<li>Used for filtering and querying transfers by type</li>
+<li>The code is immutable after creation</li>
+</ul>
+<p>go-luca currently has <code>Code int16</code> on Movement with:</p>
+<ul>
+<li><code>CodeNormal = 0</code> (general movement)</li>
+<li><code>CodeInterestAccrual = 1</code> (interest journal entry)</li>
+</ul>
+<h2>6. Proposed Code Field Design</h2>
+<h3>6.1 Text-Based Codes</h3>
+<p>Use the ISO 20022 mnemonic format directly as a short string:</p>
+<pre><code>DOMAIN:FAMILY:SUBFAMILY
+</code></pre>
+<p>Using <code>:</code> as separator — consistent with go-luca's existing account path
+convention (<code>Asset:Bank:Current:Main</code>).</p>
+<p><strong>Go type:</strong> <code>Code string</code> on <code>Movement</code> and <code>MovementInput</code>.
+<strong>DB column:</strong> <code>VARCHAR(14) NOT NULL</code> — max 4+1+4+1+4 = 14 chars.
+<strong>Compulsory:</strong> Every movement must have a non-empty code.</p>
+<h3>6.2 Why Text Over Packed Integer</h3>
+<p>A packed uint32 bit layout was considered (see section 8) but rejected:</p>
+<ul>
+<li><strong>Readability</strong>: <code>&quot;LDAS:FTDP:INTR&quot;</code> is self-documenting in DB queries,
+logs, CSV exports. No lookup table needed.</li>
+<li><strong>ISO 20022 compatibility</strong>: Codes map directly to/from camt.053 BTC
+fields with no numeric encoding/decoding step.</li>
+<li><strong>Debugging</strong>: <code>SELECT * FROM movements WHERE code = 'LDAS:FTDP:INTR'</code>
+vs <code>WHERE code &amp; 0x1F000000 = 0x03000000</code>.</li>
+<li><strong>Storage</strong>: pglike/SQLite stores everything as text anyway. The 14-byte
+overhead vs 4 bytes is irrelevant at go-luca's scale.</li>
+<li><strong>Simplicity</strong>: No bit-twiddling helpers to write and maintain.</li>
+</ul>
+<h3>6.3 go-luca System Codes</h3>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PMNT:RCDT:DMCT</code></td>
+<td>Received domestic credit transfer</td>
+</tr>
+<tr>
+<td><code>PMNT:RCDT:BOOK</code></td>
+<td>Internal book transfer received</td>
+</tr>
+<tr>
+<td><code>PMNT:ICDT:DMCT</code></td>
+<td>Issued domestic credit transfer</td>
+</tr>
+<tr>
+<td><code>PMNT:ICDT:BOOK</code></td>
+<td>Internal book transfer issued</td>
+</tr>
+<tr>
+<td><code>PMNT:RDDT:OTHR</code></td>
+<td>Received direct debit</td>
+</tr>
+<tr>
+<td><code>PMNT:IDDT:OTHR</code></td>
+<td>Issued direct debit</td>
+</tr>
+<tr>
+<td><code>LDAS:FTDP:INTR</code></td>
+<td>Deposit interest accrual</td>
+</tr>
+<tr>
+<td><code>LDAS:NTDP:INTR</code></td>
+<td>Notice deposit interest accrual</td>
+</tr>
+<tr>
+<td><code>LDAS:FTLN:INTR</code></td>
+<td>Loan interest accrual</td>
+</tr>
+<tr>
+<td><code>LDAS:MGLN:INTR</code></td>
+<td>Mortgage interest accrual</td>
+</tr>
+<tr>
+<td><code>ACMT:MCOP:OTHR</code></td>
+<td>Opening balance / adjustment</td>
+</tr>
+<tr>
+<td><code>ACMT:MDOP:FEES</code></td>
+<td>Fee charge</td>
+</tr>
+<tr>
+<td><code>ACMT:MDOP:CHRG</code></td>
+<td>General charge</td>
+</tr>
+<tr>
+<td><code>ACMT:MDOP:ADJT</code></td>
+<td>Adjustment</td>
+</tr>
+<tr>
+<td><code>ACMT:MDOP:TAXE</code></td>
+<td>Tax</td>
+</tr>
+</tbody>
+</table>
+<h3>6.4 Practical Codes for go-luca's Immediate Needs</h3>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Old Code</th>
+<th>New Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Client money in</td>
+<td>(none)</td>
+<td><code>PMNT:RCDT:DMCT</code></td>
+</tr>
+<tr>
+<td>Client money out</td>
+<td>(none)</td>
+<td><code>PMNT:ICDT:DMCT</code></td>
+</tr>
+<tr>
+<td>Internal book transfer</td>
+<td><code>CodeNormal(0)</code></td>
+<td><code>PMNT:RCDT:BOOK</code></td>
+</tr>
+<tr>
+<td>Interest accrual journal</td>
+<td><code>CodeInterestAccrual(1)</code></td>
+<td><code>LDAS:FTDP:INTR</code></td>
+</tr>
+<tr>
+<td>Interest application</td>
+<td>(none)</td>
+<td><code>LDAS:FTDP:OTHR</code></td>
+</tr>
+<tr>
+<td>Fee charge</td>
+<td>(none)</td>
+<td><code>ACMT:MDOP:FEES</code></td>
+</tr>
+<tr>
+<td>Opening balance</td>
+<td>(none)</td>
+<td><code>ACMT:MCOP:OTHR</code></td>
+</tr>
+</tbody>
+</table>
+<h3>6.5 User-Defined Codes</h3>
+<p>User codes follow the same <code>X:Y:Z</code> format but use a <code>USER</code> domain prefix:</p>
+<pre><code>USER:MYAPP:REBATE
+USER:CUST:REFUND
+</code></pre>
+<p>This avoids collision with ISO 20022 domains (no ISO domain is <code>USER</code>).</p>
+<h3>6.6 Filtering and Indexing</h3>
+<p>Text codes support prefix queries naturally:</p>
+<pre><code class="language-sql">-- All interest accruals
+SELECT * FROM movements WHERE code LIKE 'LDAS:%:INTR'
+
+-- All payment domain movements
+SELECT * FROM movements WHERE code LIKE 'PMNT:%'
+
+-- Exact match
+SELECT * FROM movements WHERE code = 'LDAS:FTDP:INTR'
+</code></pre>
+<p>The existing index <code>idx_movements_code ON movements(to_account_id, code, value_time)</code>
+works well with text codes — the composite index supports exact match and
+prefix queries efficiently.</p>
+<h2>7. Implementation</h2>
+<h3>7.1 Migration from int16 to string</h3>
+<p>The existing <code>Code int16</code> field has only two values in use (0, 1). Migration:</p>
+<ol>
+<li>Change DB column: <code>code SMALLINT NOT NULL DEFAULT 0</code> →
+<code>code VARCHAR(14) NOT NULL</code></li>
+<li>Change Go type: <code>Code int16</code> → <code>Code string</code></li>
+<li>Map old values: <code>0 → &quot;PMNT:RCDT:BOOK&quot;</code>, <code>1 → &quot;LDAS:FTDP:INTR&quot;</code></li>
+<li>Add <code>code</code> parameter to <code>RecordMovement</code> and
+<code>RecordMovementWithProjections</code> (was previously hardcoded)</li>
+<li>Validate code is non-empty in all recording methods</li>
+</ol>
+<h3>7.2 Go Constants</h3>
+<pre><code class="language-go">const (
+    CodeBookTransfer    = &quot;PMNT:RCDT:BOOK&quot;  // internal book transfer
+    CodeInterestAccrual = &quot;LDAS:FTDP:INTR&quot;  // deposit interest accrual
+    CodeCreditReceived  = &quot;PMNT:RCDT:DMCT&quot;  // received domestic credit transfer
+    CodeCreditIssued    = &quot;PMNT:ICDT:DMCT&quot;  // issued domestic credit transfer
+    CodeFee             = &quot;ACMT:MDOP:FEES&quot;  // fee charge
+    CodeOpeningBalance  = &quot;ACMT:MCOP:OTHR&quot;  // opening balance / adjustment
+)
+</code></pre>
+<h3>7.3 Text Format (.goluca files)</h3>
+<p>Movement codes should be part of the text format specification. The code
+can be carried as transaction metadata or as a field on the movement line.
+This is a future enhancement — for now, imported transactions without
+explicit codes default to <code>CodeBookTransfer</code>.</p>
+<h2>8. Alternative Designs Considered</h2>
+<h3>8.1 Flat Enum (int16, current approach)</h3>
+<p>Pros: Simple, TigerBeetle-compatible.
+Cons: No structure, no hierarchy, no user space, 32K codes max, opaque.</p>
+<h3>8.2 Packed uint32 (bit-field layout)</h3>
+<p>Pros: Compact (4 bytes), fast comparisons, bit-level domain filtering.
+Cons: Opaque in DB queries, requires encode/decode helpers, lookup tables
+for human-readable output. Over-engineered for go-luca's scale.</p>
+<h3>8.3 Two Fields (system_code + user_code)</h3>
+<p>Pros: Clean separation.
+Cons: Extra column, extra index, more complex queries.</p>
+<h2>9. Recommendation</h2>
+<p><strong>Use <code>VARCHAR(14)</code> text codes in <code>DOMAIN:FAMILY:SUBFAMILY</code> format.</strong></p>
+<ul>
+<li>Human-readable everywhere — DB, logs, exports, debugging</li>
+<li>Direct ISO 20022 BTC compatibility with no mapping layer</li>
+<li>Consistent <code>:</code> separator with account path convention</li>
+<li>Compulsory — every movement must explain <em>why</em> it exists</li>
+<li><code>USER:</code> prefix convention for application-specific codes</li>
+<li>Simple <code>LIKE 'DOMAIN:%'</code> queries for domain filtering</li>
+</ul>
+<p>Pending operations remain handled by the existing <code>PendingID int64</code> field —
+pending is a <em>state</em>, not a movement classification.</p>
+<h2>10. Sources</h2>
+<ul>
+<li><a href="https://www.iso20022.org/catalogue-messages/additional-content-messages/external-code-sets">ISO 20022 External Code Sets</a></li>
+<li><a href="https://www.iso20022.org/sites/default/files/2021-02/BTC_ExternalCodeListDescription_Feb2021.doc">ISO 20022 BTC Structure Report</a></li>
+<li><a href="https://www.iso20022.org/sites/default/files/media/file/BTC_Codification_30October2023.xls">ISO 20022 BTC Codification (Oct 2023)</a></li>
+<li><a href="https://www.iso20022.org/sites/default/files/media/file/BTC_ExternalCodeListDescription_May2025_v2.docx">ISO 20022 BTC External Code List (May 2025)</a></li>
+<li><a href="https://neapay.com/post/iso8583-processing-codes-transaction-processing_98.html">ISO 8583 Processing Codes (neapay)</a></li>
+<li><a href="https://docs.tigerbeetle.com/reference/transfer/">TigerBeetle Transfer Reference</a></li>
+<li><a href="https://www.financesweden.se/media/1266/7_appendix_1_common_payment_types_in_sweden.pdf">Finance Sweden — Swedish Common Interpretation of ISO 20022</a></li>
+<li><a href="https://www.financesweden.se/media/3287/5-camt05300102-swedish-common-interpretation.pdf">Finance Sweden — camt.053 Swedish Interpretation</a></li>
+<li><a href="https://www.swedbank.com/corporate/cash-management-transaction-services/p27.html">Swedbank — P27 / ISO 20022</a></li>
+<li><a href="https://www.atlar.com/guides/bank-payments-in-sweden">Atlar — Guide to Bank Payments in Sweden</a></li>
+<li><a href="https://sebgroup.com/our-offering/cash-management/cash-management-news/new-payment-infrastructure-in-sweden">SEB — New Payment Infrastructure in Sweden</a></li>
+</ul>
+
+            </div>
+        </div>
+    </section>
+</body>
+</html>

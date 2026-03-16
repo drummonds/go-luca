@@ -236,6 +236,7 @@ func (l *SQLLedger) importTransaction(txn Transaction, opts ImportOptions) error
 				FromAccountID: rm.fromID,
 				ToAccountID:   rm.toID,
 				Amount:        rm.amount,
+				Code:          CodeBookTransfer,
 				Description:   rm.description,
 				PendingID:     rm.pendingID,
 				KnowledgeTime: knowledgeTime,
@@ -246,7 +247,7 @@ func (l *SQLLedger) importTransaction(txn Transaction, opts ImportOptions) error
 			}
 			batchID = bid
 		} else {
-			m, err := l.RecordMovement(rm.fromID, rm.toID, rm.amount, valueTime, rm.description)
+			m, err := l.RecordMovement(rm.fromID, rm.toID, rm.amount, CodeBookTransfer, valueTime, rm.description)
 			if err != nil {
 				return err
 			}
@@ -260,6 +261,7 @@ func (l *SQLLedger) importTransaction(txn Transaction, opts ImportOptions) error
 				FromAccountID: rm.fromID,
 				ToAccountID:   rm.toID,
 				Amount:        rm.amount,
+				Code:          CodeBookTransfer,
 				Description:   rm.description,
 				PendingID:     rm.pendingID,
 				KnowledgeTime: knowledgeTime,

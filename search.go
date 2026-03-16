@@ -13,7 +13,7 @@ type SearchQuery struct {
 	FromTime    *time.Time // value_time >= FromTime
 	ToTime      *time.Time // value_time <= ToTime
 	Description string     // LIKE %description%
-	Code        *int16     // exact code match
+	Code        *string    // exact code match
 	MinAmount   *Amount    // amount >= MinAmount
 	MaxAmount   *Amount    // amount <= MaxAmount
 	BatchID     string     // exact batch match

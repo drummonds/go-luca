@@ -100,7 +100,7 @@ erDiagram
 "movements" {
   INTEGER amount "Transfer amount in smallest currency unit (integer at account exponent)"
   TEXT batch_id "Groups related movements into a single atomic transaction"
-  INTEGER code "Movement category: 0=normal, 1=interest accrual (TigerBeetle-inspired)"
+  TEXT code "Movement category: 0=normal, 1=interest accrual (TigerBeetle-inspired)"
   TEXT description "Human-readable description of the movement"
   TEXT from_account_id "Source account (references accounts.id)"
   TEXT id PK "Auto-incrementing primary key"

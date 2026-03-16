@@ -52,7 +52,7 @@
     from_account_id TEXT NOT NULL,
     to_account_id TEXT NOT NULL,
     amount INTEGER NOT NULL,
-    code INTEGER NOT NULL DEFAULT 0,
+    code TEXT NOT NULL,
     ledger INTEGER NOT NULL DEFAULT 0,
     pending_id INTEGER NOT NULL DEFAULT 0,
     user_data_64 INTEGER NOT NULL DEFAULT 0,
@@ -97,8 +97,8 @@
 </tr>
 <tr>
 <td>code</td>
-<td>INTEGER</td>
-<td>0</td>
+<td>TEXT</td>
+<td></td>
 <td>false</td>
 <td></td>
 <td></td>
@@ -258,7 +258,7 @@
 &quot;movements&quot; {
   INTEGER amount &quot;Transfer amount in smallest currency unit (integer at account exponent)&quot;
   TEXT batch_id &quot;Groups related movements into a single atomic transaction&quot;
-  INTEGER code &quot;Movement category: 0=normal, 1=interest accrual (TigerBeetle-inspired)&quot;
+  TEXT code &quot;Movement category: 0=normal, 1=interest accrual (TigerBeetle-inspired)&quot;
   TEXT description &quot;Human-readable description of the movement&quot;
   TEXT from_account_id &quot;Source account (references accounts.id)&quot;
   TEXT id PK &quot;Auto-incrementing primary key&quot;

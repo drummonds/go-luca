@@ -19,12 +19,12 @@ func TestExport(t *testing.T) {
 	date := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
 
 	// Single movement
-	l.RecordMovement(cash.ID, bank.ID, 10000, date, "Transfer")
+	l.RecordMovement(cash.ID, bank.ID, 10000, CodeBookTransfer, date, "Transfer")
 
 	// Linked movements
 	l.RecordLinkedMovements([]MovementInput{
-		{FromAccountID: salary.ID, ToAccountID: bank.ID, Amount: 400000, Description: "net salary"},
-		{FromAccountID: salary.ID, ToAccountID: cash.ID, Amount: 50000, Description: "cash advance"},
+		{FromAccountID: salary.ID, ToAccountID: bank.ID, Amount: 400000, Code: CodeBookTransfer, Description: "net salary"},
+		{FromAccountID: salary.ID, ToAccountID: cash.ID, Amount: 50000, Code: CodeBookTransfer, Description: "cash advance"},
 	}, date.AddDate(0, 0, 1))
 
 	var buf bytes.Buffer

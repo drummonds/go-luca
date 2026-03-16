@@ -148,7 +148,7 @@ func TestRecordMovement(t *testing.T) {
 	equity, _ := l.CreateAccount("Equity:Capital", "GBP", -2, 0)
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	m, err := l.RecordMovement(equity.ID, cash.ID, 20000, now, "Initial capital")
+	m, err := l.RecordMovement(equity.ID, cash.ID, 20000, CodeBookTransfer, now, "Initial capital")
 	if err != nil {
 		t.Fatalf("RecordMovement: %v", err)
 	}
@@ -178,8 +178,8 @@ func TestRecordLinkedMovements(t *testing.T) {
 	now := time.Date(2026, 1, 2, 12, 0, 0, 0, time.UTC)
 
 	batchID, err := l.RecordLinkedMovements([]MovementInput{
-		{FromAccountID: cash.ID, ToAccountID: purchases.ID, Amount: 50000, Description: "Office supplies"},
-		{FromAccountID: cash.ID, ToAccountID: vat.ID, Amount: 10000, Description: "VAT"},
+		{FromAccountID: cash.ID, ToAccountID: purchases.ID, Amount: 50000, Code: CodeBookTransfer, Description: "Office supplies"},
+		{FromAccountID: cash.ID, ToAccountID: vat.ID, Amount: 10000, Code: CodeBookTransfer, Description: "VAT"},
 	}, now)
 	if err != nil {
 		t.Fatalf("RecordLinkedMovements: %v", err)
@@ -208,15 +208,15 @@ func TestRecordMovementWithProjections(t *testing.T) {
 	savings, _ := l.CreateAccount("Liability:Savings:0001", "GBP", -2, 0.05)
 	now := time.Date(2026, 1, 15, 10, 0, 0, 0, time.UTC)
 
-	m, err := l.RecordMovementWithProjections(equity.ID, savings.ID, 100000, now, "deposit")
+	m, err := l.RecordMovementWithProjections(equity.ID, savings.ID, 100000, CodeBookTransfer, now, "deposit")
 	if err != nil {
 		t.Fatalf("RecordMovementWithProjections: %v", err)
 	}
 	if m.ID == "" {
 		t.Error("expected non-empty movement ID")
 	}
-	if m.Code != CodeNormal {
-		t.Errorf("Code = %d, want %d", m.Code, CodeNormal)
+	if m.Code != CodeBookTransfer {
+		t.Errorf("Code = %q, want %q", m.Code, CodeBookTransfer)
 	}
 
 	// Verify live balance was created
@@ -243,7 +243,7 @@ func TestRecordMovementWithProjectionsNoInterest(t *testing.T) {
 	cash, _ := l.CreateAccount("Asset:Cash", "GBP", -2, 0) // 0% rate
 	now := time.Date(2026, 1, 15, 10, 0, 0, 0, time.UTC)
 
-	_, err := l.RecordMovementWithProjections(equity.ID, cash.ID, 50000, now, "deposit")
+	_, err := l.RecordMovementWithProjections(equity.ID, cash.ID, 50000, CodeBookTransfer, now, "deposit")
 	if err != nil {
 		t.Fatalf("RecordMovementWithProjections: %v", err)
 	}
@@ -271,13 +271,13 @@ func TestCompoundMovementUpsertsInterest(t *testing.T) {
 	day := time.Date(2026, 3, 1, 10, 0, 0, 0, time.UTC)
 
 	// First deposit
-	_, err := l.RecordMovementWithProjections(equity.ID, savings.ID, 100000, day, "deposit 1")
+	_, err := l.RecordMovementWithProjections(equity.ID, savings.ID, 100000, CodeBookTransfer, day, "deposit 1")
 	if err != nil {
 		t.Fatalf("first deposit: %v", err)
 	}
 
 	// Second deposit same day — should upsert interest accrual, not duplicate
-	_, err = l.RecordMovementWithProjections(equity.ID, savings.ID, 50000, day.Add(2*time.Hour), "deposit 2")
+	_, err = l.RecordMovementWithProjections(equity.ID, savings.ID, 50000, CodeBookTransfer, day.Add(2*time.Hour), "deposit 2")
 	if err != nil {
 		t.Fatalf("second deposit: %v", err)
 	}

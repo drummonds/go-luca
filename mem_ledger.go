@@ -110,7 +110,11 @@ func (m *MemLedger) validateSameExponent(fromID, toID string) error {
 	return nil
 }
 
-func (m *MemLedger) RecordMovement(fromAccountID, toAccountID string, amount Amount, valueTime time.Time, description string) (*Movement, error) {
+func (m *MemLedger) RecordMovement(fromAccountID, toAccountID string, amount Amount, code string, valueTime time.Time, description string) (*Movement, error) {
+	if code == "" {
+		return nil, fmt.Errorf("movement code is required")
+	}
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -124,6 +128,7 @@ func (m *MemLedger) RecordMovement(fromAccountID, toAccountID string, amount Amo
 		FromAccountID: fromAccountID,
 		ToAccountID:   toAccountID,
 		Amount:        amount,
+		Code:          code,
 		ValueTime:     valueTime,
 		KnowledgeTime: time.Now(),
 		Description:   description,
@@ -221,7 +226,7 @@ func (m *MemLedger) DailyBalances(accountID string, from, to time.Time) ([]Daily
 
 // --- Stubbed methods ---
 
-func (m *MemLedger) RecordMovementWithProjections(fromAccountID, toAccountID string, amount Amount, valueTime time.Time, description string) (*Movement, error) {
+func (m *MemLedger) RecordMovementWithProjections(fromAccountID, toAccountID string, amount Amount, code string, valueTime time.Time, description string) (*Movement, error) {
 	return nil, ErrNotImplemented
 }
 

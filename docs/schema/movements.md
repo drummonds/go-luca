@@ -15,7 +15,7 @@ CREATE TABLE movements (
     from_account_id TEXT NOT NULL,
     to_account_id TEXT NOT NULL,
     amount INTEGER NOT NULL,
-    code INTEGER NOT NULL DEFAULT 0,
+    code TEXT NOT NULL,
     ledger INTEGER NOT NULL DEFAULT 0,
     pending_id INTEGER NOT NULL DEFAULT 0,
     user_data_64 INTEGER NOT NULL DEFAULT 0,
@@ -34,7 +34,7 @@ CREATE TABLE movements (
 | --------------- | ------- | --------------- | -------- | -------- | ----------------------- | ----------------------------------------------------------------------- |
 | amount          | INTEGER |                 | false    |          |                         | Transfer amount in smallest currency unit (integer at account exponent) |
 | batch_id        | TEXT    |                 | false    |          |                         | Groups related movements into a single atomic transaction               |
-| code            | INTEGER | 0               | false    |          |                         | Movement category: 0=normal, 1=interest accrual (TigerBeetle-inspired)  |
+| code            | TEXT    |                 | false    |          |                         | Movement category: 0=normal, 1=interest accrual (TigerBeetle-inspired)  |
 | description     | TEXT    | ''              | false    |          |                         | Human-readable description of the movement                              |
 | from_account_id | TEXT    |                 | false    |          | [accounts](accounts.md) | Source account (references accounts.id)                                 |
 | id              | TEXT    |                 | true     |          |                         | Auto-incrementing primary key                                           |
@@ -74,7 +74,7 @@ erDiagram
 "movements" {
   INTEGER amount "Transfer amount in smallest currency unit (integer at account exponent)"
   TEXT batch_id "Groups related movements into a single atomic transaction"
-  INTEGER code "Movement category: 0=normal, 1=interest accrual (TigerBeetle-inspired)"
+  TEXT code "Movement category: 0=normal, 1=interest accrual (TigerBeetle-inspired)"
   TEXT description "Human-readable description of the movement"
   TEXT from_account_id "Source account (references accounts.id)"
   TEXT id PK "Auto-incrementing primary key"
