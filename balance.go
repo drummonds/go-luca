@@ -14,7 +14,7 @@ type DailyBalance struct {
 // Balance returns the current balance of an account (all movements, all time).
 // Since movements are only allowed between same-exponent accounts,
 // SUM(amount) is always in the account's own exponent.
-func (l *SQLLedger) Balance(accountID int64) (Amount, error) {
+func (l *SQLLedger) Balance(accountID string) (Amount, error) {
 	var balance Amount
 	err := l.db.QueryRow(
 		`SELECT
@@ -30,7 +30,7 @@ func (l *SQLLedger) Balance(accountID int64) (Amount, error) {
 
 // BalanceAt returns the balance of an account as of a specific point in time.
 // Only considers movements with value_time <= the given time.
-func (l *SQLLedger) BalanceAt(accountID int64, at time.Time) (Amount, error) {
+func (l *SQLLedger) BalanceAt(accountID string, at time.Time) (Amount, error) {
 	var balance Amount
 	err := l.db.QueryRow(
 		`SELECT
@@ -112,7 +112,7 @@ func (l *SQLLedger) BalanceByPath(pathPrefix string, at time.Time) (Amount, int,
 	var total Amount
 	for rows.Next() {
 		var amount Amount
-		var matchedAcctID, fromAcctID, toAcctID int64
+		var matchedAcctID, fromAcctID, toAcctID string
 		var fromExp, toExp int
 		if err := rows.Scan(&amount, &matchedAcctID, &fromAcctID, &toAcctID, &fromExp, &toExp); err != nil {
 			return 0, 0, fmt.Errorf("scan movement: %w", err)
@@ -134,8 +134,76 @@ func (l *SQLLedger) BalanceByPath(pathPrefix string, at time.Time) (Amount, int,
 	return total, reportExponent, nil
 }
 
+// BalanceAsOf returns the balance as of valueTime, considering only movements
+// known by knowledgeTime. This is the bitemporal query:
+//
+//	WHERE value_time <= valueTime AND knowledge_time <= knowledgeTime
+func (l *SQLLedger) BalanceAsOf(accountID string, valueTime, knowledgeTime time.Time) (Amount, error) {
+	var balance Amount
+	err := l.db.QueryRow(
+		`SELECT
+			COALESCE((SELECT SUM(amount) FROM movements WHERE to_account_id = $1 AND value_time <= $2 AND knowledge_time <= $3), 0)
+		  - COALESCE((SELECT SUM(amount) FROM movements WHERE from_account_id = $4 AND value_time <= $5 AND knowledge_time <= $6), 0)`,
+		accountID, valueTime, knowledgeTime, accountID, valueTime, knowledgeTime,
+	).Scan(&balance)
+	if err != nil {
+		return 0, fmt.Errorf("query balance as of: %w", err)
+	}
+	return balance, nil
+}
+
+// FirstMovementTime returns the earliest value_time for an account.
+// If accountID is empty, returns the earliest across the whole ledger.
+func (l *SQLLedger) FirstMovementTime(accountID string) (time.Time, error) {
+	var timeStr string
+	var err error
+	if accountID == "" {
+		err = l.db.QueryRow(
+			`SELECT MIN(value_time) FROM movements`,
+		).Scan(&timeStr)
+	} else {
+		err = l.db.QueryRow(
+			`SELECT MIN(value_time) FROM movements WHERE from_account_id = $1 OR to_account_id = $2`,
+			accountID, accountID,
+		).Scan(&timeStr)
+	}
+	if err != nil {
+		return time.Time{}, fmt.Errorf("first movement time: %w", err)
+	}
+	if timeStr == "" {
+		return time.Time{}, nil
+	}
+	t, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", timeStr)
+	return t, nil
+}
+
+// LastMovementTime returns the latest value_time for an account.
+// If accountID is empty, returns the latest across the whole ledger.
+func (l *SQLLedger) LastMovementTime(accountID string) (time.Time, error) {
+	var timeStr string
+	var err error
+	if accountID == "" {
+		err = l.db.QueryRow(
+			`SELECT MAX(value_time) FROM movements`,
+		).Scan(&timeStr)
+	} else {
+		err = l.db.QueryRow(
+			`SELECT MAX(value_time) FROM movements WHERE from_account_id = $1 OR to_account_id = $2`,
+			accountID, accountID,
+		).Scan(&timeStr)
+	}
+	if err != nil {
+		return time.Time{}, fmt.Errorf("last movement time: %w", err)
+	}
+	if timeStr == "" {
+		return time.Time{}, nil
+	}
+	t, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", timeStr)
+	return t, nil
+}
+
 // DailyBalances returns day-by-day closing balances for an account over a date range.
-func (l *SQLLedger) DailyBalances(accountID int64, from, to time.Time) ([]DailyBalance, error) {
+func (l *SQLLedger) DailyBalances(accountID string, from, to time.Time) ([]DailyBalance, error) {
 	var result []DailyBalance
 	for d := from; !d.After(to); d = d.AddDate(0, 0, 1) {
 		endOfDay := time.Date(d.Year(), d.Month(), d.Day(), 23, 59, 59, 999999999, d.Location())

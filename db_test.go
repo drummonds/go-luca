@@ -24,8 +24,8 @@ func TestCreateAccount(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
-	if acct.ID == 0 {
-		t.Error("expected non-zero ID")
+	if acct.ID == "" {
+		t.Error("expected non-empty ID")
 	}
 	if acct.FullPath != "Asset:Cash" {
 		t.Errorf("FullPath = %q, want %q", acct.FullPath, "Asset:Cash")
@@ -152,20 +152,20 @@ func TestRecordMovement(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RecordMovement: %v", err)
 	}
-	if m.ID == 0 {
-		t.Error("expected non-zero movement ID")
+	if m.ID == "" {
+		t.Error("expected non-empty movement ID")
 	}
-	if m.BatchID == 0 {
-		t.Error("expected non-zero batch ID")
+	if m.BatchID == "" {
+		t.Error("expected non-empty batch ID")
 	}
 	if m.Amount != 20000 {
 		t.Errorf("Amount = %d, want 20000", m.Amount)
 	}
 	if m.FromAccountID != equity.ID {
-		t.Errorf("FromAccountID = %d, want %d", m.FromAccountID, equity.ID)
+		t.Errorf("FromAccountID = %s, want %s", m.FromAccountID, equity.ID)
 	}
 	if m.ToAccountID != cash.ID {
-		t.Errorf("ToAccountID = %d, want %d", m.ToAccountID, cash.ID)
+		t.Errorf("ToAccountID = %s, want %s", m.ToAccountID, cash.ID)
 	}
 }
 
@@ -184,8 +184,8 @@ func TestRecordLinkedMovements(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RecordLinkedMovements: %v", err)
 	}
-	if batchID == 0 {
-		t.Error("expected non-zero batch ID")
+	if batchID == "" {
+		t.Error("expected non-empty batch ID")
 	}
 }
 
@@ -212,8 +212,8 @@ func TestRecordMovementWithProjections(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RecordMovementWithProjections: %v", err)
 	}
-	if m.ID == 0 {
-		t.Error("expected non-zero movement ID")
+	if m.ID == "" {
+		t.Error("expected non-empty movement ID")
 	}
 	if m.Code != CodeNormal {
 		t.Errorf("Code = %d, want %d", m.Code, CodeNormal)

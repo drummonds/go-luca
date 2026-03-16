@@ -9,7 +9,7 @@ import (
 
 // InterestResult records one day's interest calculation for one account.
 type InterestResult struct {
-	AccountID      int64
+	AccountID      string
 	Date           time.Time
 	OpeningBalance Amount
 	InterestAmount Amount
@@ -38,13 +38,13 @@ func (l *SQLLedger) EnsureInterestAccounts() error {
 // Formula: interest = closingBalance * (annualRate / 365)
 // The interest is recorded as a movement from Expense:Interest to the account.
 // All amounts use the account's exponent.
-func (l *SQLLedger) CalculateDailyInterest(accountID int64, date time.Time) (*InterestResult, error) {
+func (l *SQLLedger) CalculateDailyInterest(accountID string, date time.Time) (*InterestResult, error) {
 	acct, err := l.GetAccountByID(accountID)
 	if err != nil {
 		return nil, fmt.Errorf("get account: %w", err)
 	}
 	if acct == nil {
-		return nil, fmt.Errorf("account %d not found", accountID)
+		return nil, fmt.Errorf("account %s not found", accountID)
 	}
 	if acct.AnnualInterestRate == 0 {
 		return nil, nil
@@ -111,15 +111,15 @@ func (l *SQLLedger) CalculateDailyInterest(accountID int64, date time.Time) (*In
 // annual_interest_rate, for the given date.
 func (l *SQLLedger) RunDailyInterest(date time.Time) ([]InterestResult, error) {
 	rows, err := l.db.Query(
-		`SELECT id FROM accounts WHERE annual_interest_rate != 0 ORDER BY id`)
+		`SELECT id FROM accounts WHERE annual_interest_rate != 0 ORDER BY full_path`)
 	if err != nil {
 		return nil, fmt.Errorf("list interest accounts: %w", err)
 	}
 	defer rows.Close()
 
-	var accountIDs []int64
+	var accountIDs []string
 	for rows.Next() {
-		var id int64
+		var id string
 		if err := rows.Scan(&id); err != nil {
 			return nil, fmt.Errorf("scan account id: %w", err)
 		}
@@ -133,7 +133,7 @@ func (l *SQLLedger) RunDailyInterest(date time.Time) ([]InterestResult, error) {
 	for _, id := range accountIDs {
 		result, err := l.CalculateDailyInterest(id, date)
 		if err != nil {
-			return nil, fmt.Errorf("interest for account %d: %w", id, err)
+			return nil, fmt.Errorf("interest for account %s: %w", id, err)
 		}
 		if result != nil {
 			results = append(results, *result)

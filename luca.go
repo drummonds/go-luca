@@ -28,24 +28,24 @@ type Ledger interface {
 	// Accounts
 	CreateAccount(fullPath string, currency string, exponent int, annualInterestRate float64) (*Account, error)
 	GetAccount(fullPath string) (*Account, error)
-	GetAccountByID(id int64) (*Account, error)
+	GetAccountByID(id string) (*Account, error)
 	ListAccounts(typeFilter AccountType) ([]*Account, error)
 
 	// Movements
-	RecordMovement(fromAccountID, toAccountID int64, amount Amount, valueTime time.Time, description string) (*Movement, error)
-	RecordLinkedMovements(movements []MovementInput, valueTime time.Time) (int64, error)
-	RecordMovementWithProjections(fromAccountID, toAccountID int64, amount Amount, valueTime time.Time, description string) (*Movement, error)
+	RecordMovement(fromAccountID, toAccountID string, amount Amount, valueTime time.Time, description string) (*Movement, error)
+	RecordLinkedMovements(movements []MovementInput, valueTime time.Time) (string, error)
+	RecordMovementWithProjections(fromAccountID, toAccountID string, amount Amount, valueTime time.Time, description string) (*Movement, error)
 
 	// Balances
-	Balance(accountID int64) (Amount, error)
-	BalanceAt(accountID int64, at time.Time) (Amount, error)
+	Balance(accountID string) (Amount, error)
+	BalanceAt(accountID string, at time.Time) (Amount, error)
 	BalanceByPath(pathPrefix string, at time.Time) (Amount, int, error)
-	DailyBalances(accountID int64, from, to time.Time) ([]DailyBalance, error)
-	GetLiveBalance(accountID int64, date time.Time) (*LiveBalance, error)
+	DailyBalances(accountID string, from, to time.Time) ([]DailyBalance, error)
+	GetLiveBalance(accountID string, date time.Time) (*LiveBalance, error)
 
 	// Interest
 	EnsureInterestAccounts() error
-	CalculateDailyInterest(accountID int64, date time.Time) (*InterestResult, error)
+	CalculateDailyInterest(accountID string, date time.Time) (*InterestResult, error)
 	RunDailyInterest(date time.Time) ([]InterestResult, error)
 	RunInterestForPeriod(from, to time.Time) ([]InterestResult, error)
 
@@ -58,7 +58,7 @@ type Ledger interface {
 
 // LiveBalance is a pre-computed end-of-day balance snapshot stored in balances_live.
 type LiveBalance struct {
-	AccountID   int64
+	AccountID   string
 	BalanceDate time.Time
 	Balance     Amount
 }
@@ -85,7 +85,7 @@ var validAccountTypes = map[AccountType]bool{
 // Account represents a node in the chart of accounts.
 // The FullPath follows the hierarchical format: Type:Product:AccountID:Address
 type Account struct {
-	ID                 int64
+	ID                 string
 	FullPath           string
 	Type               AccountType
 	Product            string
@@ -95,6 +95,7 @@ type Account struct {
 	Currency           string
 	Exponent           int // e.g. -2 for GBP pence, -5 for high precision
 	AnnualInterestRate float64
+	OpenedAt           *time.Time
 	CreatedAt          time.Time
 }
 
@@ -102,10 +103,10 @@ type Account struct {
 // Amount is an integer in the smallest currency unit, stored at the
 // higher-precision exponent of the two accounts involved.
 type Movement struct {
-	ID            int64
-	BatchID       int64
-	FromAccountID int64
-	ToAccountID   int64
+	ID            string
+	BatchID       string
+	FromAccountID string
+	ToAccountID   string
 	Amount        Amount
 	Code          int16 // category/reason enum (TB-inspired)
 	Ledger        int32 // partition identifier (TB-inspired)
@@ -114,18 +115,21 @@ type Movement struct {
 	ValueTime     time.Time
 	KnowledgeTime time.Time
 	Description   string
+	PeriodAnchor  string // "^", "$", or ""
 }
 
 // MovementInput describes a movement to be recorded (before it gets a DB id/batch).
 type MovementInput struct {
-	FromAccountID int64
-	ToAccountID   int64
+	FromAccountID string
+	ToAccountID   string
 	Amount        Amount
 	Code          int16
 	Ledger        int32
 	PendingID     int64
 	UserData64    int64
 	Description   string
+	KnowledgeTime *time.Time // explicit knowledge time; nil = DEFAULT NOW()
+	PeriodAnchor  string     // "^", "$", or ""
 }
 
 // parseFullPath splits a hierarchical account path into its components.
@@ -153,4 +157,23 @@ func parseFullPath(fullPath string) (accountType AccountType, product, accountID
 	}
 
 	return accountType, product, accountID, address, isPending, nil
+}
+
+// BuildFullPath constructs a colon-separated path from components.
+// Omits trailing empty components: BuildFullPath("Asset", "Bank", "", "") → "Asset:Bank"
+func BuildFullPath(accountType AccountType, product, accountID, address string) string {
+	parts := []string{string(accountType), product}
+	if accountID != "" || address != "" {
+		parts = append(parts, accountID)
+	}
+	if address != "" {
+		parts = append(parts, address)
+	}
+	return strings.Join(parts, ":")
+}
+
+// RebuildFullPath reconstructs FullPath from the account's component fields.
+func (a *Account) RebuildFullPath() string {
+	a.FullPath = BuildFullPath(a.Type, a.Product, a.AccountID, a.Address)
+	return a.FullPath
 }

@@ -90,3 +90,43 @@ func TestParseFullPath(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildFullPath(t *testing.T) {
+	tests := []struct {
+		name    string
+		aType   AccountType
+		product string
+		acctID  string
+		address string
+		want    string
+	}{
+		{"four parts", AccountTypeAsset, "Bank", "Current", "Main", "Asset:Bank:Current:Main"},
+		{"two parts", AccountTypeAsset, "Cash", "", "", "Asset:Cash"},
+		{"three parts", AccountTypeEquity, "Capital", "001", "", "Equity:Capital:001"},
+		{"empty mid with address", AccountTypeLiability, "Savings", "", "Pending", "Liability:Savings::Pending"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := BuildFullPath(tt.aType, tt.product, tt.acctID, tt.address)
+			if got != tt.want {
+				t.Errorf("BuildFullPath = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRebuildFullPath(t *testing.T) {
+	a := &Account{
+		Type:      AccountTypeAsset,
+		Product:   "Bank",
+		AccountID: "Current",
+		Address:   "Main",
+	}
+	got := a.RebuildFullPath()
+	if got != "Asset:Bank:Current:Main" {
+		t.Errorf("RebuildFullPath = %q, want %q", got, "Asset:Bank:Current:Main")
+	}
+	if a.FullPath != got {
+		t.Errorf("FullPath not set, got %q", a.FullPath)
+	}
+}

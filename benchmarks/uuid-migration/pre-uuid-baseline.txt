@@ -1,0 +1,47 @@
+goos: linux
+goarch: amd64
+pkg: github.com/drummonds/go-luca
+cpu: Intel(R) Core(TM) Ultra 7 165H
+BenchmarkRecordMovement-22                     	    1910	    731007 ns/op	  400859 B/op	     871 allocs/op
+BenchmarkRecordMovement-22                     	    1759	    699298 ns/op	  400852 B/op	     871 allocs/op
+BenchmarkRecordMovement-22                     	    1644	    772078 ns/op	  400835 B/op	     871 allocs/op
+BenchmarkBalanceQuery/movements=100-22         	    5095	    202072 ns/op	  115928 B/op	     231 allocs/op
+BenchmarkBalanceQuery/movements=100-22         	    6606	    214632 ns/op	  115928 B/op	     231 allocs/op
+BenchmarkBalanceQuery/movements=100-22         	    5746	    191365 ns/op	  115928 B/op	     231 allocs/op
+BenchmarkBalanceQuery/movements=1000-22        	    2547	    527818 ns/op	  115929 B/op	     231 allocs/op
+BenchmarkBalanceQuery/movements=1000-22        	    2864	    505964 ns/op	  115928 B/op	     231 allocs/op
+BenchmarkBalanceQuery/movements=1000-22        	    2337	    439925 ns/op	  115929 B/op	     231 allocs/op
+BenchmarkBalanceQuery/movements=10000-22       	     289	   3727797 ns/op	  115929 B/op	     231 allocs/op
+BenchmarkBalanceQuery/movements=10000-22       	     282	   4297548 ns/op	  115929 B/op	     231 allocs/op
+BenchmarkBalanceQuery/movements=10000-22       	     236	   4675679 ns/op	  115929 B/op	     231 allocs/op
+BenchmarkSimpleMovementAndBalance-22           	     896	   1403777 ns/op	  516801 B/op	    1103 allocs/op
+BenchmarkSimpleMovementAndBalance-22           	    1219	   1629184 ns/op	  516800 B/op	    1104 allocs/op
+BenchmarkSimpleMovementAndBalance-22           	    1068	   1586241 ns/op	  516798 B/op	    1103 allocs/op
+BenchmarkCompoundMovementWithProjections-22    	     336	   3493113 ns/op	 1213919 B/op	    2634 allocs/op
+BenchmarkCompoundMovementWithProjections-22    	     432	   3395378 ns/op	 1213931 B/op	    2635 allocs/op
+BenchmarkCompoundMovementWithProjections-22    	     416	   3043911 ns/op	 1214016 B/op	    2635 allocs/op
+BenchmarkInterestNAccounts/N=10-22             	      69	  17776591 ns/op	 7962149 B/op	   17372 allocs/op
+BenchmarkInterestNAccounts/N=10-22             	     100	  18371444 ns/op	 7962559 B/op	   17375 allocs/op
+BenchmarkInterestNAccounts/N=10-22             	      55	  21789616 ns/op	 7961389 B/op	   17368 allocs/op
+BenchmarkInterestNAccounts/N=100-22            	       7	 161552087 ns/op	76003390 B/op	  165730 allocs/op
+BenchmarkInterestNAccounts/N=100-22            	       7	 164267183 ns/op	76001857 B/op	  165707 allocs/op
+BenchmarkInterestNAccounts/N=100-22            	       7	 163141574 ns/op	75997538 B/op	  165704 allocs/op
+BenchmarkInterestNAccounts/N=1000-22           	       1	1740249706 ns/op	756420336 B/op	 1655574 allocs/op
+BenchmarkInterestNAccounts/N=1000-22           	       1	1921302555 ns/op	756362888 B/op	 1655527 allocs/op
+BenchmarkInterestNAccounts/N=1000-22           	       1	1675037907 ns/op	756418920 B/op	 1655551 allocs/op
+BenchmarkInterestNAccounts/N=10000-22          	       1	16788657526 ns/op	7557543536 B/op	16560707 allocs/op
+BenchmarkInterestNAccounts/N=10000-22          	       1	16316967487 ns/op	7557638888 B/op	16560483 allocs/op
+BenchmarkInterestNAccounts/N=10000-22          	       1	15533296321 ns/op	7557415968 B/op	16560270 allocs/op
+PASS
+ok  	github.com/drummonds/go-luca	236.207s
+PASS
+ok  	github.com/drummonds/go-luca/api	0.177s
+?   	github.com/drummonds/go-luca/cmd/bench-api	[no test files]
+?   	github.com/drummonds/go-luca/cmd/bench-balance-types	[no test files]
+?   	github.com/drummonds/go-luca/cmd/bench-compound-movements	[no test files]
+?   	github.com/drummonds/go-luca/cmd/bench-scv	[no test files]
+?   	github.com/drummonds/go-luca/cmd/example	[no test files]
+?   	github.com/drummonds/go-luca/cmd/goluca2html	[no test files]
+?   	github.com/drummonds/go-luca/cmd/luca-docs	[no test files]
+?   	github.com/drummonds/go-luca/cmd/luca-schema	[no test files]
+?   	github.com/drummonds/go-luca/internal/benchutil	[no test files]

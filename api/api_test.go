@@ -32,8 +32,8 @@ func TestCreateAndGetAccount(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
-	if acct.ID == 0 {
-		t.Error("expected non-zero ID")
+	if acct.ID == "" {
+		t.Error("expected non-empty ID")
 	}
 	if acct.FullPath != "Asset:Cash" {
 		t.Errorf("FullPath = %q, want %q", acct.FullPath, "Asset:Cash")
@@ -44,7 +44,7 @@ func TestCreateAndGetAccount(t *testing.T) {
 		t.Fatalf("GetAccount: %v", err)
 	}
 	if got == nil || got.ID != acct.ID {
-		t.Errorf("GetAccount returned %v, want ID %d", got, acct.ID)
+		t.Errorf("GetAccount returned %v, want ID %s", got, acct.ID)
 	}
 
 	// Non-existent returns nil
@@ -69,7 +69,7 @@ func TestGetAccountByID(t *testing.T) {
 		t.Errorf("FullPath = %q, want %q", got.FullPath, "Asset:Cash")
 	}
 
-	missing, err := c.GetAccountByID(999)
+	missing, err := c.GetAccountByID("nonexistent-uuid")
 	if err != nil {
 		t.Fatalf("GetAccountByID non-existent: %v", err)
 	}
@@ -113,8 +113,8 @@ func TestRecordMovementAndBalance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RecordMovement: %v", err)
 	}
-	if mov.ID == 0 {
-		t.Error("expected non-zero movement ID")
+	if mov.ID == "" {
+		t.Error("expected non-empty movement ID")
 	}
 	if mov.Amount != 20000 {
 		t.Errorf("Amount = %d, want 20000", mov.Amount)
@@ -144,8 +144,8 @@ func TestRecordLinkedMovements(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RecordLinkedMovements: %v", err)
 	}
-	if batchID == 0 {
-		t.Error("expected non-zero batch ID")
+	if batchID == "" {
+		t.Error("expected non-empty batch ID")
 	}
 
 	bal, _ := c.Balance(cash.ID)

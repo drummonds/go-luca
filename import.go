@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/shopspring/decimal"
 )
@@ -25,7 +26,7 @@ func (o *ImportOptions) defaults() ImportOptions {
 	return out
 }
 
-// Import reads a .goluca file and records all transactions into the Ledger.
+// Import reads a .goluca file and records all transactions and directives into the Ledger.
 func (l *SQLLedger) Import(r io.Reader, opts *ImportOptions) error {
 	o := opts.defaults()
 
@@ -34,11 +35,127 @@ func (l *SQLLedger) Import(r io.Reader, opts *ImportOptions) error {
 		return fmt.Errorf("parse goluca: %w", err)
 	}
 
+	// Import directives first (aliases needed for account resolution)
+	if err := l.importDirectives(gf, o); err != nil {
+		return fmt.Errorf("import directives: %w", err)
+	}
+
 	for _, txn := range gf.Transactions {
 		if err := l.importTransaction(txn, o); err != nil {
-			return fmt.Errorf("import transaction %s: %w", txn.Date.Format("2006-01-02"), err)
+			return fmt.Errorf("import transaction %s: %w", txn.DateTime.String(), err)
 		}
 	}
+
+	// Import transaction metadata after movements are recorded
+	// (we need the batch IDs which are set during importTransaction)
+
+	return nil
+}
+
+func (l *SQLLedger) importDirectives(gf *GolucaFile, opts ImportOptions) error {
+	// Options
+	for _, opt := range gf.Options {
+		if err := l.UpsertOption(opt.Key, opt.Value); err != nil {
+			return fmt.Errorf("upsert option %q: %w", opt.Key, err)
+		}
+	}
+
+	// Commodities
+	for _, c := range gf.Commodities {
+		var dt *time.Time
+		if c.DateTime != nil {
+			t, err := c.DateTime.ToTime()
+			if err == nil {
+				dt = &t
+			}
+		}
+		cid, err := l.CreateCommodity(c.Code, dt)
+		if err != nil {
+			return fmt.Errorf("create commodity %q: %w", c.Code, err)
+		}
+		for key, value := range c.Metadata {
+			if err := l.SetCommodityMetadata(cid, key, value); err != nil {
+				return fmt.Errorf("set commodity metadata %q/%q: %w", c.Code, key, err)
+			}
+		}
+	}
+
+	// Aliases (before opens, so account resolution can use them)
+	for _, a := range gf.Aliases {
+		if err := l.CreateAlias(a.Name, a.Account); err != nil {
+			return fmt.Errorf("create alias %q: %w", a.Name, err)
+		}
+	}
+
+	// Opens — set opened_at on existing account or auto-create
+	for _, o := range gf.Opens {
+		openedAt, err := o.DateTime.ToTime()
+		if err != nil {
+			return fmt.Errorf("parse open datetime for %q: %w", o.Account, err)
+		}
+		acct, err := l.GetAccount(o.Account)
+		if err != nil {
+			return fmt.Errorf("get account %q: %w", o.Account, err)
+		}
+		if acct == nil && opts.AutoCreateAccounts {
+			currency := opts.DefaultCurrency
+			if len(o.Commodities) > 0 {
+				currency = o.Commodities[0]
+			}
+			acct, err = l.CreateAccount(o.Account, currency, -2, 0)
+			if err != nil {
+				return fmt.Errorf("create account %q: %w", o.Account, err)
+			}
+		}
+		if acct != nil {
+			if err := l.SetAccountOpenedAt(acct.ID, openedAt); err != nil {
+				return fmt.Errorf("set opened_at for %q: %w", o.Account, err)
+			}
+		}
+	}
+
+	// Customers
+	for _, c := range gf.Customers {
+		cid, err := l.CreateCustomer(c.Name)
+		if err != nil {
+			return fmt.Errorf("create customer %q: %w", c.Name, err)
+		}
+		if c.Account != "" {
+			if err := l.SetCustomerAccount(cid, c.Account); err != nil {
+				return fmt.Errorf("set customer account %q: %w", c.Name, err)
+			}
+		}
+		if c.MaxBalanceAmount != "" {
+			if err := l.SetCustomerMaxBalance(cid, c.MaxBalanceAmount, c.MaxBalanceCommodity); err != nil {
+				return fmt.Errorf("set customer max balance %q: %w", c.Name, err)
+			}
+		}
+		for key, value := range c.Metadata {
+			if err := l.SetCustomerMetadata(cid, key, value); err != nil {
+				return fmt.Errorf("set customer metadata %q/%q: %w", c.Name, key, err)
+			}
+		}
+	}
+
+	// Data points
+	for _, dp := range gf.DataPoints {
+		vt, err := dp.DateTime.ToTime()
+		if err != nil {
+			return fmt.Errorf("parse data point datetime: %w", err)
+		}
+		var kt *time.Time
+		if dp.KnowledgeDateTime != nil {
+			t, err := dp.KnowledgeDateTime.ToTime()
+			if err == nil {
+				kt = &t
+			}
+		}
+		value := InferDataPointType(dp.ParamValue)
+		if err := l.SetDataPoint(dp.ParamName, vt, kt, value); err != nil {
+			return fmt.Errorf("set data point %q: %w", dp.ParamName, err)
+		}
+	}
+
 	return nil
 }
 
@@ -47,10 +164,21 @@ func (l *SQLLedger) importTransaction(txn Transaction, opts ImportOptions) error
 		return nil
 	}
 
+	// Parse knowledge datetime if present
+	var knowledgeTime *time.Time
+	if txn.KnowledgeDateTime != nil {
+		kt, err := txn.KnowledgeDateTime.ToTime()
+		if err == nil {
+			knowledgeTime = &kt
+		}
+	}
+
+	periodAnchor := txn.DateTime.PeriodAnchor
+
 	// Resolve all accounts first
 	type resolvedMovement struct {
-		fromID      int64
-		toID        int64
+		fromID      string
+		toID        string
 		amount      Amount
 		description string
 		pendingID   int64
@@ -94,36 +222,66 @@ func (l *SQLLedger) importTransaction(txn Transaction, opts ImportOptions) error
 		})
 	}
 
+	valueTime, err := txn.DateTime.ToTime()
+	if err != nil {
+		return fmt.Errorf("parse datetime: %w", err)
+	}
+
+	var batchID string
 	if len(resolved) == 1 {
 		rm := resolved[0]
-		if rm.pendingID != 0 {
-			// Use linked movements to set PendingID
-			_, err := l.RecordLinkedMovements([]MovementInput{{
+		if rm.pendingID != 0 || knowledgeTime != nil || periodAnchor != "" {
+			// Use linked movements to set PendingID, KnowledgeTime, or PeriodAnchor
+			bid, err := l.RecordLinkedMovements([]MovementInput{{
 				FromAccountID: rm.fromID,
 				ToAccountID:   rm.toID,
 				Amount:        rm.amount,
 				Description:   rm.description,
 				PendingID:     rm.pendingID,
-			}}, txn.Date)
+				KnowledgeTime: knowledgeTime,
+				PeriodAnchor:  periodAnchor,
+			}}, valueTime)
+			if err != nil {
+				return err
+			}
+			batchID = bid
+		} else {
+			m, err := l.RecordMovement(rm.fromID, rm.toID, rm.amount, valueTime, rm.description)
+			if err != nil {
+				return err
+			}
+			batchID = m.BatchID
+		}
+	} else {
+		// Multiple movements -> linked
+		var inputs []MovementInput
+		for _, rm := range resolved {
+			inputs = append(inputs, MovementInput{
+				FromAccountID: rm.fromID,
+				ToAccountID:   rm.toID,
+				Amount:        rm.amount,
+				Description:   rm.description,
+				PendingID:     rm.pendingID,
+				KnowledgeTime: knowledgeTime,
+				PeriodAnchor:  periodAnchor,
+			})
+		}
+		bid, err := l.RecordLinkedMovements(inputs, valueTime)
+		if err != nil {
 			return err
 		}
-		_, err := l.RecordMovement(rm.fromID, rm.toID, rm.amount, txn.Date, rm.description)
-		return err
+		batchID = bid
 	}
 
-	// Multiple movements → linked
-	var inputs []MovementInput
-	for _, rm := range resolved {
-		inputs = append(inputs, MovementInput{
-			FromAccountID: rm.fromID,
-			ToAccountID:   rm.toID,
-			Amount:        rm.amount,
-			Description:   rm.description,
-			PendingID:     rm.pendingID,
-		})
+	// Store transaction metadata
+	if batchID != "" && len(txn.Metadata) > 0 {
+		for key, value := range txn.Metadata {
+			if err := l.SetMovementMetadata(batchID, key, value); err != nil {
+				return fmt.Errorf("set movement metadata: %w", err)
+			}
+		}
 	}
-	_, err := l.RecordLinkedMovements(inputs, txn.Date)
-	return err
+	return nil
 }
 
 func (l *SQLLedger) resolveAccount(path string, m TextMovement, opts ImportOptions) (*Account, error) {
@@ -134,6 +292,24 @@ func (l *SQLLedger) resolveAccount(path string, m TextMovement, opts ImportOptio
 	if acct != nil {
 		return acct, nil
 	}
+
+	// Check aliases
+	resolved, err := l.ResolveAlias(path)
+	if err != nil {
+		return nil, err
+	}
+	if resolved != "" {
+		acct, err = l.GetAccount(resolved)
+		if err != nil {
+			return nil, err
+		}
+		if acct != nil {
+			return acct, nil
+		}
+		// Alias resolved but account doesn't exist yet — use resolved path for auto-create
+		path = resolved
+	}
+
 	if !opts.AutoCreateAccounts {
 		return nil, fmt.Errorf("account %q not found", path)
 	}

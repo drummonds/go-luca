@@ -6,6 +6,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // MemLedger is a pure Go in-memory Ledger implementation.
@@ -13,11 +15,9 @@ import (
 // Advanced features (interest, import/export, projections) return ErrNotImplemented.
 type MemLedger struct {
 	mu        sync.RWMutex
-	accounts  []*Account          // append-only, index = ID-1
+	accounts  map[string]*Account // id → account
 	byPath    map[string]*Account // fullPath → account
 	movements []*Movement         // append-only
-	nextBatch int64
-	nextMovID int64
 }
 
 // Compile-time interface check.
@@ -26,9 +26,8 @@ var _ Ledger = (*MemLedger)(nil)
 // NewMemLedger creates a new empty in-memory ledger.
 func NewMemLedger() *MemLedger {
 	return &MemLedger{
-		byPath:    make(map[string]*Account),
-		nextBatch: 1,
-		nextMovID: 1,
+		accounts: make(map[string]*Account),
+		byPath:   make(map[string]*Account),
 	}
 }
 
@@ -48,7 +47,7 @@ func (m *MemLedger) CreateAccount(fullPath string, currency string, exponent int
 	}
 
 	a := &Account{
-		ID:                 int64(len(m.accounts) + 1),
+		ID:                 uuid.New().String(),
 		FullPath:           fullPath,
 		Type:               accountType,
 		Product:            product,
@@ -60,7 +59,7 @@ func (m *MemLedger) CreateAccount(fullPath string, currency string, exponent int
 		AnnualInterestRate: annualInterestRate,
 		CreatedAt:          time.Now(),
 	}
-	m.accounts = append(m.accounts, a)
+	m.accounts[a.ID] = a
 	m.byPath[fullPath] = a
 	return a, nil
 }
@@ -72,13 +71,11 @@ func (m *MemLedger) GetAccount(fullPath string) (*Account, error) {
 	return a, nil
 }
 
-func (m *MemLedger) GetAccountByID(id int64) (*Account, error) {
+func (m *MemLedger) GetAccountByID(id string) (*Account, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	if id < 1 || int(id) > len(m.accounts) {
-		return nil, nil
-	}
-	return m.accounts[id-1], nil
+	a := m.accounts[id]
+	return a, nil
 }
 
 func (m *MemLedger) ListAccounts(typeFilter AccountType) ([]*Account, error) {
@@ -97,14 +94,14 @@ func (m *MemLedger) ListAccounts(typeFilter AccountType) ([]*Account, error) {
 	return result, nil
 }
 
-func (m *MemLedger) validateSameExponent(fromID, toID int64) error {
-	from, _ := m.getAccountByIDLocked(fromID)
+func (m *MemLedger) validateSameExponent(fromID, toID string) error {
+	from := m.accounts[fromID]
 	if from == nil {
-		return fmt.Errorf("from account %d not found", fromID)
+		return fmt.Errorf("from account %s not found", fromID)
 	}
-	to, _ := m.getAccountByIDLocked(toID)
+	to := m.accounts[toID]
 	if to == nil {
-		return fmt.Errorf("to account %d not found", toID)
+		return fmt.Errorf("to account %s not found", toID)
 	}
 	if from.Exponent != to.Exponent {
 		return fmt.Errorf("exponent mismatch: from account %q has exponent %d, to account %q has exponent %d",
@@ -113,15 +110,7 @@ func (m *MemLedger) validateSameExponent(fromID, toID int64) error {
 	return nil
 }
 
-// getAccountByIDLocked requires caller to hold at least RLock.
-func (m *MemLedger) getAccountByIDLocked(id int64) (*Account, error) {
-	if id < 1 || int(id) > len(m.accounts) {
-		return nil, nil
-	}
-	return m.accounts[id-1], nil
-}
-
-func (m *MemLedger) RecordMovement(fromAccountID, toAccountID int64, amount Amount, valueTime time.Time, description string) (*Movement, error) {
+func (m *MemLedger) RecordMovement(fromAccountID, toAccountID string, amount Amount, valueTime time.Time, description string) (*Movement, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -129,14 +118,9 @@ func (m *MemLedger) RecordMovement(fromAccountID, toAccountID int64, amount Amou
 		return nil, err
 	}
 
-	batchID := m.nextBatch
-	m.nextBatch++
-	movID := m.nextMovID
-	m.nextMovID++
-
 	mov := &Movement{
-		ID:            movID,
-		BatchID:       batchID,
+		ID:            uuid.New().String(),
+		BatchID:       uuid.New().String(),
 		FromAccountID: fromAccountID,
 		ToAccountID:   toAccountID,
 		Amount:        amount,
@@ -148,9 +132,9 @@ func (m *MemLedger) RecordMovement(fromAccountID, toAccountID int64, amount Amou
 	return mov, nil
 }
 
-func (m *MemLedger) RecordLinkedMovements(movements []MovementInput, valueTime time.Time) (int64, error) {
+func (m *MemLedger) RecordLinkedMovements(movements []MovementInput, valueTime time.Time) (string, error) {
 	if len(movements) == 0 {
-		return 0, fmt.Errorf("no movements to record")
+		return "", fmt.Errorf("no movements to record")
 	}
 
 	m.mu.Lock()
@@ -158,18 +142,15 @@ func (m *MemLedger) RecordLinkedMovements(movements []MovementInput, valueTime t
 
 	for _, mi := range movements {
 		if err := m.validateSameExponent(mi.FromAccountID, mi.ToAccountID); err != nil {
-			return 0, err
+			return "", err
 		}
 	}
 
-	batchID := m.nextBatch
-	m.nextBatch++
+	batchID := uuid.New().String()
 
 	for _, mi := range movements {
-		movID := m.nextMovID
-		m.nextMovID++
 		mov := &Movement{
-			ID:            movID,
+			ID:            uuid.New().String(),
 			BatchID:       batchID,
 			FromAccountID: mi.FromAccountID,
 			ToAccountID:   mi.ToAccountID,
@@ -187,7 +168,7 @@ func (m *MemLedger) RecordLinkedMovements(movements []MovementInput, valueTime t
 	return batchID, nil
 }
 
-func (m *MemLedger) Balance(accountID int64) (Amount, error) {
+func (m *MemLedger) Balance(accountID string) (Amount, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -203,7 +184,7 @@ func (m *MemLedger) Balance(accountID int64) (Amount, error) {
 	return balance, nil
 }
 
-func (m *MemLedger) BalanceAt(accountID int64, at time.Time) (Amount, error) {
+func (m *MemLedger) BalanceAt(accountID string, at time.Time) (Amount, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -222,7 +203,7 @@ func (m *MemLedger) BalanceAt(accountID int64, at time.Time) (Amount, error) {
 	return balance, nil
 }
 
-func (m *MemLedger) DailyBalances(accountID int64, from, to time.Time) ([]DailyBalance, error) {
+func (m *MemLedger) DailyBalances(accountID string, from, to time.Time) ([]DailyBalance, error) {
 	var result []DailyBalance
 	for d := from; !d.After(to); d = d.AddDate(0, 0, 1) {
 		endOfDay := time.Date(d.Year(), d.Month(), d.Day(), 23, 59, 59, 999999999, d.Location())
@@ -240,7 +221,7 @@ func (m *MemLedger) DailyBalances(accountID int64, from, to time.Time) ([]DailyB
 
 // --- Stubbed methods ---
 
-func (m *MemLedger) RecordMovementWithProjections(fromAccountID, toAccountID int64, amount Amount, valueTime time.Time, description string) (*Movement, error) {
+func (m *MemLedger) RecordMovementWithProjections(fromAccountID, toAccountID string, amount Amount, valueTime time.Time, description string) (*Movement, error) {
 	return nil, ErrNotImplemented
 }
 
@@ -248,7 +229,7 @@ func (m *MemLedger) BalanceByPath(pathPrefix string, at time.Time) (Amount, int,
 	return 0, 0, ErrNotImplemented
 }
 
-func (m *MemLedger) GetLiveBalance(accountID int64, date time.Time) (*LiveBalance, error) {
+func (m *MemLedger) GetLiveBalance(accountID string, date time.Time) (*LiveBalance, error) {
 	return nil, ErrNotImplemented
 }
 
@@ -256,7 +237,7 @@ func (m *MemLedger) EnsureInterestAccounts() error {
 	return ErrNotImplemented
 }
 
-func (m *MemLedger) CalculateDailyInterest(accountID int64, date time.Time) (*InterestResult, error) {
+func (m *MemLedger) CalculateDailyInterest(accountID string, date time.Time) (*InterestResult, error) {
 	return nil, ErrNotImplemented
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
 
@@ -16,13 +17,12 @@ func (l *SQLLedger) CreateAccount(fullPath string, currency string, exponent int
 		return nil, fmt.Errorf("parse path: %w", err)
 	}
 
-	var id int64
-	err = l.db.QueryRow(
-		`INSERT INTO accounts (full_path, account_type, product, account_id, address, is_pending, currency, exponent, annual_interest_rate)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		 RETURNING id`,
-		fullPath, string(accountType), product, accountID, address, isPending, currency, exponent, annualInterestRate,
-	).Scan(&id)
+	id := uuid.New().String()
+	_, err = l.db.Exec(
+		`INSERT INTO accounts (id, full_path, account_type, product, account_id, address, is_pending, currency, exponent, annual_interest_rate)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		id, fullPath, string(accountType), product, accountID, address, isPending, currency, exponent, annualInterestRate,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("insert account: %w", err)
 	}
@@ -42,21 +42,37 @@ func (l *SQLLedger) CreateAccount(fullPath string, currency string, exponent int
 	}, nil
 }
 
+// SetAccountOpenedAt sets the opened_at timestamp for an account.
+func (l *SQLLedger) SetAccountOpenedAt(accountID string, openedAt time.Time) error {
+	_, err := l.db.Exec(
+		`UPDATE accounts SET opened_at = $1 WHERE id = $2`,
+		openedAt, accountID,
+	)
+	return err
+}
+
 // scanAccount scans an account row into an Account struct.
-// created_at is stored as TEXT by SQLite, so we scan it as a string and parse it.
+// created_at and opened_at are stored as TEXT by SQLite, so we scan them as strings and parse.
 func scanAccount(scanner interface{ Scan(...any) error }) (*Account, error) {
 	a := &Account{}
 	var typeStr, createdAtStr string
-	err := scanner.Scan(&a.ID, &a.FullPath, &typeStr, &a.Product, &a.AccountID, &a.Address, &a.IsPending, &a.Currency, &a.Exponent, &a.AnnualInterestRate, &createdAtStr)
+	var openedAtStr sql.NullString
+	err := scanner.Scan(&a.ID, &a.FullPath, &typeStr, &a.Product, &a.AccountID, &a.Address, &a.IsPending, &a.Currency, &a.Exponent, &a.AnnualInterestRate, &openedAtStr, &createdAtStr)
 	if err != nil {
 		return nil, err
 	}
 	a.Type = AccountType(typeStr)
-	a.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAtStr)
+	a.CreatedAt, _ = time.Parse("2006-01-02 15:04:05 -0700 MST", createdAtStr)
+	if openedAtStr.Valid && openedAtStr.String != "" {
+		t, err := time.Parse("2006-01-02 15:04:05 -0700 MST", openedAtStr.String)
+		if err == nil {
+			a.OpenedAt = &t
+		}
+	}
 	return a, nil
 }
 
-const accountColumns = `id, full_path, account_type, product, account_id, address, is_pending, currency, exponent, annual_interest_rate, created_at`
+const accountColumns = `id, full_path, account_type, product, account_id, address, is_pending, currency, exponent, annual_interest_rate, opened_at, created_at`
 
 // GetAccount retrieves an account by its full path.
 func (l *SQLLedger) GetAccount(fullPath string) (*Account, error) {
@@ -75,7 +91,7 @@ func (l *SQLLedger) GetAccount(fullPath string) (*Account, error) {
 }
 
 // GetAccountByID retrieves an account by its database ID.
-func (l *SQLLedger) GetAccountByID(id int64) (*Account, error) {
+func (l *SQLLedger) GetAccountByID(id string) (*Account, error) {
 	row := l.db.QueryRow(
 		`SELECT `+accountColumns+`
 		 FROM accounts WHERE id = $1`, id,
@@ -120,30 +136,23 @@ func (l *SQLLedger) ListAccounts(typeFilter AccountType) ([]*Account, error) {
 	return accounts, rows.Err()
 }
 
-// nextBatchID returns the next available batch ID.
-func (l *SQLLedger) nextBatchID(tx *sql.Tx) (int64, error) {
-	var id int64
-	err := tx.QueryRow(`SELECT COALESCE(MAX(batch_id), 0) + 1 FROM movements`).Scan(&id)
-	return id, err
-}
-
 // validateSameExponent checks that both accounts exist and share the same exponent.
 // Movements between accounts with different exponents are not allowed — that
 // is treated as a currency conversion requiring explicit handling.
-func (l *SQLLedger) validateSameExponent(fromAccountID, toAccountID int64) error {
+func (l *SQLLedger) validateSameExponent(fromAccountID, toAccountID string) error {
 	fromAcct, err := l.GetAccountByID(fromAccountID)
 	if err != nil {
 		return fmt.Errorf("get from account: %w", err)
 	}
 	if fromAcct == nil {
-		return fmt.Errorf("from account %d not found", fromAccountID)
+		return fmt.Errorf("from account %s not found", fromAccountID)
 	}
 	toAcct, err := l.GetAccountByID(toAccountID)
 	if err != nil {
 		return fmt.Errorf("get to account: %w", err)
 	}
 	if toAcct == nil {
-		return fmt.Errorf("to account %d not found", toAccountID)
+		return fmt.Errorf("to account %s not found", toAccountID)
 	}
 	if fromAcct.Exponent != toAcct.Exponent {
 		return fmt.Errorf("exponent mismatch: from account %q has exponent %d, to account %q has exponent %d (use currency conversion for cross-exponent transfers)",
@@ -155,7 +164,7 @@ func (l *SQLLedger) validateSameExponent(fromAccountID, toAccountID int64) error
 // RecordMovement inserts a single movement and returns it.
 // Both accounts must have the same exponent; cross-exponent transfers are rejected.
 // amount is an integer in the smallest currency unit at the accounts' shared exponent.
-func (l *SQLLedger) RecordMovement(fromAccountID, toAccountID int64, amount Amount, valueTime time.Time, description string) (*Movement, error) {
+func (l *SQLLedger) RecordMovement(fromAccountID, toAccountID string, amount Amount, valueTime time.Time, description string) (*Movement, error) {
 	if err := l.validateSameExponent(fromAccountID, toAccountID); err != nil {
 		return nil, err
 	}
@@ -166,18 +175,14 @@ func (l *SQLLedger) RecordMovement(fromAccountID, toAccountID int64, amount Amou
 	}
 	defer tx.Rollback()
 
-	batchID, err := l.nextBatchID(tx)
-	if err != nil {
-		return nil, fmt.Errorf("next batch id: %w", err)
-	}
+	batchID := uuid.New().String()
+	movID := uuid.New().String()
 
-	var id int64
-	err = tx.QueryRow(
-		`INSERT INTO movements (batch_id, from_account_id, to_account_id, amount, value_time, description)
-		 VALUES ($1, $2, $3, $4, $5, $6)
-		 RETURNING id`,
-		batchID, fromAccountID, toAccountID, amount, valueTime, description,
-	).Scan(&id)
+	_, err = tx.Exec(
+		`INSERT INTO movements (id, batch_id, from_account_id, to_account_id, amount, value_time, description)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		movID, batchID, fromAccountID, toAccountID, amount, valueTime, description,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("insert movement: %w", err)
 	}
@@ -187,7 +192,7 @@ func (l *SQLLedger) RecordMovement(fromAccountID, toAccountID int64, amount Amou
 	}
 
 	return &Movement{
-		ID:            id,
+		ID:            movID,
 		BatchID:       batchID,
 		FromAccountID: fromAccountID,
 		ToAccountID:   toAccountID,
@@ -201,44 +206,100 @@ func (l *SQLLedger) RecordMovement(fromAccountID, toAccountID int64, amount Amou
 // RecordLinkedMovements inserts multiple movements sharing the same batch_id
 // within a single database transaction.
 // All account pairs must share the same exponent.
-func (l *SQLLedger) RecordLinkedMovements(movements []MovementInput, valueTime time.Time) (int64, error) {
+func (l *SQLLedger) RecordLinkedMovements(movements []MovementInput, valueTime time.Time) (string, error) {
 	if len(movements) == 0 {
-		return 0, fmt.Errorf("no movements to record")
+		return "", fmt.Errorf("no movements to record")
 	}
 
 	for _, m := range movements {
 		if err := l.validateSameExponent(m.FromAccountID, m.ToAccountID); err != nil {
-			return 0, err
+			return "", err
 		}
 	}
 
 	tx, err := l.db.Begin()
 	if err != nil {
-		return 0, fmt.Errorf("begin tx: %w", err)
+		return "", fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback()
 
-	batchID, err := l.nextBatchID(tx)
-	if err != nil {
-		return 0, fmt.Errorf("next batch id: %w", err)
-	}
+	batchID := uuid.New().String()
 
 	for _, m := range movements {
-		_, err := tx.Exec(
-			`INSERT INTO movements (batch_id, from_account_id, to_account_id, amount, code, ledger, pending_id, user_data_64, value_time, description)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-			batchID, m.FromAccountID, m.ToAccountID, m.Amount, m.Code, m.Ledger, m.PendingID, m.UserData64, valueTime, m.Description,
-		)
-		if err != nil {
-			return 0, fmt.Errorf("insert linked movement: %w", err)
+		movID := uuid.New().String()
+		if m.KnowledgeTime != nil {
+			_, err := tx.Exec(
+				`INSERT INTO movements (id, batch_id, from_account_id, to_account_id, amount, code, ledger, pending_id, user_data_64, value_time, knowledge_time, description, period_anchor)
+				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+				movID, batchID, m.FromAccountID, m.ToAccountID, m.Amount, m.Code, m.Ledger, m.PendingID, m.UserData64, valueTime, *m.KnowledgeTime, m.Description, m.PeriodAnchor,
+			)
+			if err != nil {
+				return "", fmt.Errorf("insert linked movement: %w", err)
+			}
+		} else {
+			_, err := tx.Exec(
+				`INSERT INTO movements (id, batch_id, from_account_id, to_account_id, amount, code, ledger, pending_id, user_data_64, value_time, description, period_anchor)
+				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+				movID, batchID, m.FromAccountID, m.ToAccountID, m.Amount, m.Code, m.Ledger, m.PendingID, m.UserData64, valueTime, m.Description, m.PeriodAnchor,
+			)
+			if err != nil {
+				return "", fmt.Errorf("insert linked movement: %w", err)
+			}
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("commit: %w", err)
+		return "", fmt.Errorf("commit: %w", err)
 	}
 
 	return batchID, nil
+}
+
+// AddMovementToBatch appends a movement to an existing batch (transaction).
+// The movement shares the batch's value_time.
+func (l *SQLLedger) AddMovementToBatch(batchID string, input MovementInput) (*Movement, error) {
+	if err := l.validateSameExponent(input.FromAccountID, input.ToAccountID); err != nil {
+		return nil, err
+	}
+
+	// Query any existing movement in the batch to get value_time
+	var valueTimeStr string
+	err := l.db.QueryRow(
+		`SELECT value_time FROM movements WHERE batch_id = $1 LIMIT 1`,
+		batchID,
+	).Scan(&valueTimeStr)
+	if err != nil {
+		return nil, fmt.Errorf("batch not found")
+	}
+	valueTime, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", valueTimeStr)
+
+	movID := uuid.New().String()
+	_, err = l.db.Exec(
+		`INSERT INTO movements (id, batch_id, from_account_id, to_account_id, amount, code, ledger, pending_id, user_data_64, value_time, description, period_anchor)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+		movID, batchID, input.FromAccountID, input.ToAccountID, input.Amount,
+		input.Code, input.Ledger, input.PendingID, input.UserData64,
+		valueTime, input.Description, input.PeriodAnchor,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("insert movement: %w", err)
+	}
+
+	return &Movement{
+		ID:            movID,
+		BatchID:       batchID,
+		FromAccountID: input.FromAccountID,
+		ToAccountID:   input.ToAccountID,
+		Amount:        input.Amount,
+		Code:          input.Code,
+		Ledger:        input.Ledger,
+		PendingID:     input.PendingID,
+		UserData64:    input.UserData64,
+		ValueTime:     valueTime,
+		KnowledgeTime: time.Now(),
+		Description:   input.Description,
+		PeriodAnchor:  input.PeriodAnchor,
+	}, nil
 }
 
 // endOfDayTime returns 23:59:59.999999999 for the date of t.
@@ -248,7 +309,7 @@ func endOfDayTime(t time.Time) time.Time {
 
 // txBalance computes the balance for accountID within a transaction,
 // seeing all writes made so far in that tx.
-func txBalance(tx *sql.Tx, accountID int64, at time.Time) (Amount, error) {
+func txBalance(tx *sql.Tx, accountID string, at time.Time) (Amount, error) {
 	var balance Amount
 	err := tx.QueryRow(
 		`SELECT
@@ -262,7 +323,7 @@ func txBalance(tx *sql.Tx, accountID int64, at time.Time) (Amount, error) {
 // RecordMovementWithProjections records a movement and, in the same transaction,
 // pre-computes interest accrual and the end-of-day live balance for the
 // to-account. This avoids separate end-of-day batch processing.
-func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID int64, amount Amount, valueTime time.Time, description string) (*Movement, error) {
+func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID string, amount Amount, valueTime time.Time, description string) (*Movement, error) {
 	if err := l.validateSameExponent(fromAccountID, toAccountID); err != nil {
 		return nil, err
 	}
@@ -275,7 +336,7 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID int
 	// Look up interest accounts before starting the transaction.
 	// With :memory: SQLite, l.db queries during an open tx may hit
 	// a different connection (and thus a different empty database).
-	var expenseAcctID int64
+	var expenseAcctID string
 	if toAcct.AnnualInterestRate != 0 {
 		expenseAcct, err := l.GetAccount("Expense:Interest")
 		if err != nil || expenseAcct == nil {
@@ -290,19 +351,15 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID int
 	}
 	defer tx.Rollback()
 
-	batchID, err := l.nextBatchID(tx)
-	if err != nil {
-		return nil, fmt.Errorf("next batch id: %w", err)
-	}
+	batchID := uuid.New().String()
+	movID := uuid.New().String()
 
 	// 1. Insert the real movement (code=0)
-	var movID int64
-	err = tx.QueryRow(
-		`INSERT INTO movements (batch_id, from_account_id, to_account_id, amount, code, value_time, description)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7)
-		 RETURNING id`,
-		batchID, fromAccountID, toAccountID, amount, CodeNormal, valueTime, description,
-	).Scan(&movID)
+	_, err = tx.Exec(
+		`INSERT INTO movements (id, batch_id, from_account_id, to_account_id, amount, code, value_time, description)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		movID, batchID, fromAccountID, toAccountID, amount, CodeNormal, valueTime, description,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("insert movement: %w", err)
 	}
@@ -340,9 +397,9 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID int
 
 			desc := fmt.Sprintf("Daily interest for %s", valueTime.Format("2006-01-02"))
 			_, err = tx.Exec(
-				`INSERT INTO movements (batch_id, from_account_id, to_account_id, amount, code, value_time, description)
-				 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-				batchID, expenseAcctID, toAccountID, interestAmount, CodeInterestAccrual, eod, desc,
+				`INSERT INTO movements (id, batch_id, from_account_id, to_account_id, amount, code, value_time, description)
+				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+				uuid.New().String(), batchID, expenseAcctID, toAccountID, interestAmount, CodeInterestAccrual, eod, desc,
 			)
 			if err != nil {
 				return nil, fmt.Errorf("insert interest accrual: %w", err)
@@ -367,9 +424,9 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID int
 	}
 
 	_, err = tx.Exec(
-		`INSERT INTO balances_live (account_id, balance_date, balance)
-		 VALUES ($1, $2, $3)`,
-		toAccountID, balanceDate, finalBalance,
+		`INSERT INTO balances_live (id, account_id, balance_date, balance)
+		 VALUES ($1, $2, $3, $4)`,
+		uuid.New().String(), toAccountID, balanceDate, finalBalance,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("insert live balance: %w", err)
@@ -394,7 +451,7 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID int
 
 // GetLiveBalance reads the pre-computed end-of-day balance from balances_live.
 // Returns nil if no balance exists for the given account and date.
-func (l *SQLLedger) GetLiveBalance(accountID int64, date time.Time) (*LiveBalance, error) {
+func (l *SQLLedger) GetLiveBalance(accountID string, date time.Time) (*LiveBalance, error) {
 	balanceDate := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 	var lb LiveBalance
 	var dateStr string
@@ -410,6 +467,6 @@ func (l *SQLLedger) GetLiveBalance(accountID int64, date time.Time) (*LiveBalanc
 	if err != nil {
 		return nil, fmt.Errorf("get live balance: %w", err)
 	}
-	lb.BalanceDate, _ = time.Parse("2006-01-02 15:04:05", dateStr)
+	lb.BalanceDate, _ = time.Parse("2006-01-02 15:04:05 -0700 MST", dateStr)
 	return &lb, nil
 }

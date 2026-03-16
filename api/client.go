@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 	"time"
 
 	"github.com/drummonds/go-luca"
@@ -60,9 +59,9 @@ func (c *Client) GetAccount(fullPath string) (*luca.Account, error) {
 	return &acct, nil
 }
 
-func (c *Client) GetAccountByID(id int64) (*luca.Account, error) {
+func (c *Client) GetAccountByID(id string) (*luca.Account, error) {
 	var acct luca.Account
-	err := c.get("/accounts/get-by-id", url.Values{"id": {strconv.FormatInt(id, 10)}}, &acct)
+	err := c.get("/accounts/get-by-id", url.Values{"id": {id}}, &acct)
 	if isNotFound(err) {
 		return nil, nil
 	}
@@ -87,7 +86,7 @@ func (c *Client) ListAccounts(typeFilter luca.AccountType) ([]*luca.Account, err
 
 // --- movement methods ---
 
-func (c *Client) RecordMovement(fromAccountID, toAccountID int64, amount luca.Amount, valueTime time.Time, description string) (*luca.Movement, error) {
+func (c *Client) RecordMovement(fromAccountID, toAccountID string, amount luca.Amount, valueTime time.Time, description string) (*luca.Movement, error) {
 	var mov luca.Movement
 	err := c.post("/movements/record", recordMovementReq{
 		FromAccountID: fromAccountID,
@@ -102,33 +101,33 @@ func (c *Client) RecordMovement(fromAccountID, toAccountID int64, amount luca.Am
 	return &mov, nil
 }
 
-func (c *Client) RecordLinkedMovements(movements []luca.MovementInput, valueTime time.Time) (int64, error) {
+func (c *Client) RecordLinkedMovements(movements []luca.MovementInput, valueTime time.Time) (string, error) {
 	var resp batchIDResp
 	err := c.post("/movements/record-linked", recordLinkedReq{
 		Movements: movements,
 		ValueTime: valueTime.Format(time.RFC3339),
 	}, &resp)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	return resp.BatchID, nil
 }
 
 // --- balance methods ---
 
-func (c *Client) Balance(accountID int64) (luca.Amount, error) {
+func (c *Client) Balance(accountID string) (luca.Amount, error) {
 	var resp balanceResp
-	err := c.get("/balances/balance", url.Values{"account_id": {strconv.FormatInt(accountID, 10)}}, &resp)
+	err := c.get("/balances/balance", url.Values{"account_id": {accountID}}, &resp)
 	if err != nil {
 		return 0, err
 	}
 	return resp.Balance, nil
 }
 
-func (c *Client) BalanceAt(accountID int64, at time.Time) (luca.Amount, error) {
+func (c *Client) BalanceAt(accountID string, at time.Time) (luca.Amount, error) {
 	var resp balanceResp
 	err := c.get("/balances/balance-at", url.Values{
-		"account_id": {strconv.FormatInt(accountID, 10)},
+		"account_id": {accountID},
 		"at":         {at.Format(time.RFC3339)},
 	}, &resp)
 	if err != nil {
@@ -137,10 +136,10 @@ func (c *Client) BalanceAt(accountID int64, at time.Time) (luca.Amount, error) {
 	return resp.Balance, nil
 }
 
-func (c *Client) DailyBalances(accountID int64, from, to time.Time) ([]luca.DailyBalance, error) {
+func (c *Client) DailyBalances(accountID string, from, to time.Time) ([]luca.DailyBalance, error) {
 	var dailies []luca.DailyBalance
 	err := c.get("/balances/daily", url.Values{
-		"account_id": {strconv.FormatInt(accountID, 10)},
+		"account_id": {accountID},
 		"from":       {from.Format(time.RFC3339)},
 		"to":         {to.Format(time.RFC3339)},
 	}, &dailies)
@@ -150,9 +149,91 @@ func (c *Client) DailyBalances(accountID int64, from, to time.Time) ([]luca.Dail
 	return dailies, nil
 }
 
-// --- stubbed methods (not exposed via API yet) ---
+// --- new endpoint stubs (not on Ledger interface) ---
 
-func (c *Client) RecordMovementWithProjections(fromAccountID, toAccountID int64, amount luca.Amount, valueTime time.Time, description string) (*luca.Movement, error) {
+// AddMovementToBatch appends a movement to an existing batch via the API.
+func (c *Client) AddMovementToBatch(batchID string, input luca.MovementInput) (*luca.Movement, error) {
+	return nil, luca.ErrNotImplemented
+}
+
+// SearchMovements searches for movements matching the given query.
+func (c *Client) SearchMovements(q luca.SearchQuery) ([]luca.MovementWithPaths, error) {
+	return nil, luca.ErrNotImplemented
+}
+
+// MovementEvents returns movement events for a time range.
+func (c *Client) MovementEvents(from, to time.Time) ([]MovementEvent, error) {
+	return nil, luca.ErrNotImplemented
+}
+
+// BalanceAsOf returns the bitemporal balance.
+func (c *Client) BalanceAsOf(accountID string, valueTime, knowledgeTime time.Time) (luca.Amount, error) {
+	return 0, luca.ErrNotImplemented
+}
+
+// FirstMovementTime returns the earliest movement time.
+func (c *Client) FirstMovementTime(accountID string) (time.Time, error) {
+	return time.Time{}, luca.ErrNotImplemented
+}
+
+// LastMovementTime returns the latest movement time.
+func (c *Client) LastMovementTime(accountID string) (time.Time, error) {
+	return time.Time{}, luca.ErrNotImplemented
+}
+
+// ListOptions returns all options.
+func (c *Client) ListOptions() ([]luca.Option, error) {
+	return nil, luca.ErrNotImplemented
+}
+
+// UpsertOption upserts an option.
+func (c *Client) UpsertOption(key, value string) error {
+	return luca.ErrNotImplemented
+}
+
+// ListCommodities returns all commodities.
+func (c *Client) ListCommodities() ([]luca.CommodityDef, error) {
+	return nil, luca.ErrNotImplemented
+}
+
+// ListAliases returns all aliases.
+func (c *Client) ListAliases() ([]luca.AliasDef, error) {
+	return nil, luca.ErrNotImplemented
+}
+
+// ListCustomers returns all customers.
+func (c *Client) ListCustomers() ([]luca.CustomerDef, error) {
+	return nil, luca.ErrNotImplemented
+}
+
+// ListDataPoints returns all data points.
+func (c *Client) ListDataPoints(paramName string) ([]luca.DBDataPoint, error) {
+	return nil, luca.ErrNotImplemented
+}
+
+// SetDataPoint sets a data point value.
+func (c *Client) SetDataPoint(paramName string, valueTime time.Time, value string) error {
+	return luca.ErrNotImplemented
+}
+
+// GetDataPointAt returns the data point value at a given time.
+func (c *Client) GetDataPointAt(paramName string, at time.Time) (*luca.DataPointValue, error) {
+	return nil, luca.ErrNotImplemented
+}
+
+// ImportText imports goluca text via the API.
+func (c *Client) ImportText(text string) error {
+	return luca.ErrNotImplemented
+}
+
+// ExportText exports goluca text via the API.
+func (c *Client) ExportText() (string, error) {
+	return "", luca.ErrNotImplemented
+}
+
+// --- stubbed Ledger methods (not exposed via API yet) ---
+
+func (c *Client) RecordMovementWithProjections(fromAccountID, toAccountID string, amount luca.Amount, valueTime time.Time, description string) (*luca.Movement, error) {
 	return nil, luca.ErrNotImplemented
 }
 
@@ -160,7 +241,7 @@ func (c *Client) BalanceByPath(pathPrefix string, at time.Time) (luca.Amount, in
 	return 0, 0, luca.ErrNotImplemented
 }
 
-func (c *Client) GetLiveBalance(accountID int64, date time.Time) (*luca.LiveBalance, error) {
+func (c *Client) GetLiveBalance(accountID string, date time.Time) (*luca.LiveBalance, error) {
 	return nil, luca.ErrNotImplemented
 }
 
@@ -168,7 +249,7 @@ func (c *Client) EnsureInterestAccounts() error {
 	return luca.ErrNotImplemented
 }
 
-func (c *Client) CalculateDailyInterest(accountID int64, date time.Time) (*luca.InterestResult, error) {
+func (c *Client) CalculateDailyInterest(accountID string, date time.Time) (*luca.InterestResult, error) {
 	return nil, luca.ErrNotImplemented
 }
 

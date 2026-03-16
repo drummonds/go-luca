@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	_ "github.com/drummonds/go-postgres"
 )
 
@@ -13,7 +15,7 @@ import (
 // can inspect or recreate the schema.
 const SchemaSQL = `
 CREATE TABLE IF NOT EXISTS accounts (
-    id SERIAL PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     full_path VARCHAR(500) NOT NULL UNIQUE,
     account_type VARCHAR(50) NOT NULL,
     product VARCHAR(100) NOT NULL DEFAULT '',
@@ -23,14 +25,15 @@ CREATE TABLE IF NOT EXISTS accounts (
     currency VARCHAR(10) NOT NULL DEFAULT 'GBP',
     exponent INTEGER NOT NULL DEFAULT -2,
     annual_interest_rate NUMERIC(10,6) NOT NULL DEFAULT 0,
+    opened_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS movements (
-    id SERIAL PRIMARY KEY,
-    batch_id INTEGER NOT NULL,
-    from_account_id INTEGER NOT NULL,
-    to_account_id INTEGER NOT NULL,
+    id TEXT PRIMARY KEY,
+    batch_id TEXT NOT NULL,
+    from_account_id TEXT NOT NULL,
+    to_account_id TEXT NOT NULL,
     amount BIGINT NOT NULL,
     code SMALLINT NOT NULL DEFAULT 0,
     ledger INTEGER NOT NULL DEFAULT 0,
@@ -38,7 +41,8 @@ CREATE TABLE IF NOT EXISTS movements (
     user_data_64 BIGINT NOT NULL DEFAULT 0,
     value_time TIMESTAMP NOT NULL,
     knowledge_time TIMESTAMP DEFAULT NOW(),
-    description VARCHAR(500) NOT NULL DEFAULT ''
+    description VARCHAR(500) NOT NULL DEFAULT '',
+    period_anchor VARCHAR(1) NOT NULL DEFAULT ''
 );
 
 CREATE INDEX IF NOT EXISTS idx_movements_from ON movements(from_account_id, value_time);
@@ -47,14 +51,79 @@ CREATE INDEX IF NOT EXISTS idx_movements_batch ON movements(batch_id);
 CREATE INDEX IF NOT EXISTS idx_movements_code ON movements(to_account_id, code, value_time);
 
 CREATE TABLE IF NOT EXISTS balances_live (
-    id SERIAL PRIMARY KEY,
-    account_id INTEGER NOT NULL,
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
     balance_date TIMESTAMP NOT NULL,
     balance BIGINT NOT NULL,
     updated_at TIMESTAMP DEFAULT NOW()
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_balances_live_unique
     ON balances_live(account_id, balance_date);
+
+CREATE TABLE IF NOT EXISTS options (
+    id TEXT PRIMARY KEY,
+    key VARCHAR(200) NOT NULL UNIQUE,
+    value VARCHAR(500) NOT NULL DEFAULT '',
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS commodities (
+    id TEXT PRIMARY KEY,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    datetime TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS commodity_metadata (
+    id TEXT PRIMARY KEY,
+    commodity_id TEXT NOT NULL,
+    key VARCHAR(200) NOT NULL,
+    value VARCHAR(500) NOT NULL DEFAULT ''
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_commodity_metadata_unique ON commodity_metadata(commodity_id, key);
+
+CREATE TABLE IF NOT EXISTS aliases (
+    id TEXT PRIMARY KEY,
+    name VARCHAR(200) NOT NULL UNIQUE,
+    account_path VARCHAR(500) NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS customers (
+    id TEXT PRIMARY KEY,
+    name VARCHAR(200) NOT NULL UNIQUE,
+    account_path VARCHAR(500) NOT NULL DEFAULT '',
+    max_balance_amount VARCHAR(50) NOT NULL DEFAULT '',
+    max_balance_commodity VARCHAR(50) NOT NULL DEFAULT '',
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS customer_metadata (
+    id TEXT PRIMARY KEY,
+    customer_id TEXT NOT NULL,
+    key VARCHAR(200) NOT NULL,
+    value VARCHAR(500) NOT NULL DEFAULT ''
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_metadata_unique ON customer_metadata(customer_id, key);
+
+CREATE TABLE IF NOT EXISTS data_points (
+    id TEXT PRIMARY KEY,
+    value_time TIMESTAMP NOT NULL,
+    knowledge_time TIMESTAMP DEFAULT NOW(),
+    param_name VARCHAR(200) NOT NULL,
+    param_type VARCHAR(20) NOT NULL DEFAULT 'string',
+    param_value VARCHAR(500) NOT NULL DEFAULT '',
+    created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_data_points_name_time ON data_points(param_name, value_time);
+
+CREATE TABLE IF NOT EXISTS movement_metadata (
+    id TEXT PRIMARY KEY,
+    batch_id TEXT NOT NULL,
+    key VARCHAR(200) NOT NULL,
+    value VARCHAR(500) NOT NULL DEFAULT ''
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_movement_metadata_unique ON movement_metadata(batch_id, key);
 `
 
 // createSchema executes the DDL statements to create tables and indexes.
@@ -90,6 +159,7 @@ func insertSampleData(db *sql.DB) error {
 
 	// Sample accounts covering all five types
 	accounts := []struct {
+		id           string
 		fullPath     string
 		accountType  string
 		product      string
@@ -100,20 +170,20 @@ func insertSampleData(db *sql.DB) error {
 		exponent     int
 		interestRate float64
 	}{
-		{"Asset:Bank:Current:Main", "Asset", "Bank", "Current", "Main", false, "GBP", -2, 0},
-		{"Asset:Bank:Savings:Main", "Asset", "Bank", "Savings", "Main", false, "GBP", -2, 0.0425},
-		{"Liability:Mortgage:Home:Main", "Liability", "Mortgage", "Home", "Main", false, "GBP", -2, 0.045},
-		{"Equity:OpeningBalances", "Equity", "OpeningBalances", "", "", false, "GBP", -2, 0},
-		{"Income:Salary", "Income", "Salary", "", "", false, "GBP", -2, 0},
-		{"Expense:Groceries", "Expense", "Groceries", "", "", false, "GBP", -2, 0},
-		{"Expense:Interest", "Expense", "Interest", "", "", false, "GBP", -2, 0},
+		{uuid.New().String(), "Asset:Bank:Current:Main", "Asset", "Bank", "Current", "Main", false, "GBP", -2, 0},
+		{uuid.New().String(), "Asset:Bank:Savings:Main", "Asset", "Bank", "Savings", "Main", false, "GBP", -2, 0.0425},
+		{uuid.New().String(), "Liability:Mortgage:Home:Main", "Liability", "Mortgage", "Home", "Main", false, "GBP", -2, 0.045},
+		{uuid.New().String(), "Equity:OpeningBalances", "Equity", "OpeningBalances", "", "", false, "GBP", -2, 0},
+		{uuid.New().String(), "Income:Salary", "Income", "Salary", "", "", false, "GBP", -2, 0},
+		{uuid.New().String(), "Expense:Groceries", "Expense", "Groceries", "", "", false, "GBP", -2, 0},
+		{uuid.New().String(), "Expense:Interest", "Expense", "Interest", "", "", false, "GBP", -2, 0},
 	}
 
 	for _, a := range accounts {
 		_, err := db.Exec(
-			`INSERT INTO accounts (full_path, account_type, product, account_id, address, is_pending, currency, exponent, annual_interest_rate)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-			a.fullPath, a.accountType, a.product, a.accountID, a.address, a.isPending, a.currency, a.exponent, a.interestRate,
+			`INSERT INTO accounts (id, full_path, account_type, product, account_id, address, is_pending, currency, exponent, annual_interest_rate, opened_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+			a.id, a.fullPath, a.accountType, a.product, a.accountID, a.address, a.isPending, a.currency, a.exponent, a.interestRate, nil,
 		)
 		if err != nil {
 			return fmt.Errorf("insert account %s: %w", a.fullPath, err)
@@ -121,10 +191,13 @@ func insertSampleData(db *sql.DB) error {
 	}
 
 	// Sample movements showing different patterns
-	movements := []struct {
-		batchID     int
-		fromID      int
-		toID        int
+	linkedBatch := uuid.New().String() // shared by linked movements
+
+	type sampleMovement struct {
+		id          string
+		batchID     string
+		fromID      string
+		toID        string
 		amount      Amount
 		code        int16
 		ledger      int32
@@ -132,20 +205,21 @@ func insertSampleData(db *sql.DB) error {
 		userData64  int64
 		valueTime   time.Time
 		description string
-	}{
-		{1, 4, 1, 250000, 0, 0, 0, 0, today, "Opening balance"},
-		{2, 5, 1, 350000, 0, 0, 0, 0, today, "March salary"},
-		{3, 1, 6, 4523, 0, 0, 0, 0, today, "Weekly shop"},
-		{3, 1, 6, 1299, 0, 0, 0, 0, today, "Coffee and snacks"},
-		{4, 1, 2, 100000, 0, 0, 0, 0, today, "Transfer to savings"},
-		{5, 7, 2, 12, 1, 0, 0, 0, today, "Daily interest for savings"},
+	}
+	movements := []sampleMovement{
+		{uuid.New().String(), uuid.New().String(), accounts[3].id, accounts[0].id, 250000, 0, 0, 0, 0, today, "Opening balance"},
+		{uuid.New().String(), uuid.New().String(), accounts[4].id, accounts[0].id, 350000, 0, 0, 0, 0, today, "March salary"},
+		{uuid.New().String(), linkedBatch, accounts[0].id, accounts[5].id, 4523, 0, 0, 0, 0, today, "Weekly shop"},
+		{uuid.New().String(), linkedBatch, accounts[0].id, accounts[5].id, 1299, 0, 0, 0, 0, today, "Coffee and snacks"},
+		{uuid.New().String(), uuid.New().String(), accounts[0].id, accounts[1].id, 100000, 0, 0, 0, 0, today, "Transfer to savings"},
+		{uuid.New().String(), uuid.New().String(), accounts[6].id, accounts[1].id, 12, 1, 0, 0, 0, today, "Daily interest for savings"},
 	}
 
 	for _, m := range movements {
 		_, err := db.Exec(
-			`INSERT INTO movements (batch_id, from_account_id, to_account_id, amount, code, ledger, pending_id, user_data_64, value_time, description)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-			m.batchID, m.fromID, m.toID, m.amount, m.code, m.ledger, m.pendingID, m.userData64, m.valueTime, m.description,
+			`INSERT INTO movements (id, batch_id, from_account_id, to_account_id, amount, code, ledger, pending_id, user_data_64, value_time, description)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+			m.id, m.batchID, m.fromID, m.toID, m.amount, m.code, m.ledger, m.pendingID, m.userData64, m.valueTime, m.description,
 		)
 		if err != nil {
 			return fmt.Errorf("insert movement: %w", err)
@@ -154,8 +228,8 @@ func insertSampleData(db *sql.DB) error {
 
 	// Sample live balance
 	_, err := db.Exec(
-		`INSERT INTO balances_live (account_id, balance_date, balance) VALUES ($1, $2, $3)`,
-		2, today, 100012,
+		`INSERT INTO balances_live (id, account_id, balance_date, balance) VALUES ($1, $2, $3, $4)`,
+		uuid.New().String(), accounts[1].id, today, 100012,
 	)
 	if err != nil {
 		return fmt.Errorf("insert live balance: %w", err)

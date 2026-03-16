@@ -13,8 +13,8 @@ func TestMemLedgerCreateAccount(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
-	if acct.ID != 1 {
-		t.Errorf("ID = %d, want 1", acct.ID)
+	if acct.ID == "" {
+		t.Error("expected non-empty ID")
 	}
 	if acct.FullPath != "Asset:Cash" {
 		t.Errorf("FullPath = %q, want %q", acct.FullPath, "Asset:Cash")
@@ -72,7 +72,7 @@ func TestMemLedgerGetAccountByID(t *testing.T) {
 		t.Errorf("FullPath = %q, want %q", acct.FullPath, "Asset:Cash")
 	}
 
-	acct, _ = m.GetAccountByID(999)
+	acct, _ = m.GetAccountByID("nonexistent-uuid")
 	if acct != nil {
 		t.Errorf("expected nil for non-existent ID")
 	}
@@ -107,8 +107,8 @@ func TestMemLedgerRecordMovement(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RecordMovement: %v", err)
 	}
-	if mov.ID == 0 {
-		t.Error("expected non-zero movement ID")
+	if mov.ID == "" {
+		t.Error("expected non-empty movement ID")
 	}
 	if mov.Amount != 20000 {
 		t.Errorf("Amount = %d, want 20000", mov.Amount)
@@ -143,8 +143,8 @@ func TestMemLedgerRecordLinkedMovements(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RecordLinkedMovements: %v", err)
 	}
-	if batchID == 0 {
-		t.Error("expected non-zero batch ID")
+	if batchID == "" {
+		t.Error("expected non-empty batch ID")
 	}
 }
 
@@ -246,13 +246,13 @@ func TestMemLedgerStubs(t *testing.T) {
 	if err := m.EnsureInterestAccounts(); err != ErrNotImplemented {
 		t.Errorf("EnsureInterestAccounts = %v, want ErrNotImplemented", err)
 	}
-	if _, err := m.RecordMovementWithProjections(0, 0, 0, time.Now(), ""); err != ErrNotImplemented {
+	if _, err := m.RecordMovementWithProjections("", "", 0, time.Now(), ""); err != ErrNotImplemented {
 		t.Errorf("RecordMovementWithProjections = %v, want ErrNotImplemented", err)
 	}
 	if _, _, err := m.BalanceByPath("", time.Now()); err != ErrNotImplemented {
 		t.Errorf("BalanceByPath = %v, want ErrNotImplemented", err)
 	}
-	if _, err := m.GetLiveBalance(0, time.Now()); err != ErrNotImplemented {
+	if _, err := m.GetLiveBalance("", time.Now()); err != ErrNotImplemented {
 		t.Errorf("GetLiveBalance = %v, want ErrNotImplemented", err)
 	}
 	if _, err := m.ListMovements(); err != ErrNotImplemented {
