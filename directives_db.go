@@ -146,8 +146,8 @@ func (l *SQLLedger) ListCommodities() ([]CommodityDef, error) {
 			Metadata: metaByID[cr.id],
 		}
 		if cr.datetimeStr.Valid && cr.datetimeStr.String != "" {
-			t, err := time.Parse("2006-01-02 15:04:05 -0700 MST", cr.datetimeStr.String)
-			if err == nil {
+			t := parseDBTime(cr.datetimeStr.String)
+			if !t.IsZero() {
 				dt := DateTimeFromTime(t)
 				cd.DateTime = &dt
 			}

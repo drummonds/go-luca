@@ -56,8 +56,8 @@ func (l *SQLLedger) Events(from, to time.Time) ([]Event, error) {
 		if err != nil {
 			return nil, fmt.Errorf("scan movement: %w", err)
 		}
-		mwp.ValueTime, _ = time.Parse("2006-01-02 15:04:05 -0700 MST", valueTimeStr)
-		mwp.KnowledgeTime, _ = time.Parse("2006-01-02 15:04:05 -0700 MST", knowledgeTimeStr)
+		mwp.ValueTime = parseDBTime(valueTimeStr)
+		mwp.KnowledgeTime = parseDBTime(knowledgeTimeStr)
 		m := mwp // copy for pointer
 		events = append(events, Event{
 			Type:     EventMovement,
@@ -88,8 +88,8 @@ func (l *SQLLedger) Events(from, to time.Time) ([]Event, error) {
 		if err := dpRows.Scan(&vtStr, &ktStr, &dp.ParamName, &paramType, &paramValue); err != nil {
 			return nil, fmt.Errorf("scan data point: %w", err)
 		}
-		dp.ValueTime, _ = time.Parse("2006-01-02 15:04:05 -0700 MST", vtStr)
-		dp.KnowledgeTime, _ = time.Parse("2006-01-02 15:04:05 -0700 MST", ktStr)
+		dp.ValueTime = parseDBTime(vtStr)
+		dp.KnowledgeTime = parseDBTime(ktStr)
 		dp.Value = DataPointValue{Type: paramType, Raw: paramValue}
 		d := dp // copy for pointer
 		events = append(events, Event{

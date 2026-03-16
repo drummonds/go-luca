@@ -173,7 +173,7 @@ func (l *SQLLedger) FirstMovementTime(accountID string) (time.Time, error) {
 	if timeStr == "" {
 		return time.Time{}, nil
 	}
-	t, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", timeStr)
+	t := parseDBTime(timeStr)
 	return t, nil
 }
 
@@ -198,7 +198,7 @@ func (l *SQLLedger) LastMovementTime(accountID string) (time.Time, error) {
 	if timeStr == "" {
 		return time.Time{}, nil
 	}
-	t, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", timeStr)
+	t := parseDBTime(timeStr)
 	return t, nil
 }
 

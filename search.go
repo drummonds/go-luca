@@ -149,8 +149,8 @@ func (l *SQLLedger) SearchMovements(q SearchQuery) ([]MovementWithPaths, error) 
 		if err != nil {
 			return nil, fmt.Errorf("scan movement: %w", err)
 		}
-		mwp.ValueTime, _ = time.Parse("2006-01-02 15:04:05 -0700 MST", valueTimeStr)
-		mwp.KnowledgeTime, _ = time.Parse("2006-01-02 15:04:05 -0700 MST", knowledgeTimeStr)
+		mwp.ValueTime = parseDBTime(valueTimeStr)
+		mwp.KnowledgeTime = parseDBTime(knowledgeTimeStr)
 		result = append(result, mwp)
 	}
 	return result, rows.Err()

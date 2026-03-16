@@ -9,6 +9,17 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// parseDBTime parses a timestamp string from SQLite. The ncruces/go-sqlite3
+// driver returns RFC3339 ("2006-01-02T00:00:00Z"); older modernc returned
+// "2006-01-02 15:04:05 -0700 MST". Try both.
+func parseDBTime(s string) time.Time {
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t
+	}
+	t, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", s)
+	return t
+}
+
 // CreateAccount inserts a new account and returns it with the generated ID.
 // fullPath is parsed to extract Type, Product, AccountID, and Address components.
 func (l *SQLLedger) CreateAccount(fullPath string, currency string, exponent int, annualInterestRate float64) (*Account, error) {
@@ -62,10 +73,10 @@ func scanAccount(scanner interface{ Scan(...any) error }) (*Account, error) {
 		return nil, err
 	}
 	a.Type = AccountType(typeStr)
-	a.CreatedAt, _ = time.Parse("2006-01-02 15:04:05 -0700 MST", createdAtStr)
+	a.CreatedAt = parseDBTime(createdAtStr)
 	if openedAtStr.Valid && openedAtStr.String != "" {
-		t, err := time.Parse("2006-01-02 15:04:05 -0700 MST", openedAtStr.String)
-		if err == nil {
+		t := parseDBTime(openedAtStr.String)
+		if !t.IsZero() {
 			a.OpenedAt = &t
 		}
 	}
@@ -271,7 +282,7 @@ func (l *SQLLedger) AddMovementToBatch(batchID string, input MovementInput) (*Mo
 	if err != nil {
 		return nil, fmt.Errorf("batch not found")
 	}
-	valueTime, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", valueTimeStr)
+	valueTime := parseDBTime(valueTimeStr)
 
 	movID := uuid.New().String()
 	_, err = l.db.Exec(
@@ -467,6 +478,6 @@ func (l *SQLLedger) GetLiveBalance(accountID string, date time.Time) (*LiveBalan
 	if err != nil {
 		return nil, fmt.Errorf("get live balance: %w", err)
 	}
-	lb.BalanceDate, _ = time.Parse("2006-01-02 15:04:05 -0700 MST", dateStr)
+	lb.BalanceDate = parseDBTime(dateStr)
 	return &lb, nil
 }

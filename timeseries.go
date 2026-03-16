@@ -139,8 +139,8 @@ func (l *SQLLedger) DataPointRange(paramName string, from, to time.Time) ([]DBDa
 		if err := rows.Scan(&vtStr, &ktStr, &dp.ParamName, &paramType, &paramValue); err != nil {
 			return nil, fmt.Errorf("scan data point: %w", err)
 		}
-		dp.ValueTime, _ = time.Parse("2006-01-02 15:04:05 -0700 MST", vtStr)
-		dp.KnowledgeTime, _ = time.Parse("2006-01-02 15:04:05 -0700 MST", ktStr)
+		dp.ValueTime = parseDBTime(vtStr)
+		dp.KnowledgeTime = parseDBTime(ktStr)
 		dp.Value = DataPointValue{Type: paramType, Raw: paramValue}
 		result = append(result, dp)
 	}
@@ -160,7 +160,7 @@ func (l *SQLLedger) FirstDataPointTime(paramName string) (time.Time, error) {
 	if err != nil {
 		return time.Time{}, fmt.Errorf("first data point time: %w", err)
 	}
-	t, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", vtStr)
+	t := parseDBTime(vtStr)
 	return t, nil
 }
 
@@ -177,7 +177,7 @@ func (l *SQLLedger) LastDataPointTime(paramName string) (time.Time, error) {
 	if err != nil {
 		return time.Time{}, fmt.Errorf("last data point time: %w", err)
 	}
-	t, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", vtStr)
+	t := parseDBTime(vtStr)
 	return t, nil
 }
 
@@ -199,8 +199,8 @@ func (l *SQLLedger) ListDataPoints() ([]DBDataPoint, error) {
 		if err := rows.Scan(&vtStr, &ktStr, &dp.ParamName, &paramType, &paramValue); err != nil {
 			return nil, fmt.Errorf("scan data point: %w", err)
 		}
-		dp.ValueTime, _ = time.Parse("2006-01-02 15:04:05 -0700 MST", vtStr)
-		dp.KnowledgeTime, _ = time.Parse("2006-01-02 15:04:05 -0700 MST", ktStr)
+		dp.ValueTime = parseDBTime(vtStr)
+		dp.KnowledgeTime = parseDBTime(ktStr)
 		dp.Value = DataPointValue{Type: paramType, Raw: paramValue}
 		result = append(result, dp)
 	}

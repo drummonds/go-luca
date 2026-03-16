@@ -3,7 +3,6 @@ package luca
 import (
 	"fmt"
 	"io"
-	"time"
 )
 
 // MovementWithPaths extends Movement with resolved account paths for export.
@@ -43,8 +42,8 @@ func (l *SQLLedger) ListMovements() ([]MovementWithPaths, error) {
 		if err != nil {
 			return nil, fmt.Errorf("scan movement: %w", err)
 		}
-		mwp.ValueTime, _ = time.Parse("2006-01-02 15:04:05 -0700 MST", valueTimeStr)
-		mwp.KnowledgeTime, _ = time.Parse("2006-01-02 15:04:05 -0700 MST", knowledgeTimeStr)
+		mwp.ValueTime = parseDBTime(valueTimeStr)
+		mwp.KnowledgeTime = parseDBTime(knowledgeTimeStr)
 		result = append(result, mwp)
 	}
 	return result, rows.Err()
