@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.17] - 2026-03-16
+
+ - refactor to goluca syntax
+
 ### WTrefactor — DB layer catch-up (2026-03-16)
 
 #### Phase 1: UUID Primary Keys + Account Path Utilities
