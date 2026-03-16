@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.18] - 2026-03-16
+
+ - fix using rfc3339 format timestamp
+
 ## [0.2.17] - 2026-03-16
 
  - refactor to goluca syntax
