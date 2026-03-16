@@ -113,9 +113,9 @@ type Movement struct {
 	ToAccountID   string
 	Amount        Amount
 	Code          string // ISO 20022 BTC mnemonic (DOMAIN:FAMILY:SUBFAMILY)
-	Ledger        int32 // partition identifier (TB-inspired)
-	PendingID     int64 // two-phase post/void; 0 = N/A (TB-inspired)
-	UserData64    int64 // external reference (TB-inspired)
+	Ledger        int32  // partition identifier (TB-inspired)
+	PendingID     int64  // two-phase post/void; 0 = N/A (TB-inspired)
+	UserData64    int64  // external reference (TB-inspired)
 	ValueTime     time.Time
 	KnowledgeTime time.Time
 	Description   string
