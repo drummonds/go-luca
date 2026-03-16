@@ -63,7 +63,7 @@ func (l *SQLLedger) SetDataPoint(paramName string, valueTime time.Time, knowledg
 	if knowledgeTime != nil {
 		_, err := l.db.Exec(
 			`INSERT INTO data_points (id, value_time, knowledge_time, param_name, param_type, param_value) VALUES ($1, $2, $3, $4, $5, $6)`,
-			id, valueTime, *knowledgeTime, paramName, value.Type, value.Raw,
+			id, utc(valueTime), utc(*knowledgeTime), paramName, value.Type, value.Raw,
 		)
 		if err != nil {
 			return fmt.Errorf("insert data point: %w", err)
@@ -71,7 +71,7 @@ func (l *SQLLedger) SetDataPoint(paramName string, valueTime time.Time, knowledg
 	} else {
 		_, err := l.db.Exec(
 			`INSERT INTO data_points (id, value_time, param_name, param_type, param_value) VALUES ($1, $2, $3, $4, $5)`,
-			id, valueTime, paramName, value.Type, value.Raw,
+			id, utc(valueTime), paramName, value.Type, value.Raw,
 		)
 		if err != nil {
 			return fmt.Errorf("insert data point: %w", err)
@@ -88,7 +88,7 @@ func (l *SQLLedger) GetDataPoint(paramName string, at time.Time) (*DataPointValu
 		 WHERE param_name = $1 AND value_time <= $2
 		 ORDER BY value_time DESC, knowledge_time DESC
 		 LIMIT 1`,
-		paramName, at,
+		paramName, utc(at),
 	).Scan(&paramType, &paramValue)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -107,7 +107,7 @@ func (l *SQLLedger) GetDataPointAsOf(paramName string, valueTime, knowledgeTime 
 		 WHERE param_name = $1 AND value_time <= $2 AND knowledge_time <= $3
 		 ORDER BY value_time DESC, knowledge_time DESC
 		 LIMIT 1`,
-		paramName, valueTime, knowledgeTime,
+		paramName, utc(valueTime), utc(knowledgeTime),
 	).Scan(&paramType, &paramValue)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -125,7 +125,7 @@ func (l *SQLLedger) DataPointRange(paramName string, from, to time.Time) ([]DBDa
 		 FROM data_points
 		 WHERE param_name = $1 AND value_time >= $2 AND value_time <= $3
 		 ORDER BY value_time, knowledge_time`,
-		paramName, from, to,
+		paramName, utc(from), utc(to),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("data point range: %w", err)

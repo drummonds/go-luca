@@ -149,6 +149,107 @@ func TestRunDailyInterestMultipleAccounts(t *testing.T) {
 	}
 }
 
+// TestIssue1_BalanceAtCrossTimezone demonstrates the root cause of issue #1:
+// ncruces/go-sqlite3 stores time.Time as RFC3339 text with timezone offsets
+// preserved. SQLite's <= operator does string comparison, which gives wrong
+// results when stored and queried timestamps have different timezone offsets.
+//
+// Example: a deposit at 00:30 BST on June 16 (= 23:30 UTC June 15) is stored
+// as "2026-06-16T00:30:00+01:00". Querying with endOfDay UTC June 15
+// ("2026-06-15T23:59:59.999999999Z") misses it because "06-16" > "06-15"
+// in string comparison, even though the actual instant is earlier.
+func TestIssue1_BalanceAtCrossTimezone(t *testing.T) {
+	bst := time.FixedZone("BST", 1*60*60) // UTC+1
+
+	tests := []struct {
+		name       string
+		depositTZ  *time.Location
+		queryTZ    *time.Location
+		depositDay int
+		depositH   int
+	}{
+		// Deposit at 00:30 BST June 16 = 23:30 UTC June 15.
+		// Stored: "2026-06-16T00:30:00+01:00", query: "2026-06-15T23:59:59...Z"
+		// String "16" > "15" → movement excluded → balance = 0. BUG.
+		{"midnight_crossing_bst_utc", bst, time.UTC, 16, 0},
+		// Same-day deposit, cross-tz — works by coincidence (same date string).
+		{"same_day_bst_utc", bst, time.UTC, 15, 14},
+		// Same timezone — always works.
+		{"same_tz_utc", time.UTC, time.UTC, 15, 10},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := newTestLedger(t)
+			equity, _ := l.CreateAccount("Equity:Capital", "GBP", -2, 0)
+			savings, _ := l.CreateAccount("Liability:Savings:0001", "GBP", -2, 0)
+
+			depositTime := time.Date(2026, 6, tt.depositDay, tt.depositH, 30, 0, 0, tt.depositTZ)
+			l.RecordMovement(equity.ID, savings.ID, 100000, depositTime, "deposit")
+
+			// Query balance at end of June 15 in query timezone
+			endOfDay := time.Date(2026, 6, 15, 23, 59, 59, 999999999, tt.queryTZ)
+
+			bal, err := l.BalanceAt(savings.ID, endOfDay)
+			if err != nil {
+				t.Fatalf("BalanceAt: %v", err)
+			}
+			if bal != 100000 {
+				var storedTime string
+				l.db.QueryRow("SELECT value_time FROM movements LIMIT 1").Scan(&storedTime)
+				t.Errorf("BalanceAt = %d, want 100000\n"+
+					"  stored:  %q\n"+
+					"  query:   %q\n"+
+					"  deposit UTC: %s",
+					bal, storedTime,
+					endOfDay.Format(time.RFC3339Nano),
+					depositTime.UTC().Format(time.RFC3339Nano))
+			}
+		})
+	}
+}
+
+// TestIssue1_InterestCrossTimezone is the end-to-end reproduction of issue #1:
+// CalculateDailyInterest returns 0 when movements were recorded in a non-UTC
+// timezone and interest is computed in UTC (or vice versa), and the timezone
+// offset causes the date component of the RFC3339 string to differ.
+func TestIssue1_InterestCrossTimezone(t *testing.T) {
+	bst := time.FixedZone("BST", 1*60*60) // UTC+1
+	l := newTestLedger(t)
+	l.EnsureInterestAccounts()
+
+	equity, _ := l.CreateAccount("Equity:Capital", "GBP", -2, 0)
+	// £100,000 at 3.65% annual = ~£10/day = 1000 pence/day
+	savings, _ := l.CreateAccount("Liability:Savings:0001", "GBP", -2, 0.0365)
+
+	// Deposit at 00:30 BST on June 16 = 23:30 UTC on June 15.
+	// This simulates a real-world app recording time.Now() in BST near midnight.
+	depositTime := time.Date(2026, 6, 16, 0, 30, 0, 0, bst)
+	_, err := l.RecordMovement(equity.ID, savings.ID, 10_000_000, depositTime, "Deposit £100,000")
+	if err != nil {
+		t.Fatalf("RecordMovement: %v", err)
+	}
+
+	// Interest batch job uses UTC dates — common in server environments.
+	interestDate := time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)
+	result, err := l.CalculateDailyInterest(savings.ID, interestDate)
+	if err != nil {
+		t.Fatalf("CalculateDailyInterest: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected result, got nil")
+	}
+	if result.InterestAmount == 0 {
+		var storedTime string
+		l.db.QueryRow("SELECT value_time FROM movements LIMIT 1").Scan(&storedTime)
+		t.Errorf("InterestAmount = 0, want ~1000 (issue #1: returns 0 on ncruces backend)\n"+
+			"  stored value_time: %q (BST midnight = UTC 23:30 June 15)\n"+
+			"  endOfDay query:    %q",
+			storedTime,
+			time.Date(2026, 6, 15, 23, 59, 59, 999999999, time.UTC).Format(time.RFC3339Nano))
+	}
+}
+
 func TestRunDailyInterestNoInterestBearingAccounts(t *testing.T) {
 	l := newTestLedger(t)
 	l.EnsureInterestAccounts()

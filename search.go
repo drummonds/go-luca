@@ -52,13 +52,13 @@ func searchQueryBuilder(q SearchQuery) (string, string, []any) {
 	if q.FromTime != nil {
 		p := nextParam()
 		conditions = append(conditions, fmt.Sprintf("m.value_time >= %s", p))
-		args = append(args, *q.FromTime)
+		args = append(args, utc(*q.FromTime))
 	}
 
 	if q.ToTime != nil {
 		p := nextParam()
 		conditions = append(conditions, fmt.Sprintf("m.value_time <= %s", p))
-		args = append(args, *q.ToTime)
+		args = append(args, utc(*q.ToTime))
 	}
 
 	if q.Description != "" {

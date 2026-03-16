@@ -36,7 +36,7 @@ func (l *SQLLedger) Events(from, to time.Time) ([]Event, error) {
 		 JOIN accounts ta ON ta.id = m.to_account_id
 		 WHERE m.value_time >= $1 AND m.value_time <= $2
 		 ORDER BY m.value_time, m.id`,
-		from, to,
+		utc(from), utc(to),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("query movements: %w", err)
@@ -75,7 +75,7 @@ func (l *SQLLedger) Events(from, to time.Time) ([]Event, error) {
 		 FROM data_points
 		 WHERE value_time >= $1 AND value_time <= $2
 		 ORDER BY value_time`,
-		from, to,
+		utc(from), utc(to),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("query data points: %w", err)

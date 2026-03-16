@@ -36,7 +36,7 @@ func (l *SQLLedger) BalanceAt(accountID string, at time.Time) (Amount, error) {
 		`SELECT
 			COALESCE((SELECT SUM(amount) FROM movements WHERE to_account_id = $1 AND value_time <= $2), 0)
 		  - COALESCE((SELECT SUM(amount) FROM movements WHERE from_account_id = $3 AND value_time <= $4), 0)`,
-		accountID, at, accountID, at,
+		accountID, utc(at), accountID, utc(at),
 	).Scan(&balance)
 	if err != nil {
 		return 0, fmt.Errorf("query balance at: %w", err)
@@ -84,7 +84,7 @@ func (l *SQLLedger) BalanceByPath(pathPrefix string, at time.Time) (Amount, int,
 			 JOIN accounts a ON (a.id = m.from_account_id OR a.id = m.to_account_id)
 			 WHERE a.full_path LIKE $1
 			   AND m.value_time <= $2`,
-			pattern, at,
+			pattern, utc(at),
 		).Scan(&balance)
 		if err != nil {
 			return 0, 0, fmt.Errorf("query balance by path: %w", err)
@@ -102,7 +102,7 @@ func (l *SQLLedger) BalanceByPath(pathPrefix string, at time.Time) (Amount, int,
 		 JOIN accounts fa ON fa.id = m.from_account_id
 		 JOIN accounts ta ON ta.id = m.to_account_id
 		 WHERE a.full_path LIKE $1 AND m.value_time <= $2`,
-		pattern, at,
+		pattern, utc(at),
 	)
 	if err != nil {
 		return 0, 0, fmt.Errorf("query balance by path: %w", err)
@@ -144,7 +144,7 @@ func (l *SQLLedger) BalanceAsOf(accountID string, valueTime, knowledgeTime time.
 		`SELECT
 			COALESCE((SELECT SUM(amount) FROM movements WHERE to_account_id = $1 AND value_time <= $2 AND knowledge_time <= $3), 0)
 		  - COALESCE((SELECT SUM(amount) FROM movements WHERE from_account_id = $4 AND value_time <= $5 AND knowledge_time <= $6), 0)`,
-		accountID, valueTime, knowledgeTime, accountID, valueTime, knowledgeTime,
+		accountID, utc(valueTime), utc(knowledgeTime), accountID, utc(valueTime), utc(knowledgeTime),
 	).Scan(&balance)
 	if err != nil {
 		return 0, fmt.Errorf("query balance as of: %w", err)

@@ -9,6 +9,11 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// utc normalises a time to UTC so that SQLite TEXT comparisons (<=, >=, ORDER BY)
+// on RFC3339 timestamps work correctly. Without this, different timezone offsets
+// produce strings that sort by offset characters rather than actual instant.
+func utc(t time.Time) time.Time { return t.UTC() }
+
 // parseDBTime parses a timestamp string from SQLite. The ncruces/go-sqlite3
 // driver returns RFC3339 ("2006-01-02T00:00:00Z"); older modernc returned
 // "2006-01-02 15:04:05 -0700 MST". Try both.
@@ -57,7 +62,7 @@ func (l *SQLLedger) CreateAccount(fullPath string, currency string, exponent int
 func (l *SQLLedger) SetAccountOpenedAt(accountID string, openedAt time.Time) error {
 	_, err := l.db.Exec(
 		`UPDATE accounts SET opened_at = $1 WHERE id = $2`,
-		openedAt, accountID,
+		utc(openedAt), accountID,
 	)
 	return err
 }
@@ -192,7 +197,7 @@ func (l *SQLLedger) RecordMovement(fromAccountID, toAccountID string, amount Amo
 	_, err = tx.Exec(
 		`INSERT INTO movements (id, batch_id, from_account_id, to_account_id, amount, value_time, description)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		movID, batchID, fromAccountID, toAccountID, amount, valueTime, description,
+		movID, batchID, fromAccountID, toAccountID, amount, utc(valueTime), description,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("insert movement: %w", err)
@@ -242,7 +247,7 @@ func (l *SQLLedger) RecordLinkedMovements(movements []MovementInput, valueTime t
 			_, err := tx.Exec(
 				`INSERT INTO movements (id, batch_id, from_account_id, to_account_id, amount, code, ledger, pending_id, user_data_64, value_time, knowledge_time, description, period_anchor)
 				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-				movID, batchID, m.FromAccountID, m.ToAccountID, m.Amount, m.Code, m.Ledger, m.PendingID, m.UserData64, valueTime, *m.KnowledgeTime, m.Description, m.PeriodAnchor,
+				movID, batchID, m.FromAccountID, m.ToAccountID, m.Amount, m.Code, m.Ledger, m.PendingID, m.UserData64, utc(valueTime), utc(*m.KnowledgeTime), m.Description, m.PeriodAnchor,
 			)
 			if err != nil {
 				return "", fmt.Errorf("insert linked movement: %w", err)
@@ -251,7 +256,7 @@ func (l *SQLLedger) RecordLinkedMovements(movements []MovementInput, valueTime t
 			_, err := tx.Exec(
 				`INSERT INTO movements (id, batch_id, from_account_id, to_account_id, amount, code, ledger, pending_id, user_data_64, value_time, description, period_anchor)
 				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-				movID, batchID, m.FromAccountID, m.ToAccountID, m.Amount, m.Code, m.Ledger, m.PendingID, m.UserData64, valueTime, m.Description, m.PeriodAnchor,
+				movID, batchID, m.FromAccountID, m.ToAccountID, m.Amount, m.Code, m.Ledger, m.PendingID, m.UserData64, utc(valueTime), m.Description, m.PeriodAnchor,
 			)
 			if err != nil {
 				return "", fmt.Errorf("insert linked movement: %w", err)
@@ -290,7 +295,7 @@ func (l *SQLLedger) AddMovementToBatch(batchID string, input MovementInput) (*Mo
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
 		movID, batchID, input.FromAccountID, input.ToAccountID, input.Amount,
 		input.Code, input.Ledger, input.PendingID, input.UserData64,
-		valueTime, input.Description, input.PeriodAnchor,
+		utc(valueTime), input.Description, input.PeriodAnchor,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("insert movement: %w", err)
@@ -326,7 +331,7 @@ func txBalance(tx *sql.Tx, accountID string, at time.Time) (Amount, error) {
 		`SELECT
 			COALESCE((SELECT SUM(amount) FROM movements WHERE to_account_id = $1 AND value_time <= $2), 0)
 		  - COALESCE((SELECT SUM(amount) FROM movements WHERE from_account_id = $3 AND value_time <= $4), 0)`,
-		accountID, at, accountID, at,
+		accountID, utc(at), accountID, utc(at),
 	).Scan(&balance)
 	return balance, err
 }
@@ -369,7 +374,7 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID str
 	_, err = tx.Exec(
 		`INSERT INTO movements (id, batch_id, from_account_id, to_account_id, amount, code, value_time, description)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-		movID, batchID, fromAccountID, toAccountID, amount, CodeNormal, valueTime, description,
+		movID, batchID, fromAccountID, toAccountID, amount, CodeNormal, utc(valueTime), description,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("insert movement: %w", err)
@@ -399,8 +404,8 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID str
 				 WHERE to_account_id = $1 AND code = $2
 				   AND value_time >= $3 AND value_time <= $4`,
 				toAccountID, CodeInterestAccrual,
-				time.Date(valueTime.Year(), valueTime.Month(), valueTime.Day(), 0, 0, 0, 0, valueTime.Location()),
-				eod,
+				utc(time.Date(valueTime.Year(), valueTime.Month(), valueTime.Day(), 0, 0, 0, 0, valueTime.Location())),
+				utc(eod),
 			)
 			if err != nil {
 				return nil, fmt.Errorf("delete old accrual: %w", err)
@@ -410,7 +415,7 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID str
 			_, err = tx.Exec(
 				`INSERT INTO movements (id, batch_id, from_account_id, to_account_id, amount, code, value_time, description)
 				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-				uuid.New().String(), batchID, expenseAcctID, toAccountID, interestAmount, CodeInterestAccrual, eod, desc,
+				uuid.New().String(), batchID, expenseAcctID, toAccountID, interestAmount, CodeInterestAccrual, utc(eod), desc,
 			)
 			if err != nil {
 				return nil, fmt.Errorf("insert interest accrual: %w", err)
@@ -422,7 +427,7 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID str
 	balanceDate := time.Date(valueTime.Year(), valueTime.Month(), valueTime.Day(), 0, 0, 0, 0, valueTime.Location())
 	_, err = tx.Exec(
 		`DELETE FROM balances_live WHERE account_id = $1 AND balance_date = $2`,
-		toAccountID, balanceDate,
+		toAccountID, utc(balanceDate),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("delete old live balance: %w", err)
@@ -437,7 +442,7 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID str
 	_, err = tx.Exec(
 		`INSERT INTO balances_live (id, account_id, balance_date, balance)
 		 VALUES ($1, $2, $3, $4)`,
-		uuid.New().String(), toAccountID, balanceDate, finalBalance,
+		uuid.New().String(), toAccountID, utc(balanceDate), finalBalance,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("insert live balance: %w", err)
@@ -470,7 +475,7 @@ func (l *SQLLedger) GetLiveBalance(accountID string, date time.Time) (*LiveBalan
 		`SELECT account_id, balance_date, balance
 		 FROM balances_live
 		 WHERE account_id = $1 AND balance_date = $2`,
-		accountID, balanceDate,
+		accountID, utc(balanceDate),
 	).Scan(&lb.AccountID, &dateStr, &lb.Balance)
 	if err == sql.ErrNoRows {
 		return nil, nil
