@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.21] - 2026-03-18
+
+ - Update CHANGELOG for v0.2.20
+
 ## [0.2.20] - 2026-03-16
 
  - Adding movement codes
