@@ -3,7 +3,7 @@ module github.com/drummonds/go-luca
 go 1.25.3
 
 require (
-	github.com/drummonds/go-postgres v0.4.0
+	github.com/drummonds/go-postgres v0.4.1
 	github.com/drummonds/gotreesitter v0.6.1
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.8.0
