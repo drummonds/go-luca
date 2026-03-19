@@ -3,6 +3,7 @@ package luca
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -126,10 +127,34 @@ CREATE TABLE IF NOT EXISTS movement_metadata (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_movement_metadata_unique ON movement_metadata(batch_id, key);
 `
 
+// execStatements splits a multi-statement SQL string on semicolons and
+// executes each non-empty statement individually. This is required because
+// the pglike (SQLite) driver does not support multiple statements in a
+// single Exec call.
+func execStatements(db *sql.DB, sql string) error {
+	for _, stmt := range strings.Split(sql, ";") {
+		stmt = strings.TrimSpace(stmt)
+		if stmt == "" {
+			continue
+		}
+		if _, err := db.Exec(stmt); err != nil {
+			return fmt.Errorf("%s: %w", firstLine(stmt), err)
+		}
+	}
+	return nil
+}
+
+// firstLine returns the first line of s, for use in error messages.
+func firstLine(s string) string {
+	if i := strings.IndexByte(s, '\n'); i >= 0 {
+		return s[:i]
+	}
+	return s
+}
+
 // createSchema executes the DDL statements to create tables and indexes.
 func (l *SQLLedger) createSchema() error {
-	_, err := l.db.Exec(SchemaSQL)
-	return err
+	return execStatements(l.db, SchemaSQL)
 }
 
 // CreateSchemaDB creates a pglike (SQLite) database at path with the go-luca
@@ -140,7 +165,7 @@ func CreateSchemaDB(path string) (*sql.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
-	if _, err := db.Exec(SchemaSQL); err != nil {
+	if err := execStatements(db, SchemaSQL); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("create schema: %w", err)
 	}

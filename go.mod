@@ -1,9 +1,9 @@
 module github.com/drummonds/go-luca
 
-go 1.25.3
+go 1.26.0
 
 require (
-	github.com/drummonds/go-postgres v0.4.1
+	github.com/drummonds/go-postgres v0.5.0
 	github.com/drummonds/gotreesitter v0.6.1
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.8.0
@@ -24,3 +24,5 @@ require (
 )
 
 replace github.com/drummonds/gotreesitter v0.6.1 => /home/hum3/nibble/gotreesitter
+
+replace github.com/ncruces/go-sqlite3 v0.32.0 => github.com/ncruces/go-sqlite3 v0.30.6-0.20260318175627-361fdc52faa5
