@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.22] - 2026-03-19
+
+ - Merge branch 'task/WTdbupdate'
+
 ## [0.2.21] - 2026-03-18
 
  - Update CHANGELOG for v0.2.20
