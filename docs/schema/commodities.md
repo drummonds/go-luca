@@ -2,6 +2,9 @@
 
 ## Description
 
+Currency/commodity definitions. Each commodity has a unique code and an exponent that defines the precision of amounts (e.g. -2 for pence). Accounts reference commodities via foreign key.  
+
+
 <details>
 <summary><strong>Table Definition</strong></summary>
 
@@ -9,6 +12,7 @@
 CREATE TABLE commodities (
     id TEXT PRIMARY KEY,
     code TEXT NOT NULL UNIQUE,
+    exponent INTEGER NOT NULL DEFAULT -2,
     datetime TEXT,
     created_at TEXT DEFAULT (datetime('now'))
 )
@@ -18,12 +22,13 @@ CREATE TABLE commodities (
 
 ## Columns
 
-| Name       | Type | Default         | Nullable | Children | Parents | Comment |
-| ---------- | ---- | --------------- | -------- | -------- | ------- | ------- |
-| code       | TEXT |                 | false    |          |         |         |
-| created_at | TEXT | datetime('now') | true     |          |         |         |
-| datetime   | TEXT |                 | true     |          |         |         |
-| id         | TEXT |                 | true     |          |         |         |
+| Name       | Type    | Default         | Nullable | Children                                    | Parents | Comment                                                          |
+| ---------- | ------- | --------------- | -------- | ------------------------------------------- | ------- | ---------------------------------------------------------------- |
+| code       | TEXT    |                 | false    | [accounts](accounts.md)                     |         | Unique commodity code (e.g. GBP, USD, BTC)                       |
+| created_at | TEXT    | datetime('now') | true     |                                             |         | Timestamp when the commodity was created                         |
+| datetime   | TEXT    |                 | true     |                                             |         | Optional date associated with the commodity definition           |
+| exponent   | INTEGER | -2              | false    |                                             |         | Decimal exponent for amount precision (-2 = pence, -8 = satoshi) |
+| id         | TEXT    |                 | true     | [commodity_metadata](commodity_metadata.md) |         | UUID primary key                                                 |
 
 ## Constraints
 
@@ -45,12 +50,39 @@ CREATE TABLE commodities (
 ```mermaid
 erDiagram
 
+"accounts" }o--|| "commodities" : "FOREIGN KEY (commodity) REFERENCES commodities (code) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+"accounts" }o--|| "commodities" : "accounts.commodity -> commodities.code"
+"commodity_metadata" }o--|| "commodities" : "FOREIGN KEY (commodity_id) REFERENCES commodities (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+"commodity_metadata" }o--|| "commodities" : "commodity_metadata.commodity_id -> commodities.id"
 
 "commodities" {
-  TEXT code ""
-  TEXT created_at ""
-  TEXT datetime ""
-  TEXT id PK ""
+  TEXT code "Unique commodity code (e.g. GBP, USD, BTC)"
+  TEXT created_at "Timestamp when the commodity was created"
+  TEXT datetime "Optional date associated with the commodity definition"
+  INTEGER exponent "Decimal exponent for amount precision (-2 = pence, -8 = satoshi)"
+  TEXT id PK "UUID primary key"
+}
+"accounts" {
+  TEXT account_id "Specific account identifier within the product"
+  TEXT account_type "One of: Asset, Liability, Equity, Income, Expense"
+  TEXT address "Sub-address within the account (e.g. branch). 'Pending' marks pending accounts"
+  TEXT commodity FK "Commodity code (FK to commodities.code)"
+  TEXT created_at "Timestamp when the account was created"
+  TEXT customer_id FK "Optional owning customer (FK to customers.id). A customer may have many accounts"
+  TEXT full_path "Hierarchical account path, e.g. Asset:Bank:Current:Main"
+  TEXT gross_interest_rate "Gross annual interest rate as a decimal (0.045 = 4.5%)"
+  TEXT id PK "UUID primary key"
+  INTEGER interest_accumulator "Sub-unit fractions at extended precision (method-dependent)"
+  TEXT interest_method "Interest calculation method (e.g. simple_daily)"
+  INTEGER is_pending "True if this is a pending/suspense account"
+  TEXT opened_at "When the account was opened"
+  TEXT product "Product category within the account type"
+}
+"commodity_metadata" {
+  TEXT commodity_id FK "FK to commodities.id"
+  TEXT id PK "UUID primary key"
+  TEXT key "Metadata key"
+  TEXT value "Metadata value"
 }
 ```
 

@@ -53,10 +53,12 @@ func (l *SQLLedger) BalanceAt(accountID string, at time.Time) (Amount, error) {
 func (l *SQLLedger) BalanceByPath(pathPrefix string, at time.Time) (Amount, int, error) {
 	pattern := pathPrefix + "%"
 
-	// Get the reporting exponent (min of all matched accounts)
+	// Get the reporting exponent (min of all matched accounts' commodity exponent)
 	var reportExponent int
 	err := l.db.QueryRow(
-		`SELECT COALESCE(MIN(exponent), -2) FROM accounts WHERE full_path LIKE $1`,
+		`SELECT COALESCE(MIN(c.exponent), -2)
+		 FROM accounts a JOIN commodities c ON c.code = a.commodity
+		 WHERE a.full_path LIKE $1`,
 		pattern,
 	).Scan(&reportExponent)
 	if err != nil {
@@ -66,7 +68,9 @@ func (l *SQLLedger) BalanceByPath(pathPrefix string, at time.Time) (Amount, int,
 	// Check if all matched accounts share the same exponent (fast path)
 	var maxExponent int
 	err = l.db.QueryRow(
-		`SELECT COALESCE(MAX(exponent), -2) FROM accounts WHERE full_path LIKE $1`,
+		`SELECT COALESCE(MAX(c.exponent), -2)
+		 FROM accounts a JOIN commodities c ON c.code = a.commodity
+		 WHERE a.full_path LIKE $1`,
 		pattern,
 	).Scan(&maxExponent)
 	if err != nil {
@@ -96,11 +100,13 @@ func (l *SQLLedger) BalanceByPath(pathPrefix string, at time.Time) (Amount, int,
 	// Since movements only happen between same-exponent accounts,
 	// the movement exponent equals both accounts' exponent.
 	rows, err := l.db.Query(
-		`SELECT m.amount, a.id, m.from_account_id, m.to_account_id, fa.exponent, ta.exponent
+		`SELECT m.amount, a.id, m.from_account_id, m.to_account_id, fc.exponent, tc.exponent
 		 FROM movements m
 		 JOIN accounts a ON (a.id = m.from_account_id OR a.id = m.to_account_id)
 		 JOIN accounts fa ON fa.id = m.from_account_id
+		 JOIN commodities fc ON fc.code = fa.commodity
 		 JOIN accounts ta ON ta.id = m.to_account_id
+		 JOIN commodities tc ON tc.code = ta.commodity
 		 WHERE a.full_path LIKE $1 AND m.value_time <= $2`,
 		pattern, utc(at),
 	)

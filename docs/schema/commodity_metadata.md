@@ -2,13 +2,15 @@
 
 ## Description
 
+Key-value metadata for commodities.
+
 <details>
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
 CREATE TABLE commodity_metadata (
     id TEXT PRIMARY KEY,
-    commodity_id TEXT NOT NULL,
+    commodity_id TEXT NOT NULL REFERENCES commodities(id),
     key TEXT NOT NULL,
     value TEXT NOT NULL DEFAULT ''
 )
@@ -18,19 +20,20 @@ CREATE TABLE commodity_metadata (
 
 ## Columns
 
-| Name         | Type | Default | Nullable | Children | Parents | Comment |
-| ------------ | ---- | ------- | -------- | -------- | ------- | ------- |
-| commodity_id | TEXT |         | false    |          |         |         |
-| id           | TEXT |         | true     |          |         |         |
-| key          | TEXT |         | false    |          |         |         |
-| value        | TEXT | ''      | false    |          |         |         |
+| Name         | Type | Default | Nullable | Children | Parents                       | Comment              |
+| ------------ | ---- | ------- | -------- | -------- | ----------------------------- | -------------------- |
+| commodity_id | TEXT |         | false    |          | [commodities](commodities.md) | FK to commodities.id |
+| id           | TEXT |         | true     |          |                               | UUID primary key     |
+| key          | TEXT |         | false    |          |                               | Metadata key         |
+| value        | TEXT | ''      | false    |          |                               | Metadata value       |
 
 ## Constraints
 
-| Name                                  | Type        | Definition       |
-| ------------------------------------- | ----------- | ---------------- |
-| id                                    | PRIMARY KEY | PRIMARY KEY (id) |
-| sqlite_autoindex_commodity_metadata_1 | PRIMARY KEY | PRIMARY KEY (id) |
+| Name                                  | Type        | Definition                                                                                                |
+| ------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------- |
+| - (Foreign key ID: 0)                 | FOREIGN KEY | FOREIGN KEY (commodity_id) REFERENCES commodities (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE |
+| id                                    | PRIMARY KEY | PRIMARY KEY (id)                                                                                          |
+| sqlite_autoindex_commodity_metadata_1 | PRIMARY KEY | PRIMARY KEY (id)                                                                                          |
 
 ## Indexes
 
@@ -44,12 +47,21 @@ CREATE TABLE commodity_metadata (
 ```mermaid
 erDiagram
 
+"commodity_metadata" }o--|| "commodities" : "FOREIGN KEY (commodity_id) REFERENCES commodities (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+"commodity_metadata" }o--|| "commodities" : "commodity_metadata.commodity_id -> commodities.id"
 
 "commodity_metadata" {
-  TEXT commodity_id ""
-  TEXT id PK ""
-  TEXT key ""
-  TEXT value ""
+  TEXT commodity_id FK "FK to commodities.id"
+  TEXT id PK "UUID primary key"
+  TEXT key "Metadata key"
+  TEXT value "Metadata value"
+}
+"commodities" {
+  TEXT code "Unique commodity code (e.g. GBP, USD, BTC)"
+  TEXT created_at "Timestamp when the commodity was created"
+  TEXT datetime "Optional date associated with the commodity definition"
+  INTEGER exponent "Decimal exponent for amount precision (-2 = pence, -8 = satoshi)"
+  TEXT id PK "UUID primary key"
 }
 ```
 

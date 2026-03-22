@@ -72,15 +72,20 @@ func (l *SQLLedger) Export(w io.Writer) error {
 		return fmt.Errorf("list accounts: %w", err)
 	}
 	exponentByID := make(map[string]int)
-	currencyByID := make(map[string]string)
+	commodityByID := make(map[string]string)
 	for _, a := range accounts {
 		exponentByID[a.ID] = a.Exponent
-		currencyByID[a.ID] = a.Currency
+		commodityByID[a.ID] = a.Commodity
 		if a.OpenedAt != nil {
 			od := OpenDef{
 				DateTime:    DateTimeFromTime(*a.OpenedAt),
 				Account:     a.FullPath,
-				Commodities: []string{a.Currency},
+				Commodities: []string{a.Commodity},
+			}
+			if a.InterestMethod != InterestMethodNone {
+				od.Metadata = map[string]string{
+					"interest-method": string(a.InterestMethod),
+				}
 			}
 			gf.Opens = append(gf.Opens, od)
 		}
@@ -171,7 +176,7 @@ func (l *SQLLedger) Export(w io.Writer) error {
 		for _, m := range b.movements {
 			exp := exponentByID[m.FromAccountID]
 			amtDec := IntToDecimal(m.Amount, exp)
-			commodity := currencyByID[m.FromAccountID]
+			commodity := commodityByID[m.FromAccountID]
 
 			tm := TextMovement{
 				Linked:      linked,

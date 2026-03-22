@@ -5,7 +5,7 @@
     {
       "name": "accounts",
       "type": "table",
-      "comment": "Chart of accounts. Each account has a hierarchical path (Type:Product:AccountID:Address) and belongs to one of five fundamental types: Asset, Liability, Equity, Income, Expense. Amounts are stored as integers at the precision defined by exponent (e.g. -2 for pence).\n",
+      "comment": "Chart of accounts. Each account has a hierarchical path (Type:Product:AccountID:Address) and belongs to one of five fundamental types: Asset, Liability, Equity, Income, Expense. An account optionally belongs to a customer (many accounts per customer). Amounts are stored as integers at the precision defined by the commodity's exponent.\n",
       "columns": [
         {
           "name": "account_id",
@@ -28,11 +28,11 @@
           "comment": "Sub-address within the account (e.g. branch). 'Pending' marks pending accounts"
         },
         {
-          "name": "annual_interest_rate",
+          "name": "commodity",
           "type": "TEXT",
           "nullable": false,
-          "default": "0",
-          "comment": "Annual interest rate as a decimal (0.045 = 4.5%)"
+          "default": "'GBP'",
+          "comment": "Commodity code (FK to commodities.code)"
         },
         {
           "name": "created_at",
@@ -42,18 +42,10 @@
           "comment": "Timestamp when the account was created"
         },
         {
-          "name": "currency",
+          "name": "customer_id",
           "type": "TEXT",
-          "nullable": false,
-          "default": "'GBP'",
-          "comment": "ISO 4217 currency code (e.g. GBP, USD)"
-        },
-        {
-          "name": "exponent",
-          "type": "INTEGER",
-          "nullable": false,
-          "default": "-2",
-          "comment": "Decimal exponent for amount precision (-2 = pence, -5 = high precision)"
+          "nullable": true,
+          "comment": "Optional owning customer (FK to customers.id). A customer may have many accounts"
         },
         {
           "name": "full_path",
@@ -62,10 +54,31 @@
           "comment": "Hierarchical account path, e.g. Asset:Bank:Current:Main"
         },
         {
+          "name": "gross_interest_rate",
+          "type": "TEXT",
+          "nullable": false,
+          "default": "0",
+          "comment": "Gross annual interest rate as a decimal (0.045 = 4.5%)"
+        },
+        {
           "name": "id",
           "type": "TEXT",
           "nullable": true,
-          "comment": "Auto-incrementing primary key"
+          "comment": "UUID primary key"
+        },
+        {
+          "name": "interest_accumulator",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "comment": "Sub-unit fractions at extended precision (method-dependent)"
+        },
+        {
+          "name": "interest_method",
+          "type": "TEXT",
+          "nullable": false,
+          "default": "''",
+          "comment": "Interest calculation method (e.g. simple_daily)"
         },
         {
           "name": "is_pending",
@@ -77,7 +90,8 @@
         {
           "name": "opened_at",
           "type": "TEXT",
-          "nullable": true
+          "nullable": true,
+          "comment": "When the account was opened"
         },
         {
           "name": "product",
@@ -107,6 +121,32 @@
       ],
       "constraints": [
         {
+          "name": "- (Foreign key ID: 0)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (customer_id) REFERENCES customers (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE",
+          "table": "accounts",
+          "referenced_table": "customers",
+          "columns": [
+            "customer_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "- (Foreign key ID: 1)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (commodity) REFERENCES commodities (code) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE",
+          "table": "accounts",
+          "referenced_table": "commodities",
+          "columns": [
+            "commodity"
+          ],
+          "referenced_columns": [
+            "code"
+          ]
+        },
+        {
           "name": "id",
           "type": "PRIMARY KEY",
           "def": "PRIMARY KEY (id)",
@@ -134,32 +174,37 @@
           ]
         }
       ],
-      "def": "CREATE TABLE accounts (\n    id TEXT PRIMARY KEY,\n    full_path TEXT NOT NULL UNIQUE,\n    account_type TEXT NOT NULL,\n    product TEXT NOT NULL DEFAULT '',\n    account_id TEXT NOT NULL DEFAULT '',\n    address TEXT NOT NULL DEFAULT '',\n    is_pending INTEGER DEFAULT 0,\n    currency TEXT NOT NULL DEFAULT 'GBP',\n    exponent INTEGER NOT NULL DEFAULT -2,\n    annual_interest_rate TEXT NOT NULL DEFAULT 0,\n    opened_at TEXT,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+      "def": "CREATE TABLE accounts (\n    id TEXT PRIMARY KEY,\n    full_path TEXT NOT NULL UNIQUE,\n    account_type TEXT NOT NULL,\n    product TEXT NOT NULL DEFAULT '',\n    account_id TEXT NOT NULL DEFAULT '',\n    address TEXT NOT NULL DEFAULT '',\n    is_pending INTEGER DEFAULT 0,\n    commodity TEXT NOT NULL DEFAULT 'GBP' REFERENCES commodities(code),\n    customer_id TEXT REFERENCES customers(id),\n    gross_interest_rate TEXT NOT NULL DEFAULT 0,\n    interest_method TEXT NOT NULL DEFAULT '',\n    interest_accumulator INTEGER NOT NULL DEFAULT 0,\n    opened_at TEXT,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
     },
     {
       "name": "aliases",
       "type": "table",
+      "comment": "Short name aliases for account paths. Allows .goluca files and users to reference accounts by a short name instead of the full hierarchical path.\n",
       "columns": [
         {
           "name": "account_path",
           "type": "TEXT",
-          "nullable": false
+          "nullable": false,
+          "comment": "Full account path (FK to accounts.full_path)"
         },
         {
           "name": "created_at",
           "type": "TEXT",
           "nullable": true,
-          "default": "datetime('now')"
+          "default": "datetime('now')",
+          "comment": "Timestamp when the alias was created"
         },
         {
           "name": "id",
           "type": "TEXT",
-          "nullable": true
+          "nullable": true,
+          "comment": "UUID primary key"
         },
         {
           "name": "name",
           "type": "TEXT",
-          "nullable": false
+          "nullable": false,
+          "comment": "Alias name (unique)"
         }
       ],
       "indexes": [
@@ -181,6 +226,19 @@
         }
       ],
       "constraints": [
+        {
+          "name": "- (Foreign key ID: 0)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (account_path) REFERENCES accounts (full_path) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE",
+          "table": "aliases",
+          "referenced_table": "accounts",
+          "columns": [
+            "account_path"
+          ],
+          "referenced_columns": [
+            "full_path"
+          ]
+        },
         {
           "name": "id",
           "type": "PRIMARY KEY",
@@ -209,18 +267,18 @@
           ]
         }
       ],
-      "def": "CREATE TABLE aliases (\n    id TEXT PRIMARY KEY,\n    name TEXT NOT NULL UNIQUE,\n    account_path TEXT NOT NULL,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+      "def": "CREATE TABLE aliases (\n    id TEXT PRIMARY KEY,\n    name TEXT NOT NULL UNIQUE,\n    account_path TEXT NOT NULL REFERENCES accounts(full_path),\n    created_at TEXT DEFAULT (datetime('now'))\n)"
     },
     {
       "name": "balances_live",
       "type": "table",
-      "comment": "Pre-computed end-of-day balance snapshots. Updated transactionally when movements are recorded via RecordMovementWithProjections. Avoids expensive SUM queries for frequently accessed balances.\n",
+      "comment": "Pre-computed end-of-day balance snapshots for today and tomorrow only. Holds at most two days of balances per account — older entries are pruned. Updated transactionally when movements are recorded via RecordMovementWithProjections. Avoids expensive SUM queries for frequently accessed current and projected balances.\n",
       "columns": [
         {
           "name": "account_id",
           "type": "TEXT",
           "nullable": false,
-          "comment": "Account this balance belongs to (references accounts.id)"
+          "comment": "Account this balance belongs to (FK to accounts.id)"
         },
         {
           "name": "balance",
@@ -238,7 +296,7 @@
           "name": "id",
           "type": "TEXT",
           "nullable": true,
-          "comment": "Auto-incrementing primary key"
+          "comment": "UUID primary key"
         },
         {
           "name": "updated_at",
@@ -269,6 +327,19 @@
       ],
       "constraints": [
         {
+          "name": "- (Foreign key ID: 0)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (account_id) REFERENCES accounts (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE",
+          "table": "balances_live",
+          "referenced_table": "accounts",
+          "columns": [
+            "account_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
           "name": "id",
           "type": "PRIMARY KEY",
           "def": "PRIMARY KEY (id)",
@@ -287,32 +358,44 @@
           ]
         }
       ],
-      "def": "CREATE TABLE balances_live (\n    id TEXT PRIMARY KEY,\n    account_id TEXT NOT NULL,\n    balance_date TEXT NOT NULL,\n    balance INTEGER NOT NULL,\n    updated_at TEXT DEFAULT (datetime('now'))\n)"
+      "def": "CREATE TABLE balances_live (\n    id TEXT PRIMARY KEY,\n    account_id TEXT NOT NULL REFERENCES accounts(id),\n    balance_date TEXT NOT NULL,\n    balance INTEGER NOT NULL,\n    updated_at TEXT DEFAULT (datetime('now'))\n)"
     },
     {
       "name": "commodities",
       "type": "table",
+      "comment": "Currency/commodity definitions. Each commodity has a unique code and an exponent that defines the precision of amounts (e.g. -2 for pence). Accounts reference commodities via foreign key.\n",
       "columns": [
         {
           "name": "code",
           "type": "TEXT",
-          "nullable": false
+          "nullable": false,
+          "comment": "Unique commodity code (e.g. GBP, USD, BTC)"
         },
         {
           "name": "created_at",
           "type": "TEXT",
           "nullable": true,
-          "default": "datetime('now')"
+          "default": "datetime('now')",
+          "comment": "Timestamp when the commodity was created"
         },
         {
           "name": "datetime",
           "type": "TEXT",
-          "nullable": true
+          "nullable": true,
+          "comment": "Optional date associated with the commodity definition"
+        },
+        {
+          "name": "exponent",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "-2",
+          "comment": "Decimal exponent for amount precision (-2 = pence, -8 = satoshi)"
         },
         {
           "name": "id",
           "type": "TEXT",
-          "nullable": true
+          "nullable": true,
+          "comment": "UUID primary key"
         }
       ],
       "indexes": [
@@ -362,32 +445,37 @@
           ]
         }
       ],
-      "def": "CREATE TABLE commodities (\n    id TEXT PRIMARY KEY,\n    code TEXT NOT NULL UNIQUE,\n    datetime TEXT,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+      "def": "CREATE TABLE commodities (\n    id TEXT PRIMARY KEY,\n    code TEXT NOT NULL UNIQUE,\n    exponent INTEGER NOT NULL DEFAULT -2,\n    datetime TEXT,\n    created_at TEXT DEFAULT (datetime('now'))\n)"
     },
     {
       "name": "commodity_metadata",
       "type": "table",
+      "comment": "Key-value metadata for commodities.",
       "columns": [
         {
           "name": "commodity_id",
           "type": "TEXT",
-          "nullable": false
+          "nullable": false,
+          "comment": "FK to commodities.id"
         },
         {
           "name": "id",
           "type": "TEXT",
-          "nullable": true
+          "nullable": true,
+          "comment": "UUID primary key"
         },
         {
           "name": "key",
           "type": "TEXT",
-          "nullable": false
+          "nullable": false,
+          "comment": "Metadata key"
         },
         {
           "name": "value",
           "type": "TEXT",
           "nullable": false,
-          "default": "''"
+          "default": "''",
+          "comment": "Metadata value"
         }
       ],
       "indexes": [
@@ -411,6 +499,19 @@
       ],
       "constraints": [
         {
+          "name": "- (Foreign key ID: 0)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (commodity_id) REFERENCES commodities (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE",
+          "table": "commodity_metadata",
+          "referenced_table": "commodities",
+          "columns": [
+            "commodity_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
           "name": "id",
           "type": "PRIMARY KEY",
           "def": "PRIMARY KEY (id)",
@@ -429,32 +530,37 @@
           ]
         }
       ],
-      "def": "CREATE TABLE commodity_metadata (\n    id TEXT PRIMARY KEY,\n    commodity_id TEXT NOT NULL,\n    key TEXT NOT NULL,\n    value TEXT NOT NULL DEFAULT ''\n)"
+      "def": "CREATE TABLE commodity_metadata (\n    id TEXT PRIMARY KEY,\n    commodity_id TEXT NOT NULL REFERENCES commodities(id),\n    key TEXT NOT NULL,\n    value TEXT NOT NULL DEFAULT ''\n)"
     },
     {
       "name": "customer_metadata",
       "type": "table",
+      "comment": "Key-value metadata for customers.",
       "columns": [
         {
           "name": "customer_id",
           "type": "TEXT",
-          "nullable": false
+          "nullable": false,
+          "comment": "FK to customers.id"
         },
         {
           "name": "id",
           "type": "TEXT",
-          "nullable": true
+          "nullable": true,
+          "comment": "UUID primary key"
         },
         {
           "name": "key",
           "type": "TEXT",
-          "nullable": false
+          "nullable": false,
+          "comment": "Metadata key"
         },
         {
           "name": "value",
           "type": "TEXT",
           "nullable": false,
-          "default": "''"
+          "default": "''",
+          "comment": "Metadata value"
         }
       ],
       "indexes": [
@@ -478,6 +584,19 @@
       ],
       "constraints": [
         {
+          "name": "- (Foreign key ID: 0)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (customer_id) REFERENCES customers (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE",
+          "table": "customer_metadata",
+          "referenced_table": "customers",
+          "columns": [
+            "customer_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
           "name": "id",
           "type": "PRIMARY KEY",
           "def": "PRIMARY KEY (id)",
@@ -496,45 +615,45 @@
           ]
         }
       ],
-      "def": "CREATE TABLE customer_metadata (\n    id TEXT PRIMARY KEY,\n    customer_id TEXT NOT NULL,\n    key TEXT NOT NULL,\n    value TEXT NOT NULL DEFAULT ''\n)"
+      "def": "CREATE TABLE customer_metadata (\n    id TEXT PRIMARY KEY,\n    customer_id TEXT NOT NULL REFERENCES customers(id),\n    key TEXT NOT NULL,\n    value TEXT NOT NULL DEFAULT ''\n)"
     },
     {
       "name": "customers",
       "type": "table",
+      "comment": "Customer records. A customer may have zero to many accounts (via accounts.customer_id). Supports max balance constraints and arbitrary key-value metadata.\n",
       "columns": [
-        {
-          "name": "account_path",
-          "type": "TEXT",
-          "nullable": false,
-          "default": "''"
-        },
         {
           "name": "created_at",
           "type": "TEXT",
           "nullable": true,
-          "default": "datetime('now')"
+          "default": "datetime('now')",
+          "comment": "Timestamp when the customer was created"
         },
         {
           "name": "id",
           "type": "TEXT",
-          "nullable": true
+          "nullable": true,
+          "comment": "UUID primary key"
         },
         {
           "name": "max_balance_amount",
           "type": "TEXT",
           "nullable": false,
-          "default": "''"
+          "default": "''",
+          "comment": "Maximum allowed balance amount (empty = no limit)"
         },
         {
           "name": "max_balance_commodity",
           "type": "TEXT",
           "nullable": false,
-          "default": "''"
+          "default": "''",
+          "comment": "Commodity for the max balance constraint"
         },
         {
           "name": "name",
           "type": "TEXT",
-          "nullable": false
+          "nullable": false,
+          "comment": "Customer name (unique)"
         }
       ],
       "indexes": [
@@ -584,50 +703,58 @@
           ]
         }
       ],
-      "def": "CREATE TABLE customers (\n    id TEXT PRIMARY KEY,\n    name TEXT NOT NULL UNIQUE,\n    account_path TEXT NOT NULL DEFAULT '',\n    max_balance_amount TEXT NOT NULL DEFAULT '',\n    max_balance_commodity TEXT NOT NULL DEFAULT '',\n    created_at TEXT DEFAULT (datetime('now'))\n)"
+      "def": "CREATE TABLE customers (\n    id TEXT PRIMARY KEY,\n    name TEXT NOT NULL UNIQUE,\n    max_balance_amount TEXT NOT NULL DEFAULT '',\n    max_balance_commodity TEXT NOT NULL DEFAULT '',\n    created_at TEXT DEFAULT (datetime('now'))\n)"
     },
     {
       "name": "data_points",
       "type": "table",
+      "comment": "Time-series parameter values. Stores named data points with value and knowledge timestamps for bitemporal queries (e.g. interest rate changes, exchange rates).\n",
       "columns": [
         {
           "name": "created_at",
           "type": "TEXT",
           "nullable": true,
-          "default": "datetime('now')"
+          "default": "datetime('now')",
+          "comment": "Timestamp when the data point was created"
         },
         {
           "name": "id",
           "type": "TEXT",
-          "nullable": true
+          "nullable": true,
+          "comment": "UUID primary key"
         },
         {
           "name": "knowledge_time",
           "type": "TEXT",
           "nullable": true,
-          "default": "datetime('now')"
+          "default": "datetime('now')",
+          "comment": "When the system learned about this value"
         },
         {
           "name": "param_name",
           "type": "TEXT",
-          "nullable": false
+          "nullable": false,
+          "comment": "Parameter name (e.g. base-rate)"
         },
         {
           "name": "param_type",
           "type": "TEXT",
           "nullable": false,
-          "default": "'string'"
+          "default": "'string'",
+          "comment": "Value type: string, number, or bool"
         },
         {
           "name": "param_value",
           "type": "TEXT",
           "nullable": false,
-          "default": "''"
+          "default": "''",
+          "comment": "The parameter value as a string"
         },
         {
           "name": "value_time",
           "type": "TEXT",
-          "nullable": false
+          "nullable": false,
+          "comment": "When this value became effective"
         }
       ],
       "indexes": [
@@ -674,27 +801,32 @@
     {
       "name": "movement_metadata",
       "type": "table",
+      "comment": "Key-value metadata for movement batches.",
       "columns": [
         {
           "name": "batch_id",
           "type": "TEXT",
-          "nullable": false
+          "nullable": false,
+          "comment": "Movement batch ID"
         },
         {
           "name": "id",
           "type": "TEXT",
-          "nullable": true
+          "nullable": true,
+          "comment": "UUID primary key"
         },
         {
           "name": "key",
           "type": "TEXT",
-          "nullable": false
+          "nullable": false,
+          "comment": "Metadata key"
         },
         {
           "name": "value",
           "type": "TEXT",
           "nullable": false,
-          "default": "''"
+          "default": "''",
+          "comment": "Metadata value"
         }
       ],
       "indexes": [
@@ -747,7 +879,7 @@
           "name": "amount",
           "type": "INTEGER",
           "nullable": false,
-          "comment": "Transfer amount in smallest currency unit (integer at account exponent)"
+          "comment": "Transfer amount in smallest currency unit (integer at commodity exponent)"
         },
         {
           "name": "batch_id",
@@ -759,7 +891,7 @@
           "name": "code",
           "type": "TEXT",
           "nullable": false,
-          "comment": "Movement category: 0=normal, 1=interest accrual (TigerBeetle-inspired)"
+          "comment": "ISO 20022 BTC mnemonic (DOMAIN:FAMILY:SUBFAMILY)"
         },
         {
           "name": "description",
@@ -772,13 +904,13 @@
           "name": "from_account_id",
           "type": "TEXT",
           "nullable": false,
-          "comment": "Source account (references accounts.id)"
+          "comment": "Source account (FK to accounts.id)"
         },
         {
           "name": "id",
           "type": "TEXT",
           "nullable": true,
-          "comment": "Auto-incrementing primary key"
+          "comment": "UUID primary key"
         },
         {
           "name": "knowledge_time",
@@ -805,13 +937,14 @@
           "name": "period_anchor",
           "type": "TEXT",
           "nullable": false,
-          "default": "''"
+          "default": "''",
+          "comment": "Period anchor marker: ^ (start), $ (end), or empty"
         },
         {
           "name": "to_account_id",
           "type": "TEXT",
           "nullable": false,
-          "comment": "Destination account (references accounts.id)"
+          "comment": "Destination account (FK to accounts.id)"
         },
         {
           "name": "user_data_64",
@@ -875,6 +1008,32 @@
       ],
       "constraints": [
         {
+          "name": "- (Foreign key ID: 0)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (to_account_id) REFERENCES accounts (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE",
+          "table": "movements",
+          "referenced_table": "accounts",
+          "columns": [
+            "to_account_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "- (Foreign key ID: 1)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (from_account_id) REFERENCES accounts (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE",
+          "table": "movements",
+          "referenced_table": "accounts",
+          "columns": [
+            "from_account_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
           "name": "id",
           "type": "PRIMARY KEY",
           "def": "PRIMARY KEY (id)",
@@ -893,33 +1052,38 @@
           ]
         }
       ],
-      "def": "CREATE TABLE movements (\n    id TEXT PRIMARY KEY,\n    batch_id TEXT NOT NULL,\n    from_account_id TEXT NOT NULL,\n    to_account_id TEXT NOT NULL,\n    amount INTEGER NOT NULL,\n    code TEXT NOT NULL,\n    ledger INTEGER NOT NULL DEFAULT 0,\n    pending_id INTEGER NOT NULL DEFAULT 0,\n    user_data_64 INTEGER NOT NULL DEFAULT 0,\n    value_time TEXT NOT NULL,\n    knowledge_time TEXT DEFAULT (datetime('now')),\n    description TEXT NOT NULL DEFAULT '',\n    period_anchor TEXT NOT NULL DEFAULT ''\n)"
+      "def": "CREATE TABLE movements (\n    id TEXT PRIMARY KEY,\n    batch_id TEXT NOT NULL,\n    from_account_id TEXT NOT NULL REFERENCES accounts(id),\n    to_account_id TEXT NOT NULL REFERENCES accounts(id),\n    amount INTEGER NOT NULL,\n    code TEXT NOT NULL,\n    ledger INTEGER NOT NULL DEFAULT 0,\n    pending_id INTEGER NOT NULL DEFAULT 0,\n    user_data_64 INTEGER NOT NULL DEFAULT 0,\n    value_time TEXT NOT NULL,\n    knowledge_time TEXT DEFAULT (datetime('now')),\n    description TEXT NOT NULL DEFAULT '',\n    period_anchor TEXT NOT NULL DEFAULT ''\n)"
     },
     {
       "name": "options",
       "type": "table",
+      "comment": "Ledger-wide key-value configuration. Stores directives imported from .goluca files (e.g. operating-currency, require-accounts) and runtime settings.\n",
       "columns": [
         {
           "name": "created_at",
           "type": "TEXT",
           "nullable": true,
-          "default": "datetime('now')"
+          "default": "datetime('now')",
+          "comment": "Timestamp when the option was created"
         },
         {
           "name": "id",
           "type": "TEXT",
-          "nullable": true
+          "nullable": true,
+          "comment": "UUID primary key"
         },
         {
           "name": "key",
           "type": "TEXT",
-          "nullable": false
+          "nullable": false,
+          "comment": "Option name (unique), e.g. operating-currency"
         },
         {
           "name": "value",
           "type": "TEXT",
           "nullable": false,
-          "default": "''"
+          "default": "''",
+          "comment": "Option value"
         }
       ],
       "indexes": [
@@ -974,6 +1138,100 @@
   ],
   "relations": [
     {
+      "table": "accounts",
+      "columns": [
+        "customer_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "customers",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (customer_id) REFERENCES customers (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+    },
+    {
+      "table": "accounts",
+      "columns": [
+        "commodity"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "commodities",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (commodity) REFERENCES commodities (code) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+    },
+    {
+      "table": "accounts",
+      "columns": [
+        "commodity"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "commodities",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "accounts.commodity -\u003e commodities.code",
+      "virtual": true
+    },
+    {
+      "table": "accounts",
+      "columns": [
+        "customer_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "customers",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "accounts.customer_id -\u003e customers.id",
+      "virtual": true
+    },
+    {
+      "table": "aliases",
+      "columns": [
+        "account_path"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "accounts",
+      "parent_columns": [
+        "full_path"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (account_path) REFERENCES accounts (full_path) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+    },
+    {
+      "table": "aliases",
+      "columns": [
+        "account_path"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "accounts",
+      "parent_columns": [
+        "full_path"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "aliases.account_path -\u003e accounts.full_path",
+      "virtual": true
+    },
+    {
+      "table": "balances_live",
+      "columns": [
+        "account_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "accounts",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (account_id) REFERENCES accounts (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+    },
+    {
       "table": "balances_live",
       "columns": [
         "account_id"
@@ -986,6 +1244,86 @@
       "parent_cardinality": "exactly_one",
       "def": "balances_live.account_id -\u003e accounts.id",
       "virtual": true
+    },
+    {
+      "table": "commodity_metadata",
+      "columns": [
+        "commodity_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "commodities",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (commodity_id) REFERENCES commodities (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+    },
+    {
+      "table": "commodity_metadata",
+      "columns": [
+        "commodity_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "commodities",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "commodity_metadata.commodity_id -\u003e commodities.id",
+      "virtual": true
+    },
+    {
+      "table": "customer_metadata",
+      "columns": [
+        "customer_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "customers",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (customer_id) REFERENCES customers (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+    },
+    {
+      "table": "customer_metadata",
+      "columns": [
+        "customer_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "customers",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "customer_metadata.customer_id -\u003e customers.id",
+      "virtual": true
+    },
+    {
+      "table": "movements",
+      "columns": [
+        "to_account_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "accounts",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (to_account_id) REFERENCES accounts (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+    },
+    {
+      "table": "movements",
+      "columns": [
+        "from_account_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "accounts",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (from_account_id) REFERENCES accounts (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
     },
     {
       "table": "movements",

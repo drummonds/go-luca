@@ -2,6 +2,9 @@
 
 ## Description
 
+Ledger-wide key-value configuration. Stores directives imported from .goluca files (e.g. operating-currency, require-accounts) and runtime settings.  
+
+
 <details>
 <summary><strong>Table Definition</strong></summary>
 
@@ -18,12 +21,12 @@ CREATE TABLE options (
 
 ## Columns
 
-| Name       | Type | Default         | Nullable | Children | Parents | Comment |
-| ---------- | ---- | --------------- | -------- | -------- | ------- | ------- |
-| created_at | TEXT | datetime('now') | true     |          |         |         |
-| id         | TEXT |                 | true     |          |         |         |
-| key        | TEXT |                 | false    |          |         |         |
-| value      | TEXT | ''              | false    |          |         |         |
+| Name       | Type | Default         | Nullable | Children | Parents | Comment                                       |
+| ---------- | ---- | --------------- | -------- | -------- | ------- | --------------------------------------------- |
+| created_at | TEXT | datetime('now') | true     |          |         | Timestamp when the option was created         |
+| id         | TEXT |                 | true     |          |         | UUID primary key                              |
+| key        | TEXT |                 | false    |          |         | Option name (unique), e.g. operating-currency |
+| value      | TEXT | ''              | false    |          |         | Option value                                  |
 
 ## Constraints
 
@@ -47,10 +50,10 @@ erDiagram
 
 
 "options" {
-  TEXT created_at ""
-  TEXT id PK ""
-  TEXT key ""
-  TEXT value ""
+  TEXT created_at "Timestamp when the option was created"
+  TEXT id PK "UUID primary key"
+  TEXT key "Option name (unique), e.g. operating-currency"
+  TEXT value "Option value"
 }
 ```
 

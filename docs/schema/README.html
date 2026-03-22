@@ -57,56 +57,56 @@
 <tbody>
 <tr>
 <td><a href="accounts.html">accounts</a></td>
-<td>12</td>
-<td>Chart of accounts. Each account has a hierarchical path (Type:Product:AccountID:Address) and belongs to one of five fundamental types: Asset, Liability, Equity, Income, Expense. Amounts are stored as integers at the precision defined by exponent (e.g. -2 for pence).<br /></td>
+<td>14</td>
+<td>Chart of accounts. Each account has a hierarchical path (Type:Product:AccountID:Address) and belongs to one of five fundamental types: Asset, Liability, Equity, Income, Expense. An account optionally belongs to a customer (many accounts per customer). Amounts are stored as integers at the precision defined by the commodity's exponent.<br /></td>
 <td>table</td>
 </tr>
 <tr>
 <td><a href="aliases.html">aliases</a></td>
 <td>4</td>
-<td></td>
+<td>Short name aliases for account paths. Allows .goluca files and users to reference accounts by a short name instead of the full hierarchical path.<br /></td>
 <td>table</td>
 </tr>
 <tr>
 <td><a href="balances_live.html">balances_live</a></td>
 <td>5</td>
-<td>Pre-computed end-of-day balance snapshots. Updated transactionally when movements are recorded via RecordMovementWithProjections. Avoids expensive SUM queries for frequently accessed balances.<br /></td>
+<td>Pre-computed end-of-day balance snapshots for today and tomorrow only. Holds at most two days of balances per account — older entries are pruned. Updated transactionally when movements are recorded via RecordMovementWithProjections. Avoids expensive SUM queries for frequently accessed current and projected balances.<br /></td>
 <td>table</td>
 </tr>
 <tr>
 <td><a href="commodities.html">commodities</a></td>
-<td>4</td>
-<td></td>
+<td>5</td>
+<td>Currency/commodity definitions. Each commodity has a unique code and an exponent that defines the precision of amounts (e.g. -2 for pence). Accounts reference commodities via foreign key.<br /></td>
 <td>table</td>
 </tr>
 <tr>
 <td><a href="commodity_metadata.html">commodity_metadata</a></td>
 <td>4</td>
-<td></td>
+<td>Key-value metadata for commodities.</td>
 <td>table</td>
 </tr>
 <tr>
 <td><a href="customer_metadata.html">customer_metadata</a></td>
 <td>4</td>
-<td></td>
+<td>Key-value metadata for customers.</td>
 <td>table</td>
 </tr>
 <tr>
 <td><a href="customers.html">customers</a></td>
-<td>6</td>
-<td></td>
+<td>5</td>
+<td>Customer records. A customer may have zero to many accounts (via accounts.customer_id). Supports max balance constraints and arbitrary key-value metadata.<br /></td>
 <td>table</td>
 </tr>
 <tr>
 <td><a href="data_points.html">data_points</a></td>
 <td>7</td>
-<td></td>
+<td>Time-series parameter values. Stores named data points with value and knowledge timestamps for bitemporal queries (e.g. interest rate changes, exchange rates).<br /></td>
 <td>table</td>
 </tr>
 <tr>
 <td><a href="movement_metadata.html">movement_metadata</a></td>
 <td>4</td>
-<td></td>
+<td>Key-value metadata for movement batches.</td>
 <td>table</td>
 </tr>
 <tr>
@@ -118,7 +118,7 @@
 <tr>
 <td><a href="options.html">options</a></td>
 <td>4</td>
-<td></td>
+<td>Ledger-wide key-value configuration. Stores directives imported from .goluca files (e.g. operating-currency, require-accounts) and runtime settings.<br /></td>
 <td>table</td>
 </tr>
 </tbody>
@@ -126,7 +126,20 @@
 <h2>Relations</h2>
 <pre class="mermaid">erDiagram
 
+&quot;accounts&quot; }o--o| &quot;customers&quot; : &quot;FOREIGN KEY (customer_id) REFERENCES customers (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
+&quot;accounts&quot; }o--|| &quot;commodities&quot; : &quot;FOREIGN KEY (commodity) REFERENCES commodities (code) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
+&quot;accounts&quot; }o--|| &quot;commodities&quot; : &quot;accounts.commodity -&gt; commodities.code&quot;
+&quot;accounts&quot; }o--o| &quot;customers&quot; : &quot;accounts.customer_id -&gt; customers.id&quot;
+&quot;aliases&quot; }o--|| &quot;accounts&quot; : &quot;FOREIGN KEY (account_path) REFERENCES accounts (full_path) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
+&quot;aliases&quot; }o--|| &quot;accounts&quot; : &quot;aliases.account_path -&gt; accounts.full_path&quot;
+&quot;balances_live&quot; }o--|| &quot;accounts&quot; : &quot;FOREIGN KEY (account_id) REFERENCES accounts (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
 &quot;balances_live&quot; }o--|| &quot;accounts&quot; : &quot;balances_live.account_id -&gt; accounts.id&quot;
+&quot;commodity_metadata&quot; }o--|| &quot;commodities&quot; : &quot;FOREIGN KEY (commodity_id) REFERENCES commodities (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
+&quot;commodity_metadata&quot; }o--|| &quot;commodities&quot; : &quot;commodity_metadata.commodity_id -&gt; commodities.id&quot;
+&quot;customer_metadata&quot; }o--|| &quot;customers&quot; : &quot;FOREIGN KEY (customer_id) REFERENCES customers (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
+&quot;customer_metadata&quot; }o--|| &quot;customers&quot; : &quot;customer_metadata.customer_id -&gt; customers.id&quot;
+&quot;movements&quot; }o--|| &quot;accounts&quot; : &quot;FOREIGN KEY (to_account_id) REFERENCES accounts (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
+&quot;movements&quot; }o--|| &quot;accounts&quot; : &quot;FOREIGN KEY (from_account_id) REFERENCES accounts (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
 &quot;movements&quot; }o--|| &quot;accounts&quot; : &quot;movements.from_account_id -&gt; accounts.id&quot;
 &quot;movements&quot; }o--|| &quot;accounts&quot; : &quot;movements.to_account_id -&gt; accounts.id&quot;
 
@@ -134,90 +147,92 @@
   TEXT account_id &quot;Specific account identifier within the product&quot;
   TEXT account_type &quot;One of: Asset, Liability, Equity, Income, Expense&quot;
   TEXT address &quot;Sub-address within the account (e.g. branch). 'Pending' marks pending accounts&quot;
-  TEXT annual_interest_rate &quot;Annual interest rate as a decimal (0.045 = 4.5%)&quot;
+  TEXT commodity FK &quot;Commodity code (FK to commodities.code)&quot;
   TEXT created_at &quot;Timestamp when the account was created&quot;
-  TEXT currency &quot;ISO 4217 currency code (e.g. GBP, USD)&quot;
-  INTEGER exponent &quot;Decimal exponent for amount precision (-2 = pence, -5 = high precision)&quot;
+  TEXT customer_id FK &quot;Optional owning customer (FK to customers.id). A customer may have many accounts&quot;
   TEXT full_path &quot;Hierarchical account path, e.g. Asset:Bank:Current:Main&quot;
-  TEXT id PK &quot;Auto-incrementing primary key&quot;
+  TEXT gross_interest_rate &quot;Gross annual interest rate as a decimal (0.045 = 4.5%)&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  INTEGER interest_accumulator &quot;Sub-unit fractions at extended precision (method-dependent)&quot;
+  TEXT interest_method &quot;Interest calculation method (e.g. simple_daily)&quot;
   INTEGER is_pending &quot;True if this is a pending/suspense account&quot;
-  TEXT opened_at &quot;&quot;
+  TEXT opened_at &quot;When the account was opened&quot;
   TEXT product &quot;Product category within the account type&quot;
 }
 &quot;aliases&quot; {
-  TEXT account_path &quot;&quot;
-  TEXT created_at &quot;&quot;
-  TEXT id PK &quot;&quot;
-  TEXT name &quot;&quot;
+  TEXT account_path FK &quot;Full account path (FK to accounts.full_path)&quot;
+  TEXT created_at &quot;Timestamp when the alias was created&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  TEXT name &quot;Alias name (unique)&quot;
 }
 &quot;balances_live&quot; {
-  TEXT account_id &quot;Account this balance belongs to (references accounts.id)&quot;
+  TEXT account_id FK &quot;Account this balance belongs to (FK to accounts.id)&quot;
   INTEGER balance &quot;End-of-day balance in smallest currency unit&quot;
   TEXT balance_date &quot;Date of the balance snapshot (start of day)&quot;
-  TEXT id PK &quot;Auto-incrementing primary key&quot;
+  TEXT id PK &quot;UUID primary key&quot;
   TEXT updated_at &quot;When this balance was last recomputed&quot;
 }
 &quot;commodities&quot; {
-  TEXT code &quot;&quot;
-  TEXT created_at &quot;&quot;
-  TEXT datetime &quot;&quot;
-  TEXT id PK &quot;&quot;
+  TEXT code &quot;Unique commodity code (e.g. GBP, USD, BTC)&quot;
+  TEXT created_at &quot;Timestamp when the commodity was created&quot;
+  TEXT datetime &quot;Optional date associated with the commodity definition&quot;
+  INTEGER exponent &quot;Decimal exponent for amount precision (-2 = pence, -8 = satoshi)&quot;
+  TEXT id PK &quot;UUID primary key&quot;
 }
 &quot;commodity_metadata&quot; {
-  TEXT commodity_id &quot;&quot;
-  TEXT id PK &quot;&quot;
-  TEXT key &quot;&quot;
-  TEXT value &quot;&quot;
+  TEXT commodity_id FK &quot;FK to commodities.id&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  TEXT key &quot;Metadata key&quot;
+  TEXT value &quot;Metadata value&quot;
 }
 &quot;customer_metadata&quot; {
-  TEXT customer_id &quot;&quot;
-  TEXT id PK &quot;&quot;
-  TEXT key &quot;&quot;
-  TEXT value &quot;&quot;
+  TEXT customer_id FK &quot;FK to customers.id&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  TEXT key &quot;Metadata key&quot;
+  TEXT value &quot;Metadata value&quot;
 }
 &quot;customers&quot; {
-  TEXT account_path &quot;&quot;
-  TEXT created_at &quot;&quot;
-  TEXT id PK &quot;&quot;
-  TEXT max_balance_amount &quot;&quot;
-  TEXT max_balance_commodity &quot;&quot;
-  TEXT name &quot;&quot;
+  TEXT created_at &quot;Timestamp when the customer was created&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  TEXT max_balance_amount &quot;Maximum allowed balance amount (empty = no limit)&quot;
+  TEXT max_balance_commodity &quot;Commodity for the max balance constraint&quot;
+  TEXT name &quot;Customer name (unique)&quot;
 }
 &quot;data_points&quot; {
-  TEXT created_at &quot;&quot;
-  TEXT id PK &quot;&quot;
-  TEXT knowledge_time &quot;&quot;
-  TEXT param_name &quot;&quot;
-  TEXT param_type &quot;&quot;
-  TEXT param_value &quot;&quot;
-  TEXT value_time &quot;&quot;
+  TEXT created_at &quot;Timestamp when the data point was created&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  TEXT knowledge_time &quot;When the system learned about this value&quot;
+  TEXT param_name &quot;Parameter name (e.g. base-rate)&quot;
+  TEXT param_type &quot;Value type: string, number, or bool&quot;
+  TEXT param_value &quot;The parameter value as a string&quot;
+  TEXT value_time &quot;When this value became effective&quot;
 }
 &quot;movement_metadata&quot; {
-  TEXT batch_id &quot;&quot;
-  TEXT id PK &quot;&quot;
-  TEXT key &quot;&quot;
-  TEXT value &quot;&quot;
+  TEXT batch_id &quot;Movement batch ID&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  TEXT key &quot;Metadata key&quot;
+  TEXT value &quot;Metadata value&quot;
 }
 &quot;movements&quot; {
-  INTEGER amount &quot;Transfer amount in smallest currency unit (integer at account exponent)&quot;
+  INTEGER amount &quot;Transfer amount in smallest currency unit (integer at commodity exponent)&quot;
   TEXT batch_id &quot;Groups related movements into a single atomic transaction&quot;
-  TEXT code &quot;Movement category: 0=normal, 1=interest accrual (TigerBeetle-inspired)&quot;
+  TEXT code &quot;ISO 20022 BTC mnemonic (DOMAIN:FAMILY:SUBFAMILY)&quot;
   TEXT description &quot;Human-readable description of the movement&quot;
-  TEXT from_account_id &quot;Source account (references accounts.id)&quot;
-  TEXT id PK &quot;Auto-incrementing primary key&quot;
+  TEXT from_account_id FK &quot;Source account (FK to accounts.id)&quot;
+  TEXT id PK &quot;UUID primary key&quot;
   TEXT knowledge_time &quot;When the system recorded this movement (knowledge date)&quot;
   INTEGER ledger &quot;Partition identifier for multi-ledger setups (TigerBeetle-inspired)&quot;
   INTEGER pending_id &quot;Two-phase commit: references pending movement to post/void (0=N/A)&quot;
-  TEXT period_anchor &quot;&quot;
-  TEXT to_account_id &quot;Destination account (references accounts.id)&quot;
+  TEXT period_anchor &quot;Period anchor marker: ^ (start), $ (end), or empty&quot;
+  TEXT to_account_id FK &quot;Destination account (FK to accounts.id)&quot;
   INTEGER user_data_64 &quot;Arbitrary external reference for application use&quot;
   TEXT value_time &quot;When the movement economically occurred (value date)&quot;
 }
 &quot;options&quot; {
-  TEXT created_at &quot;&quot;
-  TEXT id PK &quot;&quot;
-  TEXT key &quot;&quot;
-  TEXT value &quot;&quot;
+  TEXT created_at &quot;Timestamp when the option was created&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  TEXT key &quot;Option name (unique), e.g. operating-currency&quot;
+  TEXT value &quot;Option value&quot;
 }
 </pre>
 <hr>

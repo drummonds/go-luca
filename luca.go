@@ -15,6 +15,29 @@ var ErrNotImplemented = errors.New("not implemented")
 // Currently backed by int64; designed for future migration to 128-bit.
 type Amount int64
 
+// InterestMethod identifies how interest is calculated for an account.
+// go-luca stores this string but does not interpret it beyond the default.
+// Products (e.g. gobank-products) define the actual methods and register
+// an InterestFunc on the ledger to implement them.
+type InterestMethod string
+
+// InterestMethodNone means no interest calculation.
+const InterestMethodNone InterestMethod = ""
+
+// InterestMethodDefault is the built-in simple daily method used when
+// no InterestFunc is registered. Formula: balance * rate / 365.
+const InterestMethodDefault InterestMethod = "simple_daily"
+
+// InterestFunc computes one day's interest for an account.
+// It receives the current balance, the account (with method, accumulator,
+// rate, exponent), and the date. It returns:
+//   - interest: the amount to post as a movement (at account exponent)
+//   - newAccumulator: the updated accumulator value (for methods that use it)
+//
+// The default (nil) uses simple daily: balance * rate / 365, truncated to
+// account exponent, with no accumulator.
+type InterestFunc func(balance Amount, acct *Account, date time.Time) (interest Amount, newAccumulator Amount)
+
 // Movement code constants — ISO 20022 BTC mnemonics in DOMAIN:FAMILY:SUBFAMILY format.
 const (
 	CodeBookTransfer    = "PMNT:RCDT:BOOK" // internal book transfer
@@ -30,7 +53,7 @@ type Ledger interface {
 	Close() error
 
 	// Accounts
-	CreateAccount(fullPath string, currency string, exponent int, annualInterestRate float64) (*Account, error)
+	CreateAccount(fullPath string, commodity string, exponent int, grossInterestRate float64) (*Account, error)
 	GetAccount(fullPath string) (*Account, error)
 	GetAccountByID(id string) (*Account, error)
 	ListAccounts(typeFilter AccountType) ([]*Account, error)
@@ -48,6 +71,7 @@ type Ledger interface {
 	GetLiveBalance(accountID string, date time.Time) (*LiveBalance, error)
 
 	// Interest
+	SetInterestMethod(accountID string, method InterestMethod) error
 	EnsureInterestAccounts() error
 	CalculateDailyInterest(accountID string, date time.Time) (*InterestResult, error)
 	RunDailyInterest(date time.Time) ([]InterestResult, error)
@@ -89,18 +113,21 @@ var validAccountTypes = map[AccountType]bool{
 // Account represents a node in the chart of accounts.
 // The FullPath follows the hierarchical format: Type:Product:AccountID:Address
 type Account struct {
-	ID                 string
-	FullPath           string
-	Type               AccountType
-	Product            string
-	AccountID          string
-	Address            string
-	IsPending          bool
-	Currency           string
-	Exponent           int // e.g. -2 for GBP pence, -5 for high precision
-	AnnualInterestRate float64
-	OpenedAt           *time.Time
-	CreatedAt          time.Time
+	ID                  string
+	FullPath            string
+	Type                AccountType
+	Product             string
+	AccountID           string
+	Address             string
+	IsPending           bool
+	Commodity           string
+	Exponent            int    // e.g. -2 for GBP pence; sourced from commodities table
+	CustomerID          string // optional FK to customers.id
+	GrossInterestRate   float64
+	InterestMethod      InterestMethod // how interest is calculated
+	InterestAccumulator Amount         // sub-unit fractions at extended precision (method-dependent)
+	OpenedAt            *time.Time
+	CreatedAt           time.Time
 }
 
 // Movement represents a directed flow of value from one account to another.

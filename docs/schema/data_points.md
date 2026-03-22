@@ -2,6 +2,9 @@
 
 ## Description
 
+Time-series parameter values. Stores named data points with value and knowledge timestamps for bitemporal queries (e.g. interest rate changes, exchange rates).  
+
+
 <details>
 <summary><strong>Table Definition</strong></summary>
 
@@ -21,15 +24,15 @@ CREATE TABLE data_points (
 
 ## Columns
 
-| Name           | Type | Default         | Nullable | Children | Parents | Comment |
-| -------------- | ---- | --------------- | -------- | -------- | ------- | ------- |
-| created_at     | TEXT | datetime('now') | true     |          |         |         |
-| id             | TEXT |                 | true     |          |         |         |
-| knowledge_time | TEXT | datetime('now') | true     |          |         |         |
-| param_name     | TEXT |                 | false    |          |         |         |
-| param_type     | TEXT | 'string'        | false    |          |         |         |
-| param_value    | TEXT | ''              | false    |          |         |         |
-| value_time     | TEXT |                 | false    |          |         |         |
+| Name           | Type | Default         | Nullable | Children | Parents | Comment                                   |
+| -------------- | ---- | --------------- | -------- | -------- | ------- | ----------------------------------------- |
+| created_at     | TEXT | datetime('now') | true     |          |         | Timestamp when the data point was created |
+| id             | TEXT |                 | true     |          |         | UUID primary key                          |
+| knowledge_time | TEXT | datetime('now') | true     |          |         | When the system learned about this value  |
+| param_name     | TEXT |                 | false    |          |         | Parameter name (e.g. base-rate)           |
+| param_type     | TEXT | 'string'        | false    |          |         | Value type: string, number, or bool       |
+| param_value    | TEXT | ''              | false    |          |         | The parameter value as a string           |
+| value_time     | TEXT |                 | false    |          |         | When this value became effective          |
 
 ## Constraints
 
@@ -52,13 +55,13 @@ erDiagram
 
 
 "data_points" {
-  TEXT created_at ""
-  TEXT id PK ""
-  TEXT knowledge_time ""
-  TEXT param_name ""
-  TEXT param_type ""
-  TEXT param_value ""
-  TEXT value_time ""
+  TEXT created_at "Timestamp when the data point was created"
+  TEXT id PK "UUID primary key"
+  TEXT knowledge_time "When the system learned about this value"
+  TEXT param_name "Parameter name (e.g. base-rate)"
+  TEXT param_type "Value type: string, number, or bool"
+  TEXT param_value "The parameter value as a string"
+  TEXT value_time "When this value became effective"
 }
 ```
 

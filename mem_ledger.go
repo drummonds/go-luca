@@ -33,7 +33,7 @@ func NewMemLedger() *MemLedger {
 
 func (m *MemLedger) Close() error { return nil }
 
-func (m *MemLedger) CreateAccount(fullPath string, currency string, exponent int, annualInterestRate float64) (*Account, error) {
+func (m *MemLedger) CreateAccount(fullPath string, commodity string, exponent int, grossInterestRate float64) (*Account, error) {
 	accountType, product, accountID, address, isPending, err := parseFullPath(fullPath)
 	if err != nil {
 		return nil, fmt.Errorf("parse path: %w", err)
@@ -46,18 +46,23 @@ func (m *MemLedger) CreateAccount(fullPath string, currency string, exponent int
 		return nil, fmt.Errorf("account %q already exists", fullPath)
 	}
 
+	var method InterestMethod
+	if grossInterestRate != 0 {
+		method = InterestMethodDefault
+	}
 	a := &Account{
-		ID:                 uuid.New().String(),
-		FullPath:           fullPath,
-		Type:               accountType,
-		Product:            product,
-		AccountID:          accountID,
-		Address:            address,
-		IsPending:          isPending,
-		Currency:           currency,
-		Exponent:           exponent,
-		AnnualInterestRate: annualInterestRate,
-		CreatedAt:          time.Now(),
+		ID:                uuid.New().String(),
+		FullPath:          fullPath,
+		Type:              accountType,
+		Product:           product,
+		AccountID:         accountID,
+		Address:           address,
+		IsPending:         isPending,
+		Commodity:         commodity,
+		Exponent:          exponent,
+		GrossInterestRate: grossInterestRate,
+		InterestMethod:    method,
+		CreatedAt:         time.Now(),
 	}
 	m.accounts[a.ID] = a
 	m.byPath[fullPath] = a
@@ -236,6 +241,17 @@ func (m *MemLedger) BalanceByPath(pathPrefix string, at time.Time) (Amount, int,
 
 func (m *MemLedger) GetLiveBalance(accountID string, date time.Time) (*LiveBalance, error) {
 	return nil, ErrNotImplemented
+}
+
+func (m *MemLedger) SetInterestMethod(accountID string, method InterestMethod) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a := m.accounts[accountID]
+	if a == nil {
+		return fmt.Errorf("account %s not found", accountID)
+	}
+	a.InterestMethod = method
+	return nil
 }
 
 func (m *MemLedger) EnsureInterestAccounts() error {

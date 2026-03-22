@@ -12,16 +12,16 @@ import (
 // ImportOptions controls how .goluca files are imported into a Ledger.
 type ImportOptions struct {
 	AutoCreateAccounts bool   // create accounts that don't exist (default true)
-	DefaultCurrency    string // fallback currency (default "GBP")
+	DefaultCommodity   string // fallback commodity (default "GBP")
 }
 
 func (o *ImportOptions) defaults() ImportOptions {
 	if o == nil {
-		return ImportOptions{AutoCreateAccounts: true, DefaultCurrency: "GBP"}
+		return ImportOptions{AutoCreateAccounts: true, DefaultCommodity: "GBP"}
 	}
 	out := *o
-	if out.DefaultCurrency == "" {
-		out.DefaultCurrency = "GBP"
+	if out.DefaultCommodity == "" {
+		out.DefaultCommodity = "GBP"
 	}
 	return out
 }
@@ -69,7 +69,14 @@ func (l *SQLLedger) importDirectives(gf *GolucaFile, opts ImportOptions) error {
 				dt = &t
 			}
 		}
-		cid, err := l.CreateCommodity(c.Code, dt)
+		// Exponent defaults to -2; can be overridden by metadata "exponent"
+		exp := -2
+		if expStr, ok := c.Metadata["exponent"]; ok {
+			if _, err := fmt.Sscanf(expStr, "%d", &exp); err != nil {
+				return fmt.Errorf("parse exponent for commodity %q: %w", c.Code, err)
+			}
+		}
+		cid, err := l.CreateCommodity(c.Code, exp, dt)
 		if err != nil {
 			return fmt.Errorf("create commodity %q: %w", c.Code, err)
 		}
@@ -80,14 +87,25 @@ func (l *SQLLedger) importDirectives(gf *GolucaFile, opts ImportOptions) error {
 		}
 	}
 
-	// Aliases (before opens, so account resolution can use them)
-	for _, a := range gf.Aliases {
-		if err := l.CreateAlias(a.Name, a.Account); err != nil {
-			return fmt.Errorf("create alias %q: %w", a.Name, err)
+	// Customers (before accounts, since accounts.customer_id FKs to customers.id)
+	for _, c := range gf.Customers {
+		cid, err := l.CreateCustomer(c.Name)
+		if err != nil {
+			return fmt.Errorf("create customer %q: %w", c.Name, err)
+		}
+		if c.MaxBalanceAmount != "" {
+			if err := l.SetCustomerMaxBalance(cid, c.MaxBalanceAmount, c.MaxBalanceCommodity); err != nil {
+				return fmt.Errorf("set customer max balance %q: %w", c.Name, err)
+			}
+		}
+		for key, value := range c.Metadata {
+			if err := l.SetCustomerMetadata(cid, key, value); err != nil {
+				return fmt.Errorf("set customer metadata %q/%q: %w", c.Name, key, err)
+			}
 		}
 	}
 
-	// Opens — set opened_at on existing account or auto-create
+	// Opens — set opened_at on existing account or auto-create (before aliases, which FK to accounts)
 	for _, o := range gf.Opens {
 		openedAt, err := o.DateTime.ToTime()
 		if err != nil {
@@ -98,11 +116,11 @@ func (l *SQLLedger) importDirectives(gf *GolucaFile, opts ImportOptions) error {
 			return fmt.Errorf("get account %q: %w", o.Account, err)
 		}
 		if acct == nil && opts.AutoCreateAccounts {
-			currency := opts.DefaultCurrency
+			commodity := opts.DefaultCommodity
 			if len(o.Commodities) > 0 {
-				currency = o.Commodities[0]
+				commodity = o.Commodities[0]
 			}
-			acct, err = l.CreateAccount(o.Account, currency, -2, 0)
+			acct, err = l.CreateAccount(o.Account, commodity, -2, 0)
 			if err != nil {
 				return fmt.Errorf("create account %q: %w", o.Account, err)
 			}
@@ -111,28 +129,31 @@ func (l *SQLLedger) importDirectives(gf *GolucaFile, opts ImportOptions) error {
 			if err := l.SetAccountOpenedAt(acct.ID, openedAt); err != nil {
 				return fmt.Errorf("set opened_at for %q: %w", o.Account, err)
 			}
+			if method, ok := o.Metadata["interest-method"]; ok {
+				if err := l.SetInterestMethod(acct.ID, InterestMethod(method)); err != nil {
+					return fmt.Errorf("set interest method for %q: %w", o.Account, err)
+				}
+			}
 		}
 	}
 
-	// Customers
-	for _, c := range gf.Customers {
-		cid, err := l.CreateCustomer(c.Name)
-		if err != nil {
-			return fmt.Errorf("create customer %q: %w", c.Name, err)
+	// Aliases (after opens, since account_path is FK to accounts.full_path)
+	for _, a := range gf.Aliases {
+		if err := l.CreateAlias(a.Name, a.Account); err != nil {
+			return fmt.Errorf("create alias %q: %w", a.Name, err)
 		}
+	}
+
+	// Customer account links (customers created before accounts for FK;
+	// account linking deferred until after opens so accounts exist)
+	for _, c := range gf.Customers {
 		if c.Account != "" {
+			cid, err := l.customerIDByName(c.Name)
+			if err != nil {
+				return fmt.Errorf("find customer %q: %w", c.Name, err)
+			}
 			if err := l.SetCustomerAccount(cid, c.Account); err != nil {
 				return fmt.Errorf("set customer account %q: %w", c.Name, err)
-			}
-		}
-		if c.MaxBalanceAmount != "" {
-			if err := l.SetCustomerMaxBalance(cid, c.MaxBalanceAmount, c.MaxBalanceCommodity); err != nil {
-				return fmt.Errorf("set customer max balance %q: %w", c.Name, err)
-			}
-		}
-		for key, value := range c.Metadata {
-			if err := l.SetCustomerMetadata(cid, key, value); err != nil {
-				return fmt.Errorf("set customer metadata %q/%q: %w", c.Name, key, err)
 			}
 		}
 	}
@@ -315,13 +336,16 @@ func (l *SQLLedger) resolveAccount(path string, m TextMovement, opts ImportOptio
 	if !opts.AutoCreateAccounts {
 		return nil, fmt.Errorf("account %q not found", path)
 	}
-	// Infer exponent from decimal places in amount
-	exp := inferExponent(m.Amount)
-	currency := m.Commodity
-	if currency == "" {
-		currency = opts.DefaultCurrency
+	commodity := m.Commodity
+	if commodity == "" {
+		commodity = opts.DefaultCommodity
 	}
-	return l.CreateAccount(path, currency, exp, 0)
+	// Use existing commodity exponent if available; otherwise infer from amount
+	exp, err := l.commodityExponent(commodity)
+	if err != nil {
+		exp = inferExponent(m.Amount)
+	}
+	return l.CreateAccount(path, commodity, exp, 0)
 }
 
 // inferExponent returns the exponent (e.g. -2) from the decimal places in an amount string.

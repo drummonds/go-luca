@@ -43,11 +43,12 @@
             <div class="content">
 <h1>customer_metadata</h1>
 <h2>Description</h2>
+<p>Key-value metadata for customers.</p>
 <details>
 <summary><strong>Table Definition</strong></summary>
 <pre><code class="language-sql">CREATE TABLE customer_metadata (
     id TEXT PRIMARY KEY,
-    customer_id TEXT NOT NULL,
+    customer_id TEXT NOT NULL REFERENCES customers(id),
     key TEXT NOT NULL,
     value TEXT NOT NULL DEFAULT ''
 )
@@ -73,8 +74,8 @@
 <td></td>
 <td>false</td>
 <td></td>
-<td></td>
-<td></td>
+<td><a href="customers.html">customers</a></td>
+<td>FK to customers.id</td>
 </tr>
 <tr>
 <td>id</td>
@@ -83,7 +84,7 @@
 <td>true</td>
 <td></td>
 <td></td>
-<td></td>
+<td>UUID primary key</td>
 </tr>
 <tr>
 <td>key</td>
@@ -92,7 +93,7 @@
 <td>false</td>
 <td></td>
 <td></td>
-<td></td>
+<td>Metadata key</td>
 </tr>
 <tr>
 <td>value</td>
@@ -101,7 +102,7 @@
 <td>false</td>
 <td></td>
 <td></td>
-<td></td>
+<td>Metadata value</td>
 </tr>
 </tbody>
 </table>
@@ -115,6 +116,11 @@
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>- (Foreign key ID: 0)</td>
+<td>FOREIGN KEY</td>
+<td>FOREIGN KEY (customer_id) REFERENCES customers (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE</td>
+</tr>
 <tr>
 <td>id</td>
 <td>PRIMARY KEY</td>
@@ -149,12 +155,21 @@
 <h2>Relations</h2>
 <pre class="mermaid">erDiagram
 
+&quot;customer_metadata&quot; }o--|| &quot;customers&quot; : &quot;FOREIGN KEY (customer_id) REFERENCES customers (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
+&quot;customer_metadata&quot; }o--|| &quot;customers&quot; : &quot;customer_metadata.customer_id -&gt; customers.id&quot;
 
 &quot;customer_metadata&quot; {
-  TEXT customer_id &quot;&quot;
-  TEXT id PK &quot;&quot;
-  TEXT key &quot;&quot;
-  TEXT value &quot;&quot;
+  TEXT customer_id FK &quot;FK to customers.id&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  TEXT key &quot;Metadata key&quot;
+  TEXT value &quot;Metadata value&quot;
+}
+&quot;customers&quot; {
+  TEXT created_at &quot;Timestamp when the customer was created&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  TEXT max_balance_amount &quot;Maximum allowed balance amount (empty = no limit)&quot;
+  TEXT max_balance_commodity &quot;Commodity for the max balance constraint&quot;
+  TEXT name &quot;Customer name (unique)&quot;
 }
 </pre>
 <hr>

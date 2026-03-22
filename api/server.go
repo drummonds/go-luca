@@ -38,6 +38,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /accounts/get-by-id", s.handleGetAccountByID)
 	s.mux.HandleFunc("GET /accounts/list", s.handleListAccounts)
 
+	s.mux.HandleFunc("POST /accounts/set-interest-method", s.handleSetInterestMethod)
+
 	s.mux.HandleFunc("POST /movements/record", s.handleRecordMovement)
 	s.mux.HandleFunc("POST /movements/record-linked", s.handleRecordLinkedMovements)
 	s.mux.HandleFunc("POST /movements/add-to-batch", s.handleAddMovementToBatch)
@@ -67,10 +69,15 @@ func (s *Server) routes() {
 // --- request/response types ---
 
 type createAccountReq struct {
-	FullPath           string  `json:"full_path"`
-	Currency           string  `json:"currency"`
-	Exponent           int     `json:"exponent"`
-	AnnualInterestRate float64 `json:"annual_interest_rate"`
+	FullPath          string  `json:"full_path"`
+	Commodity         string  `json:"commodity"`
+	Exponent          int     `json:"exponent"`
+	GrossInterestRate float64 `json:"gross_interest_rate"`
+}
+
+type setInterestMethodReq struct {
+	AccountID      string              `json:"account_id"`
+	InterestMethod luca.InterestMethod `json:"interest_method"`
 }
 
 type recordMovementReq struct {
@@ -169,12 +176,29 @@ func (s *Server) handleCreateAccount(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	acct, err := s.ledger.CreateAccount(req.FullPath, req.Currency, req.Exponent, req.AnnualInterestRate)
+	acct, err := s.ledger.CreateAccount(req.FullPath, req.Commodity, req.Exponent, req.GrossInterestRate)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	writeJSON(w, http.StatusCreated, acct)
+}
+
+func (s *Server) handleSetInterestMethod(w http.ResponseWriter, r *http.Request) {
+	var req setInterestMethodReq
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if req.AccountID == "" {
+		writeError(w, http.StatusBadRequest, "account_id required")
+		return
+	}
+	if err := s.ledger.SetInterestMethod(req.AccountID, req.InterestMethod); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (s *Server) handleGetAccount(w http.ResponseWriter, r *http.Request) {

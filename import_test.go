@@ -27,8 +27,8 @@ func TestImportAutoCreate(t *testing.T) {
 	if cash.Exponent != -2 {
 		t.Errorf("cash exponent = %d, want -2", cash.Exponent)
 	}
-	if cash.Currency != "GBP" {
-		t.Errorf("cash currency = %q, want GBP", cash.Currency)
+	if cash.Commodity != "GBP" {
+		t.Errorf("cash commodity = %q, want GBP", cash.Commodity)
 	}
 
 	capital, err := l.GetAccount("Equity:Capital")

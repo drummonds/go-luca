@@ -36,8 +36,8 @@ func TestCreateAccount(t *testing.T) {
 	if acct.Product != "Cash" {
 		t.Errorf("Product = %q, want %q", acct.Product, "Cash")
 	}
-	if acct.Currency != "GBP" {
-		t.Errorf("Currency = %q, want %q", acct.Currency, "GBP")
+	if acct.Commodity != "GBP" {
+		t.Errorf("Commodity = %q, want %q", acct.Commodity, "GBP")
 	}
 	if acct.Exponent != -2 {
 		t.Errorf("Exponent = %d, want -2", acct.Exponent)
@@ -51,8 +51,8 @@ func TestCreateAccountWithInterestRate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
-	if acct.AnnualInterestRate != 0.0365 {
-		t.Errorf("AnnualInterestRate = %f, want %f", acct.AnnualInterestRate, 0.0365)
+	if acct.GrossInterestRate != 0.0365 {
+		t.Errorf("GrossInterestRate = %f, want %f", acct.GrossInterestRate, 0.0365)
 	}
 }
 

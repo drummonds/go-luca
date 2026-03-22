@@ -2,6 +2,8 @@
 
 ## Description
 
+Key-value metadata for movement batches.
+
 <details>
 <summary><strong>Table Definition</strong></summary>
 
@@ -18,12 +20,12 @@ CREATE TABLE movement_metadata (
 
 ## Columns
 
-| Name     | Type | Default | Nullable | Children | Parents | Comment |
-| -------- | ---- | ------- | -------- | -------- | ------- | ------- |
-| batch_id | TEXT |         | false    |          |         |         |
-| id       | TEXT |         | true     |          |         |         |
-| key      | TEXT |         | false    |          |         |         |
-| value    | TEXT | ''      | false    |          |         |         |
+| Name     | Type | Default | Nullable | Children | Parents | Comment           |
+| -------- | ---- | ------- | -------- | -------- | ------- | ----------------- |
+| batch_id | TEXT |         | false    |          |         | Movement batch ID |
+| id       | TEXT |         | true     |          |         | UUID primary key  |
+| key      | TEXT |         | false    |          |         | Metadata key      |
+| value    | TEXT | ''      | false    |          |         | Metadata value    |
 
 ## Constraints
 
@@ -46,10 +48,10 @@ erDiagram
 
 
 "movement_metadata" {
-  TEXT batch_id ""
-  TEXT id PK ""
-  TEXT key ""
-  TEXT value ""
+  TEXT batch_id "Movement batch ID"
+  TEXT id PK "UUID primary key"
+  TEXT key "Metadata key"
+  TEXT value "Metadata value"
 }
 ```
 

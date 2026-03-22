@@ -33,13 +33,13 @@ func (c *Client) Close() error { return nil }
 
 // --- account methods ---
 
-func (c *Client) CreateAccount(fullPath string, currency string, exponent int, annualInterestRate float64) (*luca.Account, error) {
+func (c *Client) CreateAccount(fullPath string, commodity string, exponent int, grossInterestRate float64) (*luca.Account, error) {
 	var acct luca.Account
 	err := c.post("/accounts/create", createAccountReq{
-		FullPath:           fullPath,
-		Currency:           currency,
-		Exponent:           exponent,
-		AnnualInterestRate: annualInterestRate,
+		FullPath:          fullPath,
+		Commodity:         commodity,
+		Exponent:          exponent,
+		GrossInterestRate: grossInterestRate,
 	}, &acct)
 	if err != nil {
 		return nil, err
@@ -244,6 +244,14 @@ func (c *Client) BalanceByPath(pathPrefix string, at time.Time) (luca.Amount, in
 
 func (c *Client) GetLiveBalance(accountID string, date time.Time) (*luca.LiveBalance, error) {
 	return nil, luca.ErrNotImplemented
+}
+
+func (c *Client) SetInterestMethod(accountID string, method luca.InterestMethod) error {
+	var resp map[string]string
+	return c.post("/accounts/set-interest-method", setInterestMethodReq{
+		AccountID:      accountID,
+		InterestMethod: method,
+	}, &resp)
 }
 
 func (c *Client) EnsureInterestAccounts() error {

@@ -61,11 +61,11 @@ func (l *SQLLedger) ListOptions() ([]Option, error) {
 // --- Commodities ---
 
 // CreateCommodity inserts a commodity and returns its ID.
-func (l *SQLLedger) CreateCommodity(code string, datetime *time.Time) (string, error) {
+func (l *SQLLedger) CreateCommodity(code string, exponent int, datetime *time.Time) (string, error) {
 	id := uuid.New().String()
 	_, err := l.db.Exec(
-		`INSERT INTO commodities (id, code, datetime) VALUES ($1, $2, $3)`,
-		id, code, datetime,
+		`INSERT INTO commodities (id, code, exponent, datetime) VALUES ($1, $2, $3, $4)`,
+		id, code, exponent, datetime,
 	)
 	if err != nil {
 		return "", fmt.Errorf("insert commodity: %w", err)
@@ -222,11 +222,21 @@ func (l *SQLLedger) CreateCustomer(name string) (string, error) {
 	return id, nil
 }
 
-// SetCustomerAccount sets the account_path for a customer.
+// customerIDByName returns the customer ID for a given name.
+func (l *SQLLedger) customerIDByName(name string) (string, error) {
+	var id string
+	err := l.db.QueryRow(`SELECT id FROM customers WHERE name = $1`, name).Scan(&id)
+	if err != nil {
+		return "", fmt.Errorf("customer %q not found: %w", name, err)
+	}
+	return id, nil
+}
+
+// SetCustomerAccount links an account to a customer by setting accounts.customer_id.
 func (l *SQLLedger) SetCustomerAccount(customerID, accountPath string) error {
 	_, err := l.db.Exec(
-		`UPDATE customers SET account_path = $1 WHERE id = $2`,
-		accountPath, customerID,
+		`UPDATE accounts SET customer_id = $1 WHERE full_path = $2`,
+		customerID, accountPath,
 	)
 	return err
 }
@@ -260,8 +270,9 @@ func (l *SQLLedger) SetCustomerMetadata(customerID, key, value string) error {
 }
 
 // ListCustomers returns all customers with their metadata.
+// The account path is looked up from accounts.customer_id.
 func (l *SQLLedger) ListCustomers() ([]CustomerDef, error) {
-	rows, err := l.db.Query(`SELECT id, name, account_path, max_balance_amount, max_balance_commodity FROM customers ORDER BY name`)
+	rows, err := l.db.Query(`SELECT id, name, max_balance_amount, max_balance_commodity FROM customers ORDER BY name`)
 	if err != nil {
 		return nil, fmt.Errorf("list customers: %w", err)
 	}
@@ -270,19 +281,39 @@ func (l *SQLLedger) ListCustomers() ([]CustomerDef, error) {
 	type customerRow struct {
 		id                  string
 		name                string
-		accountPath         string
 		maxBalanceAmount    string
 		maxBalanceCommodity string
 	}
 	var crows []customerRow
 	for rows.Next() {
 		var cr customerRow
-		if err := rows.Scan(&cr.id, &cr.name, &cr.accountPath, &cr.maxBalanceAmount, &cr.maxBalanceCommodity); err != nil {
+		if err := rows.Scan(&cr.id, &cr.name, &cr.maxBalanceAmount, &cr.maxBalanceCommodity); err != nil {
 			return nil, fmt.Errorf("scan customer: %w", err)
 		}
 		crows = append(crows, cr)
 	}
 	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Look up account paths linked to each customer
+	acctRows, err := l.db.Query(`SELECT customer_id, full_path FROM accounts WHERE customer_id IS NOT NULL ORDER BY customer_id, full_path`)
+	if err != nil {
+		return nil, fmt.Errorf("list customer accounts: %w", err)
+	}
+	defer acctRows.Close()
+
+	acctByCustomer := make(map[string]string) // first account path per customer
+	for acctRows.Next() {
+		var cid, path string
+		if err := acctRows.Scan(&cid, &path); err != nil {
+			return nil, fmt.Errorf("scan customer account: %w", err)
+		}
+		if _, exists := acctByCustomer[cid]; !exists {
+			acctByCustomer[cid] = path
+		}
+	}
+	if err := acctRows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -312,7 +343,7 @@ func (l *SQLLedger) ListCustomers() ([]CustomerDef, error) {
 	for _, cr := range crows {
 		cd := CustomerDef{
 			Name:                cr.name,
-			Account:             cr.accountPath,
+			Account:             acctByCustomer[cr.id],
 			MaxBalanceAmount:    cr.maxBalanceAmount,
 			MaxBalanceCommodity: cr.maxBalanceCommodity,
 			Metadata:            metaByID[cr.id],

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/shopspring/decimal"
 )
 
 // utc normalises a time to UTC so that SQLite TEXT comparisons (<=, >=, ORDER BY)
@@ -25,37 +24,103 @@ func parseDBTime(s string) time.Time {
 	return t
 }
 
+// commodityExponent returns the exponent for a commodity code, or an error if not found.
+func (l *SQLLedger) commodityExponent(code string) (int, error) {
+	var exp int
+	err := l.db.QueryRow(`SELECT exponent FROM commodities WHERE code = $1`, code).Scan(&exp)
+	if err != nil {
+		return 0, err
+	}
+	return exp, nil
+}
+
+// ensureCommodity creates the commodity if it doesn't exist, or verifies
+// the exponent matches an existing commodity.
+func (l *SQLLedger) ensureCommodity(code string, exponent int) error {
+	var existingExp int
+	err := l.db.QueryRow(
+		`SELECT exponent FROM commodities WHERE code = $1`, code,
+	).Scan(&existingExp)
+	if err == sql.ErrNoRows {
+		_, err = l.db.Exec(
+			`INSERT INTO commodities (id, code, exponent) VALUES ($1, $2, $3)`,
+			uuid.New().String(), code, exponent,
+		)
+		if err != nil {
+			return fmt.Errorf("insert commodity %s: %w", code, err)
+		}
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("check commodity %s: %w", code, err)
+	}
+	if existingExp != exponent {
+		return fmt.Errorf("commodity %s has exponent %d, got %d", code, existingExp, exponent)
+	}
+	return nil
+}
+
 // CreateAccount inserts a new account and returns it with the generated ID.
 // fullPath is parsed to extract Type, Product, AccountID, and Address components.
-func (l *SQLLedger) CreateAccount(fullPath string, currency string, exponent int, annualInterestRate float64) (*Account, error) {
+// The commodity is auto-created if it doesn't exist.
+func (l *SQLLedger) CreateAccount(fullPath string, commodity string, exponent int, grossInterestRate float64) (*Account, error) {
 	accountType, product, accountID, address, isPending, err := parseFullPath(fullPath)
 	if err != nil {
 		return nil, fmt.Errorf("parse path: %w", err)
 	}
 
+	if err := l.ensureCommodity(commodity, exponent); err != nil {
+		return nil, err
+	}
+
 	id := uuid.New().String()
+	// Default interest method when rate != 0
+	var method InterestMethod
+	if grossInterestRate != 0 {
+		method = InterestMethodDefault
+	}
+
 	_, err = l.db.Exec(
-		`INSERT INTO accounts (id, full_path, account_type, product, account_id, address, is_pending, currency, exponent, annual_interest_rate)
+		`INSERT INTO accounts (id, full_path, account_type, product, account_id, address, is_pending, commodity, gross_interest_rate, interest_method)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-		id, fullPath, string(accountType), product, accountID, address, isPending, currency, exponent, annualInterestRate,
+		id, fullPath, string(accountType), product, accountID, address, isPending, commodity, grossInterestRate, string(method),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("insert account: %w", err)
 	}
 
 	return &Account{
-		ID:                 id,
-		FullPath:           fullPath,
-		Type:               accountType,
-		Product:            product,
-		AccountID:          accountID,
-		Address:            address,
-		IsPending:          isPending,
-		Currency:           currency,
-		Exponent:           exponent,
-		AnnualInterestRate: annualInterestRate,
-		CreatedAt:          time.Now(),
+		ID:                id,
+		FullPath:          fullPath,
+		Type:              accountType,
+		Product:           product,
+		AccountID:         accountID,
+		Address:           address,
+		IsPending:         isPending,
+		Commodity:         commodity,
+		Exponent:          exponent,
+		GrossInterestRate: grossInterestRate,
+		InterestMethod:    method,
+		CreatedAt:         time.Now(),
 	}, nil
+}
+
+// SetInterestMethod sets the interest calculation method for an account.
+func (l *SQLLedger) SetInterestMethod(accountID string, method InterestMethod) error {
+	_, err := l.db.Exec(
+		`UPDATE accounts SET interest_method = $1 WHERE id = $2`,
+		string(method), accountID,
+	)
+	return err
+}
+
+// updateAccumulator sets the interest accumulator value for an account.
+func (l *SQLLedger) updateAccumulator(accountID string, value Amount) error {
+	_, err := l.db.Exec(
+		`UPDATE accounts SET interest_accumulator = $1 WHERE id = $2`,
+		value, accountID,
+	)
+	return err
 }
 
 // SetAccountOpenedAt sets the opened_at timestamp for an account.
@@ -68,16 +133,21 @@ func (l *SQLLedger) SetAccountOpenedAt(accountID string, openedAt time.Time) err
 }
 
 // scanAccount scans an account row into an Account struct.
+// The query must JOIN commodities to provide exponent (see accountSelect).
 // created_at and opened_at are stored as TEXT by SQLite, so we scan them as strings and parse.
 func scanAccount(scanner interface{ Scan(...any) error }) (*Account, error) {
 	a := &Account{}
-	var typeStr, createdAtStr string
-	var openedAtStr sql.NullString
-	err := scanner.Scan(&a.ID, &a.FullPath, &typeStr, &a.Product, &a.AccountID, &a.Address, &a.IsPending, &a.Currency, &a.Exponent, &a.AnnualInterestRate, &openedAtStr, &createdAtStr)
+	var typeStr, methodStr, createdAtStr string
+	var openedAtStr, customerID sql.NullString
+	err := scanner.Scan(&a.ID, &a.FullPath, &typeStr, &a.Product, &a.AccountID, &a.Address, &a.IsPending, &a.Commodity, &customerID, &a.Exponent, &a.GrossInterestRate, &methodStr, &a.InterestAccumulator, &openedAtStr, &createdAtStr)
 	if err != nil {
 		return nil, err
 	}
 	a.Type = AccountType(typeStr)
+	a.InterestMethod = InterestMethod(methodStr)
+	if customerID.Valid {
+		a.CustomerID = customerID.String
+	}
 	a.CreatedAt = parseDBTime(createdAtStr)
 	if openedAtStr.Valid && openedAtStr.String != "" {
 		t := parseDBTime(openedAtStr.String)
@@ -88,13 +158,17 @@ func scanAccount(scanner interface{ Scan(...any) error }) (*Account, error) {
 	return a, nil
 }
 
-const accountColumns = `id, full_path, account_type, product, account_id, address, is_pending, currency, exponent, annual_interest_rate, opened_at, created_at`
+// accountSelect is the SELECT columns for account queries.
+// Exponent comes from the commodities table via JOIN.
+const accountSelect = `a.id, a.full_path, a.account_type, a.product, a.account_id, a.address, a.is_pending, a.commodity, a.customer_id, c.exponent, a.gross_interest_rate, a.interest_method, a.interest_accumulator, a.opened_at, a.created_at`
+
+const accountFrom = ` FROM accounts a JOIN commodities c ON c.code = a.commodity`
 
 // GetAccount retrieves an account by its full path.
 func (l *SQLLedger) GetAccount(fullPath string) (*Account, error) {
 	row := l.db.QueryRow(
-		`SELECT `+accountColumns+`
-		 FROM accounts WHERE full_path = $1`, fullPath,
+		`SELECT `+accountSelect+accountFrom+`
+		 WHERE a.full_path = $1`, fullPath,
 	)
 	a, err := scanAccount(row)
 	if err == sql.ErrNoRows {
@@ -109,8 +183,8 @@ func (l *SQLLedger) GetAccount(fullPath string) (*Account, error) {
 // GetAccountByID retrieves an account by its database ID.
 func (l *SQLLedger) GetAccountByID(id string) (*Account, error) {
 	row := l.db.QueryRow(
-		`SELECT `+accountColumns+`
-		 FROM accounts WHERE id = $1`, id,
+		`SELECT `+accountSelect+accountFrom+`
+		 WHERE a.id = $1`, id,
 	)
 	a, err := scanAccount(row)
 	if err == sql.ErrNoRows {
@@ -129,12 +203,12 @@ func (l *SQLLedger) ListAccounts(typeFilter AccountType) ([]*Account, error) {
 	var err error
 	if typeFilter == "" {
 		rows, err = l.db.Query(
-			`SELECT ` + accountColumns + `
-			 FROM accounts ORDER BY full_path`)
+			`SELECT ` + accountSelect + accountFrom + `
+			 ORDER BY a.full_path`)
 	} else {
 		rows, err = l.db.Query(
-			`SELECT `+accountColumns+`
-			 FROM accounts WHERE account_type = $1 ORDER BY full_path`, string(typeFilter))
+			`SELECT `+accountSelect+accountFrom+`
+			 WHERE a.account_type = $1 ORDER BY a.full_path`, string(typeFilter))
 	}
 	if err != nil {
 		return nil, fmt.Errorf("list accounts: %w", err)
@@ -359,8 +433,9 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID str
 	// Look up interest accounts before starting the transaction.
 	// With :memory: SQLite, l.db queries during an open tx may hit
 	// a different connection (and thus a different empty database).
+	hasInterest := toAcct.GrossInterestRate != 0 || toAcct.InterestMethod != InterestMethodNone
 	var expenseAcctID string
-	if toAcct.AnnualInterestRate != 0 {
+	if hasInterest {
 		expenseAcct, err := l.GetAccount("Expense:Interest")
 		if err != nil || expenseAcct == nil {
 			return nil, fmt.Errorf("interest expense account not found, call EnsureInterestAccounts first")
@@ -395,14 +470,19 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID str
 		return nil, fmt.Errorf("compute balance: %w", err)
 	}
 
-	// 3. If account has interest rate, compute and upsert the accrual
+	// 3. If account has interest, compute and upsert the accrual
 	var interestAmount Amount
-	if toAcct.AnnualInterestRate != 0 {
-		balDec := IntToDecimal(balance, toAcct.Exponent)
-		rate := decimal.NewFromFloat(toAcct.AnnualInterestRate)
-		dailyRate := rate.Div(decimal.NewFromInt(365))
-		interestDec := balDec.Mul(dailyRate)
-		interestAmount = DecimalToInt(interestDec, toAcct.Exponent)
+	if hasInterest {
+		interest, newAccum := l.computeInterest(balance, toAcct, valueTime)
+		interestAmount = interest
+
+		// Update accumulator if changed
+		if newAccum != toAcct.InterestAccumulator {
+			_, err = tx.Exec(`UPDATE accounts SET interest_accumulator = $1 WHERE id = $2`, newAccum, toAccountID)
+			if err != nil {
+				return nil, fmt.Errorf("update accumulator: %w", err)
+			}
+		}
 
 		if interestAmount != 0 {
 			// Delete old accrual for this account+date, then insert the new one

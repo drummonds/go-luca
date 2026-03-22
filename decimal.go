@@ -36,3 +36,19 @@ func ScaleAmount(amount Amount, fromExponent, toExponent int) Amount {
 	d := IntToDecimal(amount, fromExponent)
 	return DecimalToInt(d, toExponent)
 }
+
+// ExtractPostable splits an accumulator value (at extended precision) into
+// a postable amount (at the base exponent) and the remaining sub-unit fraction.
+// extraDigits is the number of extra decimal places beyond the base exponent.
+//
+// For example with extraDigits=2: accumulator=1234 → postable=12, remainder=34
+// (accumulator is at 4dp, postable at 2dp, remainder keeps sub-unit fraction).
+func ExtractPostable(accumulator Amount, extraDigits int) (postable Amount, remainder Amount) {
+	scale := Amount(1)
+	for i := 0; i < extraDigits; i++ {
+		scale *= 10
+	}
+	postable = accumulator / scale
+	remainder = accumulator - postable*scale
+	return postable, remainder
+}

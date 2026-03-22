@@ -43,12 +43,13 @@
             <div class="content">
 <h1>aliases</h1>
 <h2>Description</h2>
+<p>Short name aliases for account paths. Allows .goluca files and users to reference accounts by a short name instead of the full hierarchical path.</p>
 <details>
 <summary><strong>Table Definition</strong></summary>
 <pre><code class="language-sql">CREATE TABLE aliases (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
-    account_path TEXT NOT NULL,
+    account_path TEXT NOT NULL REFERENCES accounts(full_path),
     created_at TEXT DEFAULT (datetime('now'))
 )
 </code></pre>
@@ -73,8 +74,8 @@
 <td></td>
 <td>false</td>
 <td></td>
-<td></td>
-<td></td>
+<td><a href="accounts.html">accounts</a></td>
+<td>Full account path (FK to accounts.full_path)</td>
 </tr>
 <tr>
 <td>created_at</td>
@@ -83,7 +84,7 @@
 <td>true</td>
 <td></td>
 <td></td>
-<td></td>
+<td>Timestamp when the alias was created</td>
 </tr>
 <tr>
 <td>id</td>
@@ -92,7 +93,7 @@
 <td>true</td>
 <td></td>
 <td></td>
-<td></td>
+<td>UUID primary key</td>
 </tr>
 <tr>
 <td>name</td>
@@ -101,7 +102,7 @@
 <td>false</td>
 <td></td>
 <td></td>
-<td></td>
+<td>Alias name (unique)</td>
 </tr>
 </tbody>
 </table>
@@ -115,6 +116,11 @@
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>- (Foreign key ID: 0)</td>
+<td>FOREIGN KEY</td>
+<td>FOREIGN KEY (account_path) REFERENCES accounts (full_path) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE</td>
+</tr>
 <tr>
 <td>id</td>
 <td>PRIMARY KEY</td>
@@ -154,12 +160,30 @@
 <h2>Relations</h2>
 <pre class="mermaid">erDiagram
 
+&quot;aliases&quot; }o--|| &quot;accounts&quot; : &quot;FOREIGN KEY (account_path) REFERENCES accounts (full_path) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
+&quot;aliases&quot; }o--|| &quot;accounts&quot; : &quot;aliases.account_path -&gt; accounts.full_path&quot;
 
 &quot;aliases&quot; {
-  TEXT account_path &quot;&quot;
-  TEXT created_at &quot;&quot;
-  TEXT id PK &quot;&quot;
-  TEXT name &quot;&quot;
+  TEXT account_path FK &quot;Full account path (FK to accounts.full_path)&quot;
+  TEXT created_at &quot;Timestamp when the alias was created&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  TEXT name &quot;Alias name (unique)&quot;
+}
+&quot;accounts&quot; {
+  TEXT account_id &quot;Specific account identifier within the product&quot;
+  TEXT account_type &quot;One of: Asset, Liability, Equity, Income, Expense&quot;
+  TEXT address &quot;Sub-address within the account (e.g. branch). 'Pending' marks pending accounts&quot;
+  TEXT commodity FK &quot;Commodity code (FK to commodities.code)&quot;
+  TEXT created_at &quot;Timestamp when the account was created&quot;
+  TEXT customer_id FK &quot;Optional owning customer (FK to customers.id). A customer may have many accounts&quot;
+  TEXT full_path &quot;Hierarchical account path, e.g. Asset:Bank:Current:Main&quot;
+  TEXT gross_interest_rate &quot;Gross annual interest rate as a decimal (0.045 = 4.5%)&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  INTEGER interest_accumulator &quot;Sub-unit fractions at extended precision (method-dependent)&quot;
+  TEXT interest_method &quot;Interest calculation method (e.g. simple_daily)&quot;
+  INTEGER is_pending &quot;True if this is a pending/suspense account&quot;
+  TEXT opened_at &quot;When the account was opened&quot;
+  TEXT product &quot;Product category within the account type&quot;
 }
 </pre>
 <hr>

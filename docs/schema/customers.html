@@ -43,12 +43,12 @@
             <div class="content">
 <h1>customers</h1>
 <h2>Description</h2>
+<p>Customer records. A customer may have zero to many accounts (via accounts.customer_id). Supports max balance constraints and arbitrary key-value metadata.</p>
 <details>
 <summary><strong>Table Definition</strong></summary>
 <pre><code class="language-sql">CREATE TABLE customers (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
-    account_path TEXT NOT NULL DEFAULT '',
     max_balance_amount TEXT NOT NULL DEFAULT '',
     max_balance_commodity TEXT NOT NULL DEFAULT '',
     created_at TEXT DEFAULT (datetime('now'))
@@ -70,31 +70,22 @@
 </thead>
 <tbody>
 <tr>
-<td>account_path</td>
-<td>TEXT</td>
-<td>''</td>
-<td>false</td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr>
 <td>created_at</td>
 <td>TEXT</td>
 <td>datetime('now')</td>
 <td>true</td>
 <td></td>
 <td></td>
-<td></td>
+<td>Timestamp when the customer was created</td>
 </tr>
 <tr>
 <td>id</td>
 <td>TEXT</td>
 <td></td>
 <td>true</td>
+<td><a href="accounts.html">accounts</a> <a href="customer_metadata.html">customer_metadata</a></td>
 <td></td>
-<td></td>
-<td></td>
+<td>UUID primary key</td>
 </tr>
 <tr>
 <td>max_balance_amount</td>
@@ -103,7 +94,7 @@
 <td>false</td>
 <td></td>
 <td></td>
-<td></td>
+<td>Maximum allowed balance amount (empty = no limit)</td>
 </tr>
 <tr>
 <td>max_balance_commodity</td>
@@ -112,7 +103,7 @@
 <td>false</td>
 <td></td>
 <td></td>
-<td></td>
+<td>Commodity for the max balance constraint</td>
 </tr>
 <tr>
 <td>name</td>
@@ -121,7 +112,7 @@
 <td>false</td>
 <td></td>
 <td></td>
-<td></td>
+<td>Customer name (unique)</td>
 </tr>
 </tbody>
 </table>
@@ -174,14 +165,39 @@
 <h2>Relations</h2>
 <pre class="mermaid">erDiagram
 
+&quot;accounts&quot; }o--o| &quot;customers&quot; : &quot;FOREIGN KEY (customer_id) REFERENCES customers (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
+&quot;accounts&quot; }o--o| &quot;customers&quot; : &quot;accounts.customer_id -&gt; customers.id&quot;
+&quot;customer_metadata&quot; }o--|| &quot;customers&quot; : &quot;FOREIGN KEY (customer_id) REFERENCES customers (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
+&quot;customer_metadata&quot; }o--|| &quot;customers&quot; : &quot;customer_metadata.customer_id -&gt; customers.id&quot;
 
 &quot;customers&quot; {
-  TEXT account_path &quot;&quot;
-  TEXT created_at &quot;&quot;
-  TEXT id PK &quot;&quot;
-  TEXT max_balance_amount &quot;&quot;
-  TEXT max_balance_commodity &quot;&quot;
-  TEXT name &quot;&quot;
+  TEXT created_at &quot;Timestamp when the customer was created&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  TEXT max_balance_amount &quot;Maximum allowed balance amount (empty = no limit)&quot;
+  TEXT max_balance_commodity &quot;Commodity for the max balance constraint&quot;
+  TEXT name &quot;Customer name (unique)&quot;
+}
+&quot;accounts&quot; {
+  TEXT account_id &quot;Specific account identifier within the product&quot;
+  TEXT account_type &quot;One of: Asset, Liability, Equity, Income, Expense&quot;
+  TEXT address &quot;Sub-address within the account (e.g. branch). 'Pending' marks pending accounts&quot;
+  TEXT commodity FK &quot;Commodity code (FK to commodities.code)&quot;
+  TEXT created_at &quot;Timestamp when the account was created&quot;
+  TEXT customer_id FK &quot;Optional owning customer (FK to customers.id). A customer may have many accounts&quot;
+  TEXT full_path &quot;Hierarchical account path, e.g. Asset:Bank:Current:Main&quot;
+  TEXT gross_interest_rate &quot;Gross annual interest rate as a decimal (0.045 = 4.5%)&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  INTEGER interest_accumulator &quot;Sub-unit fractions at extended precision (method-dependent)&quot;
+  TEXT interest_method &quot;Interest calculation method (e.g. simple_daily)&quot;
+  INTEGER is_pending &quot;True if this is a pending/suspense account&quot;
+  TEXT opened_at &quot;When the account was opened&quot;
+  TEXT product &quot;Product category within the account type&quot;
+}
+&quot;customer_metadata&quot; {
+  TEXT customer_id FK &quot;FK to customers.id&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  TEXT key &quot;Metadata key&quot;
+  TEXT value &quot;Metadata value&quot;
 }
 </pre>
 <hr>

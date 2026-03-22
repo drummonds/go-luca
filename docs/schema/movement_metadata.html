@@ -43,6 +43,7 @@
             <div class="content">
 <h1>movement_metadata</h1>
 <h2>Description</h2>
+<p>Key-value metadata for movement batches.</p>
 <details>
 <summary><strong>Table Definition</strong></summary>
 <pre><code class="language-sql">CREATE TABLE movement_metadata (
@@ -74,7 +75,7 @@
 <td>false</td>
 <td></td>
 <td></td>
-<td></td>
+<td>Movement batch ID</td>
 </tr>
 <tr>
 <td>id</td>
@@ -83,7 +84,7 @@
 <td>true</td>
 <td></td>
 <td></td>
-<td></td>
+<td>UUID primary key</td>
 </tr>
 <tr>
 <td>key</td>
@@ -92,7 +93,7 @@
 <td>false</td>
 <td></td>
 <td></td>
-<td></td>
+<td>Metadata key</td>
 </tr>
 <tr>
 <td>value</td>
@@ -101,7 +102,7 @@
 <td>false</td>
 <td></td>
 <td></td>
-<td></td>
+<td>Metadata value</td>
 </tr>
 </tbody>
 </table>
@@ -151,10 +152,10 @@
 
 
 &quot;movement_metadata&quot; {
-  TEXT batch_id &quot;&quot;
-  TEXT id PK &quot;&quot;
-  TEXT key &quot;&quot;
-  TEXT value &quot;&quot;
+  TEXT batch_id &quot;Movement batch ID&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  TEXT key &quot;Metadata key&quot;
+  TEXT value &quot;Metadata value&quot;
 }
 </pre>
 <hr>

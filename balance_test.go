@@ -169,12 +169,12 @@ func TestDailyBalances(t *testing.T) {
 }
 
 // TestCrossExponentMovementRejected verifies that movements between accounts
-// with different exponents are rejected (cross-exponent = currency conversion).
+// with different exponents are rejected (cross-exponent = commodity conversion).
 func TestCrossExponentMovementRejected(t *testing.T) {
 	l := newTestLedger(t)
 
 	std, _ := l.CreateAccount("Asset:Standard", "GBP", -2, 0)
-	hip, _ := l.CreateAccount("Asset:HiPrec", "GBP", -5, 0)
+	hip, _ := l.CreateAccount("Asset:HiPrec", "GBPHP", -5, 0) // different commodity → different exponent
 
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	_, err := l.RecordMovement(std.ID, hip.ID, 100000, CodeBookTransfer, now, "Should fail")
@@ -189,7 +189,7 @@ func TestCrossExponentLinkedMovementRejected(t *testing.T) {
 	l := newTestLedger(t)
 
 	std, _ := l.CreateAccount("Asset:Standard", "GBP", -2, 0)
-	hip, _ := l.CreateAccount("Asset:HiPrec", "GBP", -5, 0)
+	hip, _ := l.CreateAccount("Asset:HiPrec", "GBPHP", -5, 0) // different commodity → different exponent
 
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	_, err := l.RecordLinkedMovements([]MovementInput{
@@ -205,11 +205,11 @@ func TestCrossExponentLinkedMovementRejected(t *testing.T) {
 func TestMixedExponentBalanceByPath(t *testing.T) {
 	l := newTestLedger(t)
 
-	// Two Asset accounts at different exponents, each funded within its own exponent group
+	// Two Asset accounts at different exponents (different commodities), each funded within its own exponent group
 	standard, _ := l.CreateAccount("Asset:Standard", "GBP", -2, 0)
-	hiPrec, _ := l.CreateAccount("Asset:HiPrec", "GBP", -5, 0)
-	equity2, _ := l.CreateAccount("Equity:Capital2", "GBP", -2, 0) // funds standard
-	equity5, _ := l.CreateAccount("Equity:Capital5", "GBP", -5, 0) // funds hiPrec
+	hiPrec, _ := l.CreateAccount("Asset:HiPrec", "GBPHP", -5, 0)
+	equity2, _ := l.CreateAccount("Equity:Capital2", "GBP", -2, 0)   // funds standard
+	equity5, _ := l.CreateAccount("Equity:Capital5", "GBPHP", -5, 0) // funds hiPrec
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
 	// 1000.00 into standard: equity2(-2) → standard(-2), same exponent

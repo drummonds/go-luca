@@ -7,6 +7,16 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// defaultInterest computes simple daily interest: balance * rate / 365,
+// truncated to account exponent. No accumulator is used.
+func defaultInterest(balance Amount, acct *Account, date time.Time) (Amount, Amount) {
+	balDec := IntToDecimal(balance, acct.Exponent)
+	rateDec := decimal.NewFromFloat(acct.GrossInterestRate)
+	dailyRate := rateDec.Div(decimal.NewFromInt(365))
+	interestDec := balDec.Mul(dailyRate)
+	return DecimalToInt(interestDec, acct.Exponent), acct.InterestAccumulator
+}
+
 // InterestResult records one day's interest calculation for one account.
 type InterestResult struct {
 	AccountID      string
@@ -34,10 +44,17 @@ func (l *SQLLedger) EnsureInterestAccounts() error {
 	return nil
 }
 
+// computeInterest calls the configured InterestFunc or the built-in default.
+func (l *SQLLedger) computeInterest(balance Amount, acct *Account, date time.Time) (Amount, Amount) {
+	if l.InterestFunc != nil {
+		return l.InterestFunc(balance, acct, date)
+	}
+	return defaultInterest(balance, acct, date)
+}
+
 // CalculateDailyInterest computes one day's interest for a single account.
-// Formula: interest = closingBalance * (annualRate / 365)
+// Uses the configured InterestFunc (or the built-in default).
 // The interest is recorded as a movement from Expense:Interest to the account.
-// All amounts use the account's exponent.
 func (l *SQLLedger) CalculateDailyInterest(accountID string, date time.Time) (*InterestResult, error) {
 	acct, err := l.GetAccountByID(accountID)
 	if err != nil {
@@ -46,7 +63,7 @@ func (l *SQLLedger) CalculateDailyInterest(accountID string, date time.Time) (*I
 	if acct == nil {
 		return nil, fmt.Errorf("account %s not found", accountID)
 	}
-	if acct.AnnualInterestRate == 0 {
+	if acct.GrossInterestRate == 0 && acct.InterestMethod == InterestMethodNone {
 		return nil, nil
 	}
 
@@ -56,12 +73,14 @@ func (l *SQLLedger) CalculateDailyInterest(accountID string, date time.Time) (*I
 		return nil, fmt.Errorf("get balance: %w", err)
 	}
 
-	// Convert balance to decimal, compute interest, convert back
-	balDec := IntToDecimal(balance, acct.Exponent)
-	rate := decimal.NewFromFloat(acct.AnnualInterestRate)
-	dailyRate := rate.Div(decimal.NewFromInt(365))
-	interestDec := balDec.Mul(dailyRate)
-	interest := DecimalToInt(interestDec, acct.Exponent)
+	interest, newAccum := l.computeInterest(balance, acct, date)
+
+	// Update accumulator if changed
+	if newAccum != acct.InterestAccumulator {
+		if err := l.updateAccumulator(accountID, newAccum); err != nil {
+			return nil, fmt.Errorf("update accumulator: %w", err)
+		}
+	}
 
 	if interest == 0 {
 		return &InterestResult{
@@ -74,27 +93,8 @@ func (l *SQLLedger) CalculateDailyInterest(accountID string, date time.Time) (*I
 		}, nil
 	}
 
-	expenseAcct, err := l.GetAccount("Expense:Interest")
-	if err != nil || expenseAcct == nil {
-		return nil, fmt.Errorf("interest expense account not found, call EnsureInterestAccounts first")
-	}
-
-	desc := fmt.Sprintf("Daily interest for %s", date.Format("2006-01-02"))
-	valueTime := time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 59, 0, date.Location())
-
-	if interest > 0 {
-		// Interest increases account balance: Expense:Interest → account
-		_, err = l.RecordMovement(expenseAcct.ID, accountID, interest, CodeInterestAccrual, valueTime, desc)
-	} else {
-		// Negative interest: account → Income:Interest
-		incomeAcct, err2 := l.GetAccount("Income:Interest")
-		if err2 != nil || incomeAcct == nil {
-			return nil, fmt.Errorf("interest income account not found")
-		}
-		_, err = l.RecordMovement(accountID, incomeAcct.ID, -interest, CodeInterestAccrual, valueTime, desc)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("record interest movement: %w", err)
+	if err := l.postInterest(accountID, interest, date); err != nil {
+		return nil, err
 	}
 
 	return &InterestResult{
@@ -107,11 +107,38 @@ func (l *SQLLedger) CalculateDailyInterest(accountID string, date time.Time) (*I
 	}, nil
 }
 
+// postInterest records an interest movement from Expense:Interest or to Income:Interest.
+func (l *SQLLedger) postInterest(accountID string, interest Amount, date time.Time) error {
+	desc := fmt.Sprintf("Daily interest for %s", date.Format("2006-01-02"))
+	valueTime := time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 59, 0, date.Location())
+
+	if interest > 0 {
+		expenseAcct, err := l.GetAccount("Expense:Interest")
+		if err != nil || expenseAcct == nil {
+			return fmt.Errorf("interest expense account not found, call EnsureInterestAccounts first")
+		}
+		_, err = l.RecordMovement(expenseAcct.ID, accountID, interest, CodeInterestAccrual, valueTime, desc)
+		if err != nil {
+			return fmt.Errorf("record interest movement: %w", err)
+		}
+	} else {
+		incomeAcct, err := l.GetAccount("Income:Interest")
+		if err != nil || incomeAcct == nil {
+			return fmt.Errorf("interest income account not found")
+		}
+		_, err = l.RecordMovement(accountID, incomeAcct.ID, -interest, CodeInterestAccrual, valueTime, desc)
+		if err != nil {
+			return fmt.Errorf("record interest movement: %w", err)
+		}
+	}
+	return nil
+}
+
 // RunDailyInterest processes interest for all accounts that have a non-zero
-// annual_interest_rate, for the given date.
+// gross_interest_rate, for the given date.
 func (l *SQLLedger) RunDailyInterest(date time.Time) ([]InterestResult, error) {
 	rows, err := l.db.Query(
-		`SELECT id FROM accounts WHERE annual_interest_rate != 0 ORDER BY full_path`)
+		`SELECT id FROM accounts WHERE gross_interest_rate != 0 ORDER BY full_path`)
 	if err != nil {
 		return nil, fmt.Errorf("list interest accounts: %w", err)
 	}

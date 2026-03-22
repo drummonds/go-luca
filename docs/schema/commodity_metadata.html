@@ -43,11 +43,12 @@
             <div class="content">
 <h1>commodity_metadata</h1>
 <h2>Description</h2>
+<p>Key-value metadata for commodities.</p>
 <details>
 <summary><strong>Table Definition</strong></summary>
 <pre><code class="language-sql">CREATE TABLE commodity_metadata (
     id TEXT PRIMARY KEY,
-    commodity_id TEXT NOT NULL,
+    commodity_id TEXT NOT NULL REFERENCES commodities(id),
     key TEXT NOT NULL,
     value TEXT NOT NULL DEFAULT ''
 )
@@ -73,8 +74,8 @@
 <td></td>
 <td>false</td>
 <td></td>
-<td></td>
-<td></td>
+<td><a href="commodities.html">commodities</a></td>
+<td>FK to commodities.id</td>
 </tr>
 <tr>
 <td>id</td>
@@ -83,7 +84,7 @@
 <td>true</td>
 <td></td>
 <td></td>
-<td></td>
+<td>UUID primary key</td>
 </tr>
 <tr>
 <td>key</td>
@@ -92,7 +93,7 @@
 <td>false</td>
 <td></td>
 <td></td>
-<td></td>
+<td>Metadata key</td>
 </tr>
 <tr>
 <td>value</td>
@@ -101,7 +102,7 @@
 <td>false</td>
 <td></td>
 <td></td>
-<td></td>
+<td>Metadata value</td>
 </tr>
 </tbody>
 </table>
@@ -115,6 +116,11 @@
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>- (Foreign key ID: 0)</td>
+<td>FOREIGN KEY</td>
+<td>FOREIGN KEY (commodity_id) REFERENCES commodities (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE</td>
+</tr>
 <tr>
 <td>id</td>
 <td>PRIMARY KEY</td>
@@ -149,12 +155,21 @@
 <h2>Relations</h2>
 <pre class="mermaid">erDiagram
 
+&quot;commodity_metadata&quot; }o--|| &quot;commodities&quot; : &quot;FOREIGN KEY (commodity_id) REFERENCES commodities (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
+&quot;commodity_metadata&quot; }o--|| &quot;commodities&quot; : &quot;commodity_metadata.commodity_id -&gt; commodities.id&quot;
 
 &quot;commodity_metadata&quot; {
-  TEXT commodity_id &quot;&quot;
-  TEXT id PK &quot;&quot;
-  TEXT key &quot;&quot;
-  TEXT value &quot;&quot;
+  TEXT commodity_id FK &quot;FK to commodities.id&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  TEXT key &quot;Metadata key&quot;
+  TEXT value &quot;Metadata value&quot;
+}
+&quot;commodities&quot; {
+  TEXT code &quot;Unique commodity code (e.g. GBP, USD, BTC)&quot;
+  TEXT created_at &quot;Timestamp when the commodity was created&quot;
+  TEXT datetime &quot;Optional date associated with the commodity definition&quot;
+  INTEGER exponent &quot;Decimal exponent for amount precision (-2 = pence, -8 = satoshi)&quot;
+  TEXT id PK &quot;UUID primary key&quot;
 }
 </pre>
 <hr>

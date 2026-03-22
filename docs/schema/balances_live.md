@@ -2,7 +2,7 @@
 
 ## Description
 
-Pre-computed end-of-day balance snapshots. Updated transactionally when movements are recorded via RecordMovementWithProjections. Avoids expensive SUM queries for frequently accessed balances.  
+Pre-computed end-of-day balance snapshots for today and tomorrow only. Holds at most two days of balances per account — older entries are pruned. Updated transactionally when movements are recorded via RecordMovementWithProjections. Avoids expensive SUM queries for frequently accessed current and projected balances.  
 
 
 <details>
@@ -11,7 +11,7 @@ Pre-computed end-of-day balance snapshots. Updated transactionally when movement
 ```sql
 CREATE TABLE balances_live (
     id TEXT PRIMARY KEY,
-    account_id TEXT NOT NULL,
+    account_id TEXT NOT NULL REFERENCES accounts(id),
     balance_date TEXT NOT NULL,
     balance INTEGER NOT NULL,
     updated_at TEXT DEFAULT (datetime('now'))
@@ -22,20 +22,21 @@ CREATE TABLE balances_live (
 
 ## Columns
 
-| Name         | Type    | Default         | Nullable | Children | Parents                 | Comment                                                  |
-| ------------ | ------- | --------------- | -------- | -------- | ----------------------- | -------------------------------------------------------- |
-| account_id   | TEXT    |                 | false    |          | [accounts](accounts.md) | Account this balance belongs to (references accounts.id) |
-| balance      | INTEGER |                 | false    |          |                         | End-of-day balance in smallest currency unit             |
-| balance_date | TEXT    |                 | false    |          |                         | Date of the balance snapshot (start of day)              |
-| id           | TEXT    |                 | true     |          |                         | Auto-incrementing primary key                            |
-| updated_at   | TEXT    | datetime('now') | true     |          |                         | When this balance was last recomputed                    |
+| Name         | Type    | Default         | Nullable | Children | Parents                 | Comment                                             |
+| ------------ | ------- | --------------- | -------- | -------- | ----------------------- | --------------------------------------------------- |
+| account_id   | TEXT    |                 | false    |          | [accounts](accounts.md) | Account this balance belongs to (FK to accounts.id) |
+| balance      | INTEGER |                 | false    |          |                         | End-of-day balance in smallest currency unit        |
+| balance_date | TEXT    |                 | false    |          |                         | Date of the balance snapshot (start of day)         |
+| id           | TEXT    |                 | true     |          |                         | UUID primary key                                    |
+| updated_at   | TEXT    | datetime('now') | true     |          |                         | When this balance was last recomputed               |
 
 ## Constraints
 
-| Name                             | Type        | Definition       |
-| -------------------------------- | ----------- | ---------------- |
-| id                               | PRIMARY KEY | PRIMARY KEY (id) |
-| sqlite_autoindex_balances_live_1 | PRIMARY KEY | PRIMARY KEY (id) |
+| Name                             | Type        | Definition                                                                                           |
+| -------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------- |
+| - (Foreign key ID: 0)            | FOREIGN KEY | FOREIGN KEY (account_id) REFERENCES accounts (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE |
+| id                               | PRIMARY KEY | PRIMARY KEY (id)                                                                                     |
+| sqlite_autoindex_balances_live_1 | PRIMARY KEY | PRIMARY KEY (id)                                                                                     |
 
 ## Indexes
 
@@ -49,27 +50,30 @@ CREATE TABLE balances_live (
 ```mermaid
 erDiagram
 
+"balances_live" }o--|| "accounts" : "FOREIGN KEY (account_id) REFERENCES accounts (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "balances_live" }o--|| "accounts" : "balances_live.account_id -> accounts.id"
 
 "balances_live" {
-  TEXT account_id "Account this balance belongs to (references accounts.id)"
+  TEXT account_id FK "Account this balance belongs to (FK to accounts.id)"
   INTEGER balance "End-of-day balance in smallest currency unit"
   TEXT balance_date "Date of the balance snapshot (start of day)"
-  TEXT id PK "Auto-incrementing primary key"
+  TEXT id PK "UUID primary key"
   TEXT updated_at "When this balance was last recomputed"
 }
 "accounts" {
   TEXT account_id "Specific account identifier within the product"
   TEXT account_type "One of: Asset, Liability, Equity, Income, Expense"
   TEXT address "Sub-address within the account (e.g. branch). 'Pending' marks pending accounts"
-  TEXT annual_interest_rate "Annual interest rate as a decimal (0.045 = 4.5%)"
+  TEXT commodity FK "Commodity code (FK to commodities.code)"
   TEXT created_at "Timestamp when the account was created"
-  TEXT currency "ISO 4217 currency code (e.g. GBP, USD)"
-  INTEGER exponent "Decimal exponent for amount precision (-2 = pence, -5 = high precision)"
+  TEXT customer_id FK "Optional owning customer (FK to customers.id). A customer may have many accounts"
   TEXT full_path "Hierarchical account path, e.g. Asset:Bank:Current:Main"
-  TEXT id PK "Auto-incrementing primary key"
+  TEXT gross_interest_rate "Gross annual interest rate as a decimal (0.045 = 4.5%)"
+  TEXT id PK "UUID primary key"
+  INTEGER interest_accumulator "Sub-unit fractions at extended precision (method-dependent)"
+  TEXT interest_method "Interest calculation method (e.g. simple_daily)"
   INTEGER is_pending "True if this is a pending/suspense account"
-  TEXT opened_at ""
+  TEXT opened_at "When the account was opened"
   TEXT product "Product category within the account type"
 }
 ```

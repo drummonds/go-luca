@@ -2,13 +2,15 @@
 
 ## Description
 
+Key-value metadata for customers.
+
 <details>
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
 CREATE TABLE customer_metadata (
     id TEXT PRIMARY KEY,
-    customer_id TEXT NOT NULL,
+    customer_id TEXT NOT NULL REFERENCES customers(id),
     key TEXT NOT NULL,
     value TEXT NOT NULL DEFAULT ''
 )
@@ -18,19 +20,20 @@ CREATE TABLE customer_metadata (
 
 ## Columns
 
-| Name        | Type | Default | Nullable | Children | Parents | Comment |
-| ----------- | ---- | ------- | -------- | -------- | ------- | ------- |
-| customer_id | TEXT |         | false    |          |         |         |
-| id          | TEXT |         | true     |          |         |         |
-| key         | TEXT |         | false    |          |         |         |
-| value       | TEXT | ''      | false    |          |         |         |
+| Name        | Type | Default | Nullable | Children | Parents                   | Comment            |
+| ----------- | ---- | ------- | -------- | -------- | ------------------------- | ------------------ |
+| customer_id | TEXT |         | false    |          | [customers](customers.md) | FK to customers.id |
+| id          | TEXT |         | true     |          |                           | UUID primary key   |
+| key         | TEXT |         | false    |          |                           | Metadata key       |
+| value       | TEXT | ''      | false    |          |                           | Metadata value     |
 
 ## Constraints
 
-| Name                                 | Type        | Definition       |
-| ------------------------------------ | ----------- | ---------------- |
-| id                                   | PRIMARY KEY | PRIMARY KEY (id) |
-| sqlite_autoindex_customer_metadata_1 | PRIMARY KEY | PRIMARY KEY (id) |
+| Name                                 | Type        | Definition                                                                                             |
+| ------------------------------------ | ----------- | ------------------------------------------------------------------------------------------------------ |
+| - (Foreign key ID: 0)                | FOREIGN KEY | FOREIGN KEY (customer_id) REFERENCES customers (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE |
+| id                                   | PRIMARY KEY | PRIMARY KEY (id)                                                                                       |
+| sqlite_autoindex_customer_metadata_1 | PRIMARY KEY | PRIMARY KEY (id)                                                                                       |
 
 ## Indexes
 
@@ -44,12 +47,21 @@ CREATE TABLE customer_metadata (
 ```mermaid
 erDiagram
 
+"customer_metadata" }o--|| "customers" : "FOREIGN KEY (customer_id) REFERENCES customers (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+"customer_metadata" }o--|| "customers" : "customer_metadata.customer_id -> customers.id"
 
 "customer_metadata" {
-  TEXT customer_id ""
-  TEXT id PK ""
-  TEXT key ""
-  TEXT value ""
+  TEXT customer_id FK "FK to customers.id"
+  TEXT id PK "UUID primary key"
+  TEXT key "Metadata key"
+  TEXT value "Metadata value"
+}
+"customers" {
+  TEXT created_at "Timestamp when the customer was created"
+  TEXT id PK "UUID primary key"
+  TEXT max_balance_amount "Maximum allowed balance amount (empty = no limit)"
+  TEXT max_balance_commodity "Commodity for the max balance constraint"
+  TEXT name "Customer name (unique)"
 }
 ```
 

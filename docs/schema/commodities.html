@@ -43,11 +43,13 @@
             <div class="content">
 <h1>commodities</h1>
 <h2>Description</h2>
+<p>Currency/commodity definitions. Each commodity has a unique code and an exponent that defines the precision of amounts (e.g. -2 for pence). Accounts reference commodities via foreign key.</p>
 <details>
 <summary><strong>Table Definition</strong></summary>
 <pre><code class="language-sql">CREATE TABLE commodities (
     id TEXT PRIMARY KEY,
     code TEXT NOT NULL UNIQUE,
+    exponent INTEGER NOT NULL DEFAULT -2,
     datetime TEXT,
     created_at TEXT DEFAULT (datetime('now'))
 )
@@ -72,9 +74,9 @@
 <td>TEXT</td>
 <td></td>
 <td>false</td>
+<td><a href="accounts.html">accounts</a></td>
 <td></td>
-<td></td>
-<td></td>
+<td>Unique commodity code (e.g. GBP, USD, BTC)</td>
 </tr>
 <tr>
 <td>created_at</td>
@@ -83,7 +85,7 @@
 <td>true</td>
 <td></td>
 <td></td>
-<td></td>
+<td>Timestamp when the commodity was created</td>
 </tr>
 <tr>
 <td>datetime</td>
@@ -92,16 +94,25 @@
 <td>true</td>
 <td></td>
 <td></td>
+<td>Optional date associated with the commodity definition</td>
+</tr>
+<tr>
+<td>exponent</td>
+<td>INTEGER</td>
+<td>-2</td>
+<td>false</td>
 <td></td>
+<td></td>
+<td>Decimal exponent for amount precision (-2 = pence, -8 = satoshi)</td>
 </tr>
 <tr>
 <td>id</td>
 <td>TEXT</td>
 <td></td>
 <td>true</td>
+<td><a href="commodity_metadata.html">commodity_metadata</a></td>
 <td></td>
-<td></td>
-<td></td>
+<td>UUID primary key</td>
 </tr>
 </tbody>
 </table>
@@ -154,12 +165,39 @@
 <h2>Relations</h2>
 <pre class="mermaid">erDiagram
 
+&quot;accounts&quot; }o--|| &quot;commodities&quot; : &quot;FOREIGN KEY (commodity) REFERENCES commodities (code) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
+&quot;accounts&quot; }o--|| &quot;commodities&quot; : &quot;accounts.commodity -&gt; commodities.code&quot;
+&quot;commodity_metadata&quot; }o--|| &quot;commodities&quot; : &quot;FOREIGN KEY (commodity_id) REFERENCES commodities (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
+&quot;commodity_metadata&quot; }o--|| &quot;commodities&quot; : &quot;commodity_metadata.commodity_id -&gt; commodities.id&quot;
 
 &quot;commodities&quot; {
-  TEXT code &quot;&quot;
-  TEXT created_at &quot;&quot;
-  TEXT datetime &quot;&quot;
-  TEXT id PK &quot;&quot;
+  TEXT code &quot;Unique commodity code (e.g. GBP, USD, BTC)&quot;
+  TEXT created_at &quot;Timestamp when the commodity was created&quot;
+  TEXT datetime &quot;Optional date associated with the commodity definition&quot;
+  INTEGER exponent &quot;Decimal exponent for amount precision (-2 = pence, -8 = satoshi)&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+}
+&quot;accounts&quot; {
+  TEXT account_id &quot;Specific account identifier within the product&quot;
+  TEXT account_type &quot;One of: Asset, Liability, Equity, Income, Expense&quot;
+  TEXT address &quot;Sub-address within the account (e.g. branch). 'Pending' marks pending accounts&quot;
+  TEXT commodity FK &quot;Commodity code (FK to commodities.code)&quot;
+  TEXT created_at &quot;Timestamp when the account was created&quot;
+  TEXT customer_id FK &quot;Optional owning customer (FK to customers.id). A customer may have many accounts&quot;
+  TEXT full_path &quot;Hierarchical account path, e.g. Asset:Bank:Current:Main&quot;
+  TEXT gross_interest_rate &quot;Gross annual interest rate as a decimal (0.045 = 4.5%)&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  INTEGER interest_accumulator &quot;Sub-unit fractions at extended precision (method-dependent)&quot;
+  TEXT interest_method &quot;Interest calculation method (e.g. simple_daily)&quot;
+  INTEGER is_pending &quot;True if this is a pending/suspense account&quot;
+  TEXT opened_at &quot;When the account was opened&quot;
+  TEXT product &quot;Product category within the account type&quot;
+}
+&quot;commodity_metadata&quot; {
+  TEXT commodity_id FK &quot;FK to commodities.id&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  TEXT key &quot;Metadata key&quot;
+  TEXT value &quot;Metadata value&quot;
 }
 </pre>
 <hr>

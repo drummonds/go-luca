@@ -2,6 +2,9 @@
 
 ## Description
 
+Short name aliases for account paths. Allows .goluca files and users to reference accounts by a short name instead of the full hierarchical path.  
+
+
 <details>
 <summary><strong>Table Definition</strong></summary>
 
@@ -9,7 +12,7 @@
 CREATE TABLE aliases (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
-    account_path TEXT NOT NULL,
+    account_path TEXT NOT NULL REFERENCES accounts(full_path),
     created_at TEXT DEFAULT (datetime('now'))
 )
 ```
@@ -18,20 +21,21 @@ CREATE TABLE aliases (
 
 ## Columns
 
-| Name         | Type | Default         | Nullable | Children | Parents | Comment |
-| ------------ | ---- | --------------- | -------- | -------- | ------- | ------- |
-| account_path | TEXT |                 | false    |          |         |         |
-| created_at   | TEXT | datetime('now') | true     |          |         |         |
-| id           | TEXT |                 | true     |          |         |         |
-| name         | TEXT |                 | false    |          |         |         |
+| Name         | Type | Default         | Nullable | Children | Parents                 | Comment                                      |
+| ------------ | ---- | --------------- | -------- | -------- | ----------------------- | -------------------------------------------- |
+| account_path | TEXT |                 | false    |          | [accounts](accounts.md) | Full account path (FK to accounts.full_path) |
+| created_at   | TEXT | datetime('now') | true     |          |                         | Timestamp when the alias was created         |
+| id           | TEXT |                 | true     |          |                         | UUID primary key                             |
+| name         | TEXT |                 | false    |          |                         | Alias name (unique)                          |
 
 ## Constraints
 
-| Name                       | Type        | Definition       |
-| -------------------------- | ----------- | ---------------- |
-| id                         | PRIMARY KEY | PRIMARY KEY (id) |
-| sqlite_autoindex_aliases_1 | PRIMARY KEY | PRIMARY KEY (id) |
-| sqlite_autoindex_aliases_2 | UNIQUE      | UNIQUE (name)    |
+| Name                       | Type        | Definition                                                                                                    |
+| -------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------- |
+| - (Foreign key ID: 0)      | FOREIGN KEY | FOREIGN KEY (account_path) REFERENCES accounts (full_path) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE |
+| id                         | PRIMARY KEY | PRIMARY KEY (id)                                                                                              |
+| sqlite_autoindex_aliases_1 | PRIMARY KEY | PRIMARY KEY (id)                                                                                              |
+| sqlite_autoindex_aliases_2 | UNIQUE      | UNIQUE (name)                                                                                                 |
 
 ## Indexes
 
@@ -45,12 +49,30 @@ CREATE TABLE aliases (
 ```mermaid
 erDiagram
 
+"aliases" }o--|| "accounts" : "FOREIGN KEY (account_path) REFERENCES accounts (full_path) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+"aliases" }o--|| "accounts" : "aliases.account_path -> accounts.full_path"
 
 "aliases" {
-  TEXT account_path ""
-  TEXT created_at ""
-  TEXT id PK ""
-  TEXT name ""
+  TEXT account_path FK "Full account path (FK to accounts.full_path)"
+  TEXT created_at "Timestamp when the alias was created"
+  TEXT id PK "UUID primary key"
+  TEXT name "Alias name (unique)"
+}
+"accounts" {
+  TEXT account_id "Specific account identifier within the product"
+  TEXT account_type "One of: Asset, Liability, Equity, Income, Expense"
+  TEXT address "Sub-address within the account (e.g. branch). 'Pending' marks pending accounts"
+  TEXT commodity FK "Commodity code (FK to commodities.code)"
+  TEXT created_at "Timestamp when the account was created"
+  TEXT customer_id FK "Optional owning customer (FK to customers.id). A customer may have many accounts"
+  TEXT full_path "Hierarchical account path, e.g. Asset:Bank:Current:Main"
+  TEXT gross_interest_rate "Gross annual interest rate as a decimal (0.045 = 4.5%)"
+  TEXT id PK "UUID primary key"
+  INTEGER interest_accumulator "Sub-unit fractions at extended precision (method-dependent)"
+  TEXT interest_method "Interest calculation method (e.g. simple_daily)"
+  INTEGER is_pending "True if this is a pending/suspense account"
+  TEXT opened_at "When the account was opened"
+  TEXT product "Product category within the account type"
 }
 ```
 

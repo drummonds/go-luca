@@ -250,6 +250,121 @@ func TestIssue1_InterestCrossTimezone(t *testing.T) {
 	}
 }
 
+func TestSetInterestMethod(t *testing.T) {
+	l := newTestLedger(t)
+
+	savings, _ := l.CreateAccount("Liability:Savings:0001", "GBP", -2, 0.04)
+	if savings.InterestMethod != InterestMethodDefault {
+		t.Fatalf("default method = %q, want %q", savings.InterestMethod, InterestMethodDefault)
+	}
+
+	err := l.SetInterestMethod(savings.ID, "discrete_daily")
+	if err != nil {
+		t.Fatalf("SetInterestMethod: %v", err)
+	}
+
+	acct, _ := l.GetAccountByID(savings.ID)
+	if acct.InterestMethod != "discrete_daily" {
+		t.Errorf("method = %q, want discrete_daily", acct.InterestMethod)
+	}
+}
+
+func TestMethodBackwardCompat(t *testing.T) {
+	// Account with rate but empty method should still compute interest via default
+	l := newTestLedger(t)
+	l.EnsureInterestAccounts()
+
+	equity, _ := l.CreateAccount("Equity:Capital", "GBP", -2, 0)
+	savings, _ := l.CreateAccount("Liability:Savings:0001", "GBP", -2, 0.0365)
+
+	// Force method to empty to simulate old data
+	l.db.Exec(`UPDATE accounts SET interest_method = '' WHERE id = $1`, savings.ID)
+
+	day1 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	l.RecordMovement(equity.ID, savings.ID, 100000, CodeBookTransfer, day1, "Deposit")
+
+	result, err := l.CalculateDailyInterest(savings.ID, day1)
+	if err != nil {
+		t.Fatalf("CalculateDailyInterest: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected result, got nil")
+	}
+	// Default: 1000.00 * 0.0365 / 365 = 0.10 → 10
+	if result.InterestAmount != 10 {
+		t.Errorf("InterestAmount = %d, want 10", result.InterestAmount)
+	}
+}
+
+func TestCustomInterestFunc(t *testing.T) {
+	l := newTestLedger(t)
+	l.EnsureInterestAccounts()
+
+	// Register a custom interest function that doubles the default
+	l.InterestFunc = func(balance Amount, acct *Account, date time.Time) (Amount, Amount) {
+		interest, accum := defaultInterest(balance, acct, date)
+		return interest * 2, accum
+	}
+
+	equity, _ := l.CreateAccount("Equity:Capital", "GBP", -2, 0)
+	savings, _ := l.CreateAccount("Liability:Savings:0001", "GBP", -2, 0.0365)
+
+	day1 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	l.RecordMovement(equity.ID, savings.ID, 100000, CodeBookTransfer, day1, "Deposit")
+
+	result, err := l.CalculateDailyInterest(savings.ID, day1)
+	if err != nil {
+		t.Fatalf("CalculateDailyInterest: %v", err)
+	}
+	// Default would be 10, custom doubles it to 20
+	if result.InterestAmount != 20 {
+		t.Errorf("InterestAmount = %d, want 20", result.InterestAmount)
+	}
+}
+
+func TestInterestFuncWithAccumulator(t *testing.T) {
+	l := newTestLedger(t)
+	l.EnsureInterestAccounts()
+
+	// Simulate a discrete method: accumulate at extended precision, post when >= 1 unit
+	l.InterestFunc = func(balance Amount, acct *Account, date time.Time) (Amount, Amount) {
+		// Compute at 4dp (2 extra digits beyond -2 exponent)
+		extExp := acct.Exponent - 2
+		extBal := ScaleAmount(balance, acct.Exponent, extExp)
+		balDec := IntToDecimal(extBal, extExp)
+		rateDec := decimal.NewFromFloat(acct.GrossInterestRate)
+		dailyDec := balDec.Mul(rateDec.Div(decimal.NewFromInt(365)))
+		dailyExt := DecimalToInt(dailyDec, extExp)
+
+		newAccum := acct.InterestAccumulator + dailyExt
+		postable, remainder := ExtractPostable(newAccum, 2)
+		return postable, remainder
+	}
+
+	equity, _ := l.CreateAccount("Equity:Capital", "GBP", -2, 0)
+	savings, _ := l.CreateAccount("Liability:Savings:0001", "GBP", -2, 0.04)
+
+	day1 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	l.RecordMovement(equity.ID, savings.ID, 1000, CodeBookTransfer, day1, "Deposit") // £10
+
+	// Run 10 days — accumulator should eventually trigger a posting
+	var totalPosted Amount
+	for i := 0; i < 10; i++ {
+		d := time.Date(2026, 1, 1+i, 0, 0, 0, 0, time.UTC)
+		result, err := l.CalculateDailyInterest(savings.ID, d)
+		if err != nil {
+			t.Fatalf("day %d: %v", i+1, err)
+		}
+		totalPosted += result.InterestAmount
+	}
+
+	acct, _ := l.GetAccountByID(savings.ID)
+	if totalPosted == 0 {
+		t.Error("accumulator-based func should post at least 1p after 10 days on £10 at 4%")
+	}
+	t.Logf("custom accumulator: 10 days posted=%d, remaining=%d", totalPosted, acct.InterestAccumulator)
+}
+
 func TestRunDailyInterestNoInterestBearingAccounts(t *testing.T) {
 	l := newTestLedger(t)
 	l.EnsureInterestAccounts()

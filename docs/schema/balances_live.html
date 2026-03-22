@@ -43,12 +43,12 @@
             <div class="content">
 <h1>balances_live</h1>
 <h2>Description</h2>
-<p>Pre-computed end-of-day balance snapshots. Updated transactionally when movements are recorded via RecordMovementWithProjections. Avoids expensive SUM queries for frequently accessed balances.</p>
+<p>Pre-computed end-of-day balance snapshots for today and tomorrow only. Holds at most two days of balances per account — older entries are pruned. Updated transactionally when movements are recorded via RecordMovementWithProjections. Avoids expensive SUM queries for frequently accessed current and projected balances.</p>
 <details>
 <summary><strong>Table Definition</strong></summary>
 <pre><code class="language-sql">CREATE TABLE balances_live (
     id TEXT PRIMARY KEY,
-    account_id TEXT NOT NULL,
+    account_id TEXT NOT NULL REFERENCES accounts(id),
     balance_date TEXT NOT NULL,
     balance INTEGER NOT NULL,
     updated_at TEXT DEFAULT (datetime('now'))
@@ -76,7 +76,7 @@
 <td>false</td>
 <td></td>
 <td><a href="accounts.html">accounts</a></td>
-<td>Account this balance belongs to (references accounts.id)</td>
+<td>Account this balance belongs to (FK to accounts.id)</td>
 </tr>
 <tr>
 <td>balance</td>
@@ -103,7 +103,7 @@
 <td>true</td>
 <td></td>
 <td></td>
-<td>Auto-incrementing primary key</td>
+<td>UUID primary key</td>
 </tr>
 <tr>
 <td>updated_at</td>
@@ -126,6 +126,11 @@
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>- (Foreign key ID: 0)</td>
+<td>FOREIGN KEY</td>
+<td>FOREIGN KEY (account_id) REFERENCES accounts (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE</td>
+</tr>
 <tr>
 <td>id</td>
 <td>PRIMARY KEY</td>
@@ -160,27 +165,30 @@
 <h2>Relations</h2>
 <pre class="mermaid">erDiagram
 
+&quot;balances_live&quot; }o--|| &quot;accounts&quot; : &quot;FOREIGN KEY (account_id) REFERENCES accounts (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
 &quot;balances_live&quot; }o--|| &quot;accounts&quot; : &quot;balances_live.account_id -&gt; accounts.id&quot;
 
 &quot;balances_live&quot; {
-  TEXT account_id &quot;Account this balance belongs to (references accounts.id)&quot;
+  TEXT account_id FK &quot;Account this balance belongs to (FK to accounts.id)&quot;
   INTEGER balance &quot;End-of-day balance in smallest currency unit&quot;
   TEXT balance_date &quot;Date of the balance snapshot (start of day)&quot;
-  TEXT id PK &quot;Auto-incrementing primary key&quot;
+  TEXT id PK &quot;UUID primary key&quot;
   TEXT updated_at &quot;When this balance was last recomputed&quot;
 }
 &quot;accounts&quot; {
   TEXT account_id &quot;Specific account identifier within the product&quot;
   TEXT account_type &quot;One of: Asset, Liability, Equity, Income, Expense&quot;
   TEXT address &quot;Sub-address within the account (e.g. branch). 'Pending' marks pending accounts&quot;
-  TEXT annual_interest_rate &quot;Annual interest rate as a decimal (0.045 = 4.5%)&quot;
+  TEXT commodity FK &quot;Commodity code (FK to commodities.code)&quot;
   TEXT created_at &quot;Timestamp when the account was created&quot;
-  TEXT currency &quot;ISO 4217 currency code (e.g. GBP, USD)&quot;
-  INTEGER exponent &quot;Decimal exponent for amount precision (-2 = pence, -5 = high precision)&quot;
+  TEXT customer_id FK &quot;Optional owning customer (FK to customers.id). A customer may have many accounts&quot;
   TEXT full_path &quot;Hierarchical account path, e.g. Asset:Bank:Current:Main&quot;
-  TEXT id PK &quot;Auto-incrementing primary key&quot;
+  TEXT gross_interest_rate &quot;Gross annual interest rate as a decimal (0.045 = 4.5%)&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  INTEGER interest_accumulator &quot;Sub-unit fractions at extended precision (method-dependent)&quot;
+  TEXT interest_method &quot;Interest calculation method (e.g. simple_daily)&quot;
   INTEGER is_pending &quot;True if this is a pending/suspense account&quot;
-  TEXT opened_at &quot;&quot;
+  TEXT opened_at &quot;When the account was opened&quot;
   TEXT product &quot;Product category within the account type&quot;
 }
 </pre>

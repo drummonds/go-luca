@@ -43,6 +43,7 @@
             <div class="content">
 <h1>data_points</h1>
 <h2>Description</h2>
+<p>Time-series parameter values. Stores named data points with value and knowledge timestamps for bitemporal queries (e.g. interest rate changes, exchange rates).</p>
 <details>
 <summary><strong>Table Definition</strong></summary>
 <pre><code class="language-sql">CREATE TABLE data_points (
@@ -77,7 +78,7 @@
 <td>true</td>
 <td></td>
 <td></td>
-<td></td>
+<td>Timestamp when the data point was created</td>
 </tr>
 <tr>
 <td>id</td>
@@ -86,7 +87,7 @@
 <td>true</td>
 <td></td>
 <td></td>
-<td></td>
+<td>UUID primary key</td>
 </tr>
 <tr>
 <td>knowledge_time</td>
@@ -95,7 +96,7 @@
 <td>true</td>
 <td></td>
 <td></td>
-<td></td>
+<td>When the system learned about this value</td>
 </tr>
 <tr>
 <td>param_name</td>
@@ -104,7 +105,7 @@
 <td>false</td>
 <td></td>
 <td></td>
-<td></td>
+<td>Parameter name (e.g. base-rate)</td>
 </tr>
 <tr>
 <td>param_type</td>
@@ -113,7 +114,7 @@
 <td>false</td>
 <td></td>
 <td></td>
-<td></td>
+<td>Value type: string, number, or bool</td>
 </tr>
 <tr>
 <td>param_value</td>
@@ -122,7 +123,7 @@
 <td>false</td>
 <td></td>
 <td></td>
-<td></td>
+<td>The parameter value as a string</td>
 </tr>
 <tr>
 <td>value_time</td>
@@ -131,7 +132,7 @@
 <td>false</td>
 <td></td>
 <td></td>
-<td></td>
+<td>When this value became effective</td>
 </tr>
 </tbody>
 </table>
@@ -181,13 +182,13 @@
 
 
 &quot;data_points&quot; {
-  TEXT created_at &quot;&quot;
-  TEXT id PK &quot;&quot;
-  TEXT knowledge_time &quot;&quot;
-  TEXT param_name &quot;&quot;
-  TEXT param_type &quot;&quot;
-  TEXT param_value &quot;&quot;
-  TEXT value_time &quot;&quot;
+  TEXT created_at &quot;Timestamp when the data point was created&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  TEXT knowledge_time &quot;When the system learned about this value&quot;
+  TEXT param_name &quot;Parameter name (e.g. base-rate)&quot;
+  TEXT param_type &quot;Value type: string, number, or bool&quot;
+  TEXT param_value &quot;The parameter value as a string&quot;
+  TEXT value_time &quot;When this value became effective&quot;
 }
 </pre>
 <hr>

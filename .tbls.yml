@@ -16,22 +16,38 @@ format:
   sort: true
 
 comments:
+  - table: commodities
+    tableComment: >
+      Currency/commodity definitions. Each commodity has a unique code and an exponent
+      that defines the precision of amounts (e.g. -2 for pence). Accounts reference
+      commodities via foreign key.
+    columnComments:
+      id: "UUID primary key"
+      code: "Unique commodity code (e.g. GBP, USD, BTC)"
+      exponent: "Decimal exponent for amount precision (-2 = pence, -8 = satoshi)"
+      datetime: "Optional date associated with the commodity definition"
+      created_at: "Timestamp when the commodity was created"
+
   - table: accounts
     tableComment: >
       Chart of accounts. Each account has a hierarchical path (Type:Product:AccountID:Address)
       and belongs to one of five fundamental types: Asset, Liability, Equity, Income, Expense.
-      Amounts are stored as integers at the precision defined by exponent (e.g. -2 for pence).
+      An account optionally belongs to a customer (many accounts per customer).
+      Amounts are stored as integers at the precision defined by the commodity's exponent.
     columnComments:
-      id: "Auto-incrementing primary key"
+      id: "UUID primary key"
       full_path: "Hierarchical account path, e.g. Asset:Bank:Current:Main"
       account_type: "One of: Asset, Liability, Equity, Income, Expense"
       product: "Product category within the account type"
       account_id: "Specific account identifier within the product"
       address: "Sub-address within the account (e.g. branch). 'Pending' marks pending accounts"
       is_pending: "True if this is a pending/suspense account"
-      currency: "ISO 4217 currency code (e.g. GBP, USD)"
-      exponent: "Decimal exponent for amount precision (-2 = pence, -5 = high precision)"
-      annual_interest_rate: "Annual interest rate as a decimal (0.045 = 4.5%)"
+      commodity: "Commodity code (FK to commodities.code)"
+      customer_id: "Optional owning customer (FK to customers.id). A customer may have many accounts"
+      gross_interest_rate: "Gross annual interest rate as a decimal (0.045 = 4.5%)"
+      interest_method: "Interest calculation method (e.g. simple_daily)"
+      interest_accumulator: "Sub-unit fractions at extended precision (method-dependent)"
+      opened_at: "When the account was opened"
       created_at: "Timestamp when the account was created"
 
   - table: movements
@@ -40,32 +56,117 @@ comments:
       to another. Movements with the same batch_id form a linked transaction (compound entry).
       Inspired by TigerBeetle's transfer model with code, ledger, and pending_id fields.
     columnComments:
-      id: "Auto-incrementing primary key"
+      id: "UUID primary key"
       batch_id: "Groups related movements into a single atomic transaction"
-      from_account_id: "Source account (references accounts.id)"
-      to_account_id: "Destination account (references accounts.id)"
-      amount: "Transfer amount in smallest currency unit (integer at account exponent)"
-      code: "Movement category: 0=normal, 1=interest accrual (TigerBeetle-inspired)"
+      from_account_id: "Source account (FK to accounts.id)"
+      to_account_id: "Destination account (FK to accounts.id)"
+      amount: "Transfer amount in smallest currency unit (integer at commodity exponent)"
+      code: "ISO 20022 BTC mnemonic (DOMAIN:FAMILY:SUBFAMILY)"
       ledger: "Partition identifier for multi-ledger setups (TigerBeetle-inspired)"
       pending_id: "Two-phase commit: references pending movement to post/void (0=N/A)"
       user_data_64: "Arbitrary external reference for application use"
       value_time: "When the movement economically occurred (value date)"
       knowledge_time: "When the system recorded this movement (knowledge date)"
       description: "Human-readable description of the movement"
+      period_anchor: "Period anchor marker: ^ (start), $ (end), or empty"
 
   - table: balances_live
     tableComment: >
-      Pre-computed end-of-day balance snapshots. Updated transactionally when movements
-      are recorded via RecordMovementWithProjections. Avoids expensive SUM queries for
-      frequently accessed balances.
+      Pre-computed end-of-day balance snapshots for today and tomorrow only.
+      Holds at most two days of balances per account — older entries are pruned.
+      Updated transactionally when movements are recorded via
+      RecordMovementWithProjections. Avoids expensive SUM queries for
+      frequently accessed current and projected balances.
     columnComments:
-      id: "Auto-incrementing primary key"
-      account_id: "Account this balance belongs to (references accounts.id)"
+      id: "UUID primary key"
+      account_id: "Account this balance belongs to (FK to accounts.id)"
       balance_date: "Date of the balance snapshot (start of day)"
       balance: "End-of-day balance in smallest currency unit"
       updated_at: "When this balance was last recomputed"
 
+  - table: commodity_metadata
+    tableComment: "Key-value metadata for commodities."
+    columnComments:
+      id: "UUID primary key"
+      commodity_id: "FK to commodities.id"
+      key: "Metadata key"
+      value: "Metadata value"
+
+  - table: customer_metadata
+    tableComment: "Key-value metadata for customers."
+    columnComments:
+      id: "UUID primary key"
+      customer_id: "FK to customers.id"
+      key: "Metadata key"
+      value: "Metadata value"
+
+  - table: movement_metadata
+    tableComment: "Key-value metadata for movement batches."
+    columnComments:
+      id: "UUID primary key"
+      batch_id: "Movement batch ID"
+      key: "Metadata key"
+      value: "Metadata value"
+
+  - table: options
+    tableComment: >
+      Ledger-wide key-value configuration. Stores directives imported from .goluca files
+      (e.g. operating-currency, require-accounts) and runtime settings.
+    columnComments:
+      id: "UUID primary key"
+      key: "Option name (unique), e.g. operating-currency"
+      value: "Option value"
+      created_at: "Timestamp when the option was created"
+
+  - table: aliases
+    tableComment: >
+      Short name aliases for account paths. Allows .goluca files and users to reference
+      accounts by a short name instead of the full hierarchical path.
+    columnComments:
+      id: "UUID primary key"
+      name: "Alias name (unique)"
+      account_path: "Full account path (FK to accounts.full_path)"
+      created_at: "Timestamp when the alias was created"
+
+  - table: customers
+    tableComment: >
+      Customer records. A customer may have zero to many accounts (via accounts.customer_id).
+      Supports max balance constraints and arbitrary key-value metadata.
+    columnComments:
+      id: "UUID primary key"
+      name: "Customer name (unique)"
+      max_balance_amount: "Maximum allowed balance amount (empty = no limit)"
+      max_balance_commodity: "Commodity for the max balance constraint"
+      created_at: "Timestamp when the customer was created"
+
+  - table: data_points
+    tableComment: >
+      Time-series parameter values. Stores named data points with value and knowledge
+      timestamps for bitemporal queries (e.g. interest rate changes, exchange rates).
+    columnComments:
+      id: "UUID primary key"
+      value_time: "When this value became effective"
+      knowledge_time: "When the system learned about this value"
+      param_name: "Parameter name (e.g. base-rate)"
+      param_type: "Value type: string, number, or bool"
+      param_value: "The parameter value as a string"
+      created_at: "Timestamp when the data point was created"
+
 relations:
+  - table: accounts
+    columns:
+      - commodity
+    parentTable: commodities
+    parentColumns:
+      - code
+    def: "accounts.commodity -> commodities.code"
+  - table: accounts
+    columns:
+      - customer_id
+    parentTable: customers
+    parentColumns:
+      - id
+    def: "accounts.customer_id -> customers.id"
   - table: movements
     columns:
       - from_account_id
@@ -87,3 +188,24 @@ relations:
     parentColumns:
       - id
     def: "balances_live.account_id -> accounts.id"
+  - table: commodity_metadata
+    columns:
+      - commodity_id
+    parentTable: commodities
+    parentColumns:
+      - id
+    def: "commodity_metadata.commodity_id -> commodities.id"
+  - table: aliases
+    columns:
+      - account_path
+    parentTable: accounts
+    parentColumns:
+      - full_path
+    def: "aliases.account_path -> accounts.full_path"
+  - table: customer_metadata
+    columns:
+      - customer_id
+    parentTable: customers
+    parentColumns:
+      - id
+    def: "customer_metadata.customer_id -> customers.id"

@@ -43,7 +43,7 @@
             <div class="content">
 <h1>accounts</h1>
 <h2>Description</h2>
-<p>Chart of accounts. Each account has a hierarchical path (Type:Product:AccountID:Address) and belongs to one of five fundamental types: Asset, Liability, Equity, Income, Expense. Amounts are stored as integers at the precision defined by exponent (e.g. -2 for pence).</p>
+<p>Chart of accounts. Each account has a hierarchical path (Type:Product:AccountID:Address) and belongs to one of five fundamental types: Asset, Liability, Equity, Income, Expense. An account optionally belongs to a customer (many accounts per customer). Amounts are stored as integers at the precision defined by the commodity's exponent.</p>
 <details>
 <summary><strong>Table Definition</strong></summary>
 <pre><code class="language-sql">CREATE TABLE accounts (
@@ -54,9 +54,11 @@
     account_id TEXT NOT NULL DEFAULT '',
     address TEXT NOT NULL DEFAULT '',
     is_pending INTEGER DEFAULT 0,
-    currency TEXT NOT NULL DEFAULT 'GBP',
-    exponent INTEGER NOT NULL DEFAULT -2,
-    annual_interest_rate TEXT NOT NULL DEFAULT 0,
+    commodity TEXT NOT NULL DEFAULT 'GBP' REFERENCES commodities(code),
+    customer_id TEXT REFERENCES customers(id),
+    gross_interest_rate TEXT NOT NULL DEFAULT 0,
+    interest_method TEXT NOT NULL DEFAULT '',
+    interest_accumulator INTEGER NOT NULL DEFAULT 0,
     opened_at TEXT,
     created_at TEXT DEFAULT (datetime('now'))
 )
@@ -104,13 +106,13 @@
 <td>Sub-address within the account (e.g. branch). 'Pending' marks pending accounts</td>
 </tr>
 <tr>
-<td>annual_interest_rate</td>
+<td>commodity</td>
 <td>TEXT</td>
-<td>0</td>
+<td>'GBP'</td>
 <td>false</td>
 <td></td>
-<td></td>
-<td>Annual interest rate as a decimal (0.045 = 4.5%)</td>
+<td><a href="commodities.html">commodities</a></td>
+<td>Commodity code (FK to commodities.code)</td>
 </tr>
 <tr>
 <td>created_at</td>
@@ -122,31 +124,31 @@
 <td>Timestamp when the account was created</td>
 </tr>
 <tr>
-<td>currency</td>
+<td>customer_id</td>
 <td>TEXT</td>
-<td>'GBP'</td>
-<td>false</td>
 <td></td>
+<td>true</td>
 <td></td>
-<td>ISO 4217 currency code (e.g. GBP, USD)</td>
-</tr>
-<tr>
-<td>exponent</td>
-<td>INTEGER</td>
-<td>-2</td>
-<td>false</td>
-<td></td>
-<td></td>
-<td>Decimal exponent for amount precision (-2 = pence, -5 = high precision)</td>
+<td><a href="customers.html">customers</a></td>
+<td>Optional owning customer (FK to customers.id). A customer may have many accounts</td>
 </tr>
 <tr>
 <td>full_path</td>
 <td>TEXT</td>
 <td></td>
 <td>false</td>
-<td></td>
+<td><a href="aliases.html">aliases</a></td>
 <td></td>
 <td>Hierarchical account path, e.g. Asset:Bank:Current:Main</td>
+</tr>
+<tr>
+<td>gross_interest_rate</td>
+<td>TEXT</td>
+<td>0</td>
+<td>false</td>
+<td></td>
+<td></td>
+<td>Gross annual interest rate as a decimal (0.045 = 4.5%)</td>
 </tr>
 <tr>
 <td>id</td>
@@ -155,7 +157,25 @@
 <td>true</td>
 <td><a href="balances_live.html">balances_live</a> <a href="movements.html">movements</a></td>
 <td></td>
-<td>Auto-incrementing primary key</td>
+<td>UUID primary key</td>
+</tr>
+<tr>
+<td>interest_accumulator</td>
+<td>INTEGER</td>
+<td>0</td>
+<td>false</td>
+<td></td>
+<td></td>
+<td>Sub-unit fractions at extended precision (method-dependent)</td>
+</tr>
+<tr>
+<td>interest_method</td>
+<td>TEXT</td>
+<td>''</td>
+<td>false</td>
+<td></td>
+<td></td>
+<td>Interest calculation method (e.g. simple_daily)</td>
 </tr>
 <tr>
 <td>is_pending</td>
@@ -173,7 +193,7 @@
 <td>true</td>
 <td></td>
 <td></td>
-<td></td>
+<td>When the account was opened</td>
 </tr>
 <tr>
 <td>product</td>
@@ -196,6 +216,16 @@
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>- (Foreign key ID: 0)</td>
+<td>FOREIGN KEY</td>
+<td>FOREIGN KEY (customer_id) REFERENCES customers (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE</td>
+</tr>
+<tr>
+<td>- (Foreign key ID: 1)</td>
+<td>FOREIGN KEY</td>
+<td>FOREIGN KEY (commodity) REFERENCES commodities (code) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE</td>
+</tr>
 <tr>
 <td>id</td>
 <td>PRIMARY KEY</td>
@@ -235,7 +265,16 @@
 <h2>Relations</h2>
 <pre class="mermaid">erDiagram
 
+&quot;accounts&quot; }o--|| &quot;commodities&quot; : &quot;FOREIGN KEY (commodity) REFERENCES commodities (code) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
+&quot;accounts&quot; }o--|| &quot;commodities&quot; : &quot;accounts.commodity -&gt; commodities.code&quot;
+&quot;accounts&quot; }o--o| &quot;customers&quot; : &quot;FOREIGN KEY (customer_id) REFERENCES customers (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
+&quot;accounts&quot; }o--o| &quot;customers&quot; : &quot;accounts.customer_id -&gt; customers.id&quot;
+&quot;aliases&quot; }o--|| &quot;accounts&quot; : &quot;FOREIGN KEY (account_path) REFERENCES accounts (full_path) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
+&quot;aliases&quot; }o--|| &quot;accounts&quot; : &quot;aliases.account_path -&gt; accounts.full_path&quot;
+&quot;balances_live&quot; }o--|| &quot;accounts&quot; : &quot;FOREIGN KEY (account_id) REFERENCES accounts (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
 &quot;balances_live&quot; }o--|| &quot;accounts&quot; : &quot;balances_live.account_id -&gt; accounts.id&quot;
+&quot;movements&quot; }o--|| &quot;accounts&quot; : &quot;FOREIGN KEY (to_account_id) REFERENCES accounts (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
+&quot;movements&quot; }o--|| &quot;accounts&quot; : &quot;FOREIGN KEY (from_account_id) REFERENCES accounts (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
 &quot;movements&quot; }o--|| &quot;accounts&quot; : &quot;movements.from_account_id -&gt; accounts.id&quot;
 &quot;movements&quot; }o--|| &quot;accounts&quot; : &quot;movements.to_account_id -&gt; accounts.id&quot;
 
@@ -243,35 +282,57 @@
   TEXT account_id &quot;Specific account identifier within the product&quot;
   TEXT account_type &quot;One of: Asset, Liability, Equity, Income, Expense&quot;
   TEXT address &quot;Sub-address within the account (e.g. branch). 'Pending' marks pending accounts&quot;
-  TEXT annual_interest_rate &quot;Annual interest rate as a decimal (0.045 = 4.5%)&quot;
+  TEXT commodity FK &quot;Commodity code (FK to commodities.code)&quot;
   TEXT created_at &quot;Timestamp when the account was created&quot;
-  TEXT currency &quot;ISO 4217 currency code (e.g. GBP, USD)&quot;
-  INTEGER exponent &quot;Decimal exponent for amount precision (-2 = pence, -5 = high precision)&quot;
+  TEXT customer_id FK &quot;Optional owning customer (FK to customers.id). A customer may have many accounts&quot;
   TEXT full_path &quot;Hierarchical account path, e.g. Asset:Bank:Current:Main&quot;
-  TEXT id PK &quot;Auto-incrementing primary key&quot;
+  TEXT gross_interest_rate &quot;Gross annual interest rate as a decimal (0.045 = 4.5%)&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  INTEGER interest_accumulator &quot;Sub-unit fractions at extended precision (method-dependent)&quot;
+  TEXT interest_method &quot;Interest calculation method (e.g. simple_daily)&quot;
   INTEGER is_pending &quot;True if this is a pending/suspense account&quot;
-  TEXT opened_at &quot;&quot;
+  TEXT opened_at &quot;When the account was opened&quot;
   TEXT product &quot;Product category within the account type&quot;
 }
+&quot;commodities&quot; {
+  TEXT code &quot;Unique commodity code (e.g. GBP, USD, BTC)&quot;
+  TEXT created_at &quot;Timestamp when the commodity was created&quot;
+  TEXT datetime &quot;Optional date associated with the commodity definition&quot;
+  INTEGER exponent &quot;Decimal exponent for amount precision (-2 = pence, -8 = satoshi)&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+}
+&quot;customers&quot; {
+  TEXT created_at &quot;Timestamp when the customer was created&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  TEXT max_balance_amount &quot;Maximum allowed balance amount (empty = no limit)&quot;
+  TEXT max_balance_commodity &quot;Commodity for the max balance constraint&quot;
+  TEXT name &quot;Customer name (unique)&quot;
+}
+&quot;aliases&quot; {
+  TEXT account_path FK &quot;Full account path (FK to accounts.full_path)&quot;
+  TEXT created_at &quot;Timestamp when the alias was created&quot;
+  TEXT id PK &quot;UUID primary key&quot;
+  TEXT name &quot;Alias name (unique)&quot;
+}
 &quot;balances_live&quot; {
-  TEXT account_id &quot;Account this balance belongs to (references accounts.id)&quot;
+  TEXT account_id FK &quot;Account this balance belongs to (FK to accounts.id)&quot;
   INTEGER balance &quot;End-of-day balance in smallest currency unit&quot;
   TEXT balance_date &quot;Date of the balance snapshot (start of day)&quot;
-  TEXT id PK &quot;Auto-incrementing primary key&quot;
+  TEXT id PK &quot;UUID primary key&quot;
   TEXT updated_at &quot;When this balance was last recomputed&quot;
 }
 &quot;movements&quot; {
-  INTEGER amount &quot;Transfer amount in smallest currency unit (integer at account exponent)&quot;
+  INTEGER amount &quot;Transfer amount in smallest currency unit (integer at commodity exponent)&quot;
   TEXT batch_id &quot;Groups related movements into a single atomic transaction&quot;
-  TEXT code &quot;Movement category: 0=normal, 1=interest accrual (TigerBeetle-inspired)&quot;
+  TEXT code &quot;ISO 20022 BTC mnemonic (DOMAIN:FAMILY:SUBFAMILY)&quot;
   TEXT description &quot;Human-readable description of the movement&quot;
-  TEXT from_account_id &quot;Source account (references accounts.id)&quot;
-  TEXT id PK &quot;Auto-incrementing primary key&quot;
+  TEXT from_account_id FK &quot;Source account (FK to accounts.id)&quot;
+  TEXT id PK &quot;UUID primary key&quot;
   TEXT knowledge_time &quot;When the system recorded this movement (knowledge date)&quot;
   INTEGER ledger &quot;Partition identifier for multi-ledger setups (TigerBeetle-inspired)&quot;
   INTEGER pending_id &quot;Two-phase commit: references pending movement to post/void (0=N/A)&quot;
-  TEXT period_anchor &quot;&quot;
-  TEXT to_account_id &quot;Destination account (references accounts.id)&quot;
+  TEXT period_anchor &quot;Period anchor marker: ^ (start), $ (end), or empty&quot;
+  TEXT to_account_id FK &quot;Destination account (FK to accounts.id)&quot;
   INTEGER user_data_64 &quot;Arbitrary external reference for application use&quot;
   TEXT value_time &quot;When the movement economically occurred (value date)&quot;
 }
