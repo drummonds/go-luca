@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.23] - 2026-03-22
+
+ - Reorganising schema
+
 ## [0.2.22] - 2026-03-19
 
  - Merge branch 'task/WTdbupdate'
