@@ -355,10 +355,7 @@ func generateSCV(ctx context.Context, pool *pgxpool.Pool, cPath, dPath string) e
 		}
 
 		aggBal := formatPence(cd.total)
-		comp := cd.total
-		if comp > compensationCap {
-			comp = compensationCap
-		}
+		comp := min(cd.total, compensationCap)
 		fmt.Fprintf(dBuf, "%d|%s|%s\n", recNum, aggBal, formatPence(comp))
 		recNum++
 	}

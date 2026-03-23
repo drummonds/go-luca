@@ -349,7 +349,7 @@ func TestInterestFuncWithAccumulator(t *testing.T) {
 
 	// Run 10 days — accumulator should eventually trigger a posting
 	var totalPosted Amount
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		d := time.Date(2026, 1, 1+i, 0, 0, 0, 0, time.UTC)
 		result, err := l.CalculateDailyInterest(savings.ID, d)
 		if err != nil {

@@ -134,7 +134,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_movement_metadata_unique ON movement_metad
 // the pglike (SQLite) driver does not support multiple statements in a
 // single Exec call.
 func execStatements(db *sql.DB, sql string) error {
-	for _, stmt := range strings.Split(sql, ";") {
+	for stmt := range strings.SplitSeq(sql, ";") {
 		stmt = strings.TrimSpace(stmt)
 		if stmt == "" {
 			continue
@@ -148,8 +148,8 @@ func execStatements(db *sql.DB, sql string) error {
 
 // firstLine returns the first line of s, for use in error messages.
 func firstLine(s string) string {
-	if i := strings.IndexByte(s, '\n'); i >= 0 {
-		return s[:i]
+	if before, _, ok := strings.Cut(s, "\n"); ok {
+		return before
 	}
 	return s
 }
