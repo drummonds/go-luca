@@ -168,11 +168,11 @@ func CreateSchemaDB(path string) (*sql.DB, error) {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
 	if err := execStatements(db, SchemaSQL); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("create schema: %w", err)
 	}
 	if err := insertSampleData(db); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("insert sample data: %w", err)
 	}
 	return db, nil

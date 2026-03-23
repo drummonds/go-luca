@@ -41,7 +41,7 @@ func (l *SQLLedger) Events(from, to time.Time) ([]Event, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query movements: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var events []Event
 	for rows.Next() {
@@ -80,7 +80,7 @@ func (l *SQLLedger) Events(from, to time.Time) ([]Event, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query data points: %w", err)
 	}
-	defer dpRows.Close()
+	defer func() { _ = dpRows.Close() }()
 
 	for dpRows.Next() {
 		var dp DBDataPoint

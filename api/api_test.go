@@ -20,7 +20,7 @@ func setup(t *testing.T) luca.Ledger {
 	ts := httptest.NewServer(srv)
 	t.Cleanup(func() {
 		ts.Close()
-		l.Close()
+		_ = l.Close()
 	})
 	return api.NewClient(ts.URL)
 }
@@ -81,9 +81,15 @@ func TestGetAccountByID(t *testing.T) {
 func TestListAccounts(t *testing.T) {
 	c := setup(t)
 
-	c.CreateAccount("Asset:Cash", "GBP", -2, 0)
-	c.CreateAccount("Asset:Bank", "GBP", -2, 0)
-	c.CreateAccount("Liability:Savings:0001", "GBP", -2, 0)
+	if _, err := c.CreateAccount("Asset:Cash", "GBP", -2, 0); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	if _, err := c.CreateAccount("Asset:Bank", "GBP", -2, 0); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	if _, err := c.CreateAccount("Liability:Savings:0001", "GBP", -2, 0); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
 
 	all, err := c.ListAccounts("")
 	if err != nil {
@@ -163,8 +169,12 @@ func TestBalanceAt(t *testing.T) {
 	jan1 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	jan2 := time.Date(2026, 1, 2, 12, 0, 0, 0, time.UTC)
 
-	c.RecordMovement(equity.ID, cash.ID, 10000, luca.CodeBookTransfer, jan1, "first")
-	c.RecordMovement(equity.ID, cash.ID, 5000, luca.CodeBookTransfer, jan2, "second")
+	if _, err := c.RecordMovement(equity.ID, cash.ID, 10000, luca.CodeBookTransfer, jan1, "first"); err != nil {
+		t.Fatalf("RecordMovement: %v", err)
+	}
+	if _, err := c.RecordMovement(equity.ID, cash.ID, 5000, luca.CodeBookTransfer, jan2, "second"); err != nil {
+		t.Fatalf("RecordMovement: %v", err)
+	}
 
 	bal, err := c.BalanceAt(cash.ID, jan1)
 	if err != nil {
@@ -189,8 +199,12 @@ func TestDailyBalances(t *testing.T) {
 	jan1 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	jan2 := time.Date(2026, 1, 2, 12, 0, 0, 0, time.UTC)
 
-	c.RecordMovement(equity.ID, cash.ID, 10000, luca.CodeBookTransfer, jan1, "first")
-	c.RecordMovement(equity.ID, cash.ID, 5000, luca.CodeBookTransfer, jan2, "second")
+	if _, err := c.RecordMovement(equity.ID, cash.ID, 10000, luca.CodeBookTransfer, jan1, "first"); err != nil {
+		t.Fatalf("RecordMovement: %v", err)
+	}
+	if _, err := c.RecordMovement(equity.ID, cash.ID, 5000, luca.CodeBookTransfer, jan2, "second"); err != nil {
+		t.Fatalf("RecordMovement: %v", err)
+	}
 
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC)

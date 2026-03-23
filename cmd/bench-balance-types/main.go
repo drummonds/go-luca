@@ -125,7 +125,7 @@ func main() {
 		// Drop tables to free memory for next scenario.
 		for _, ct := range types {
 			tableName := fmt.Sprintf("balances_%s_%d_%d", ct.name, sc.n, sc.m)
-			pg.Pool.Exec(ctx, "DROP TABLE IF EXISTS "+tableName)
+			_, _ = pg.Pool.Exec(ctx, "DROP TABLE IF EXISTS "+tableName)
 		}
 	}
 
@@ -190,7 +190,7 @@ CREATE INDEX ON %s (account_id, value_time DESC);`, tableName, tableName, sqlTyp
 		}
 	}
 
-	pool.Exec(ctx, "ANALYZE "+tableName)
+	_, _ = pool.Exec(ctx, "ANALYZE "+tableName)
 	fmt.Printf(" done (%s)\n", time.Since(start).Round(time.Millisecond))
 	return nil
 }

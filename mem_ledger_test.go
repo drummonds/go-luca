@@ -7,7 +7,7 @@ import (
 
 func TestMemLedgerCreateAccount(t *testing.T) {
 	m := NewMemLedger()
-	defer m.Close()
+	defer func() { _ = m.Close() }()
 
 	acct, err := m.CreateAccount("Asset:Cash", "GBP", -2, 0)
 	if err != nil {
@@ -40,7 +40,9 @@ func TestMemLedgerDuplicateAccount(t *testing.T) {
 func TestMemLedgerGetAccount(t *testing.T) {
 	m := NewMemLedger()
 
-	m.CreateAccount("Asset:Cash", "GBP", -2, 0)
+	if _, err := m.CreateAccount("Asset:Cash", "GBP", -2, 0); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
 
 	acct, err := m.GetAccount("Asset:Cash")
 	if err != nil {
@@ -81,9 +83,15 @@ func TestMemLedgerGetAccountByID(t *testing.T) {
 func TestMemLedgerListAccounts(t *testing.T) {
 	m := NewMemLedger()
 
-	m.CreateAccount("Asset:Cash", "GBP", -2, 0)
-	m.CreateAccount("Asset:Bank", "GBP", -2, 0)
-	m.CreateAccount("Liability:Savings:0001", "GBP", -2, 0)
+	if _, err := m.CreateAccount("Asset:Cash", "GBP", -2, 0); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	if _, err := m.CreateAccount("Asset:Bank", "GBP", -2, 0); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	if _, err := m.CreateAccount("Liability:Savings:0001", "GBP", -2, 0); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
 
 	all, _ := m.ListAccounts("")
 	if len(all) != 3 {
@@ -164,8 +172,12 @@ func TestMemLedgerBalance(t *testing.T) {
 	equity, _ := m.CreateAccount("Equity:Capital", "GBP", -2, 0)
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	m.RecordMovement(equity.ID, cash.ID, 20000, CodeBookTransfer, now, "deposit")
-	m.RecordMovement(equity.ID, cash.ID, 5000, CodeBookTransfer, now, "more")
+	if _, err := m.RecordMovement(equity.ID, cash.ID, 20000, CodeBookTransfer, now, "deposit"); err != nil {
+		t.Fatalf("RecordMovement: %v", err)
+	}
+	if _, err := m.RecordMovement(equity.ID, cash.ID, 5000, CodeBookTransfer, now, "more"); err != nil {
+		t.Fatalf("RecordMovement: %v", err)
+	}
 
 	bal, err := m.Balance(cash.ID)
 	if err != nil {
@@ -190,8 +202,12 @@ func TestMemLedgerBalanceAt(t *testing.T) {
 	jan1 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	jan2 := time.Date(2026, 1, 2, 12, 0, 0, 0, time.UTC)
 
-	m.RecordMovement(equity.ID, cash.ID, 10000, CodeBookTransfer, jan1, "first")
-	m.RecordMovement(equity.ID, cash.ID, 5000, CodeBookTransfer, jan2, "second")
+	if _, err := m.RecordMovement(equity.ID, cash.ID, 10000, CodeBookTransfer, jan1, "first"); err != nil {
+		t.Fatalf("RecordMovement: %v", err)
+	}
+	if _, err := m.RecordMovement(equity.ID, cash.ID, 5000, CodeBookTransfer, jan2, "second"); err != nil {
+		t.Fatalf("RecordMovement: %v", err)
+	}
 
 	bal, err := m.BalanceAt(cash.ID, jan1)
 	if err != nil {
@@ -216,8 +232,12 @@ func TestMemLedgerDailyBalances(t *testing.T) {
 	jan1 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	jan2 := time.Date(2026, 1, 2, 12, 0, 0, 0, time.UTC)
 
-	m.RecordMovement(equity.ID, cash.ID, 10000, CodeBookTransfer, jan1, "first")
-	m.RecordMovement(equity.ID, cash.ID, 5000, CodeBookTransfer, jan2, "second")
+	if _, err := m.RecordMovement(equity.ID, cash.ID, 10000, CodeBookTransfer, jan1, "first"); err != nil {
+		t.Fatalf("RecordMovement: %v", err)
+	}
+	if _, err := m.RecordMovement(equity.ID, cash.ID, 5000, CodeBookTransfer, jan2, "second"); err != nil {
+		t.Fatalf("RecordMovement: %v", err)
+	}
 
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2026, 1, 3, 0, 0, 0, 0, time.UTC)

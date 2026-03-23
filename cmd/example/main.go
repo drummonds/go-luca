@@ -14,7 +14,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer ledger.Close()
+	defer func() { _ = ledger.Close() }()
 
 	// Create accounts (amounts in pence with exponent -2)
 	cash, _ := ledger.CreateAccount("Asset:Cash", "GBP", -2, 0)
@@ -25,22 +25,32 @@ func main() {
 	jan1 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
 	// Initial capital injection: Equity → Cash (100000.00 = 10000000 pence)
-	ledger.RecordMovement(equity.ID, cash.ID, 10000000, luca.CodeBookTransfer, jan1, "Initial capital")
+	if _, err := ledger.RecordMovement(equity.ID, cash.ID, 10000000, luca.CodeBookTransfer, jan1, "Initial capital"); err != nil {
+		log.Fatal(err)
+	}
 
 	// Customer deposits
-	ledger.RecordMovement(cash.ID, savings1.ID, 1000000, luca.CodeBookTransfer, jan1, "Customer 1 deposit") // 10000.00
-	ledger.RecordMovement(cash.ID, savings2.ID, 500000, luca.CodeBookTransfer, jan1, "Customer 2 deposit")  // 5000.00
+	if _, err := ledger.RecordMovement(cash.ID, savings1.ID, 1000000, luca.CodeBookTransfer, jan1, "Customer 1 deposit"); err != nil {
+		log.Fatal(err)
+	}
+	if _, err := ledger.RecordMovement(cash.ID, savings2.ID, 500000, luca.CodeBookTransfer, jan1, "Customer 2 deposit"); err != nil {
+		log.Fatal(err)
+	}
 
 	// Linked movements: purchase with VAT
 	purchases, _ := ledger.CreateAccount("Expense:Purchases", "GBP", -2, 0)
 	vatInput, _ := ledger.CreateAccount("Asset:VATInput", "GBP", -2, 0)
-	ledger.RecordLinkedMovements([]luca.MovementInput{
+	if _, err := ledger.RecordLinkedMovements([]luca.MovementInput{
 		{FromAccountID: cash.ID, ToAccountID: purchases.ID, Amount: 50000, Code: luca.CodeBookTransfer, Description: "Office supplies"},       // 500.00
 		{FromAccountID: cash.ID, ToAccountID: vatInput.ID, Amount: 10000, Code: luca.CodeBookTransfer, Description: "VAT on office supplies"}, // 100.00
-	}, time.Date(2026, 1, 2, 10, 0, 0, 0, time.UTC))
+	}, time.Date(2026, 1, 2, 10, 0, 0, 0, time.UTC)); err != nil {
+		log.Fatal(err)
+	}
 
 	// Run daily interest for January
-	ledger.EnsureInterestAccounts()
+	if err := ledger.EnsureInterestAccounts(); err != nil {
+		log.Fatal(err)
+	}
 	fmt.Println("=== Daily Interest ===")
 	for day := 1; day <= 31; day++ {
 		date := time.Date(2026, 1, day, 0, 0, 0, 0, time.UTC)

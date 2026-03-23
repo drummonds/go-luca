@@ -113,7 +113,7 @@ func (l *SQLLedger) BalanceByPath(pathPrefix string, at time.Time) (Amount, int,
 	if err != nil {
 		return 0, 0, fmt.Errorf("query balance by path: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var total Amount
 	for rows.Next() {

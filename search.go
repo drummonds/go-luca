@@ -134,7 +134,7 @@ func (l *SQLLedger) SearchMovements(q SearchQuery) ([]MovementWithPaths, error) 
 	if err != nil {
 		return nil, fmt.Errorf("search movements: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []MovementWithPaths
 	for rows.Next() {

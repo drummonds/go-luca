@@ -19,13 +19,17 @@ func TestExport(t *testing.T) {
 	date := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
 
 	// Single movement
-	l.RecordMovement(cash.ID, bank.ID, 10000, CodeBookTransfer, date, "Transfer")
+	if _, err := l.RecordMovement(cash.ID, bank.ID, 10000, CodeBookTransfer, date, "Transfer"); err != nil {
+		t.Fatalf("RecordMovement: %v", err)
+	}
 
 	// Linked movements
-	l.RecordLinkedMovements([]MovementInput{
+	if _, err := l.RecordLinkedMovements([]MovementInput{
 		{FromAccountID: salary.ID, ToAccountID: bank.ID, Amount: 400000, Code: CodeBookTransfer, Description: "net salary"},
 		{FromAccountID: salary.ID, ToAccountID: cash.ID, Amount: 50000, Code: CodeBookTransfer, Description: "cash advance"},
-	}, date.AddDate(0, 0, 1))
+	}, date.AddDate(0, 0, 1)); err != nil {
+		t.Fatalf("RecordLinkedMovements: %v", err)
+	}
 
 	var buf bytes.Buffer
 	if err := l.Export(&buf); err != nil {

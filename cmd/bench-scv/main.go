@@ -142,8 +142,8 @@ WHERE a.account_type = 'Liability'`)
 				benchutil.FmtInt(sc.accounts), benchutil.FmtInt(numCust)),
 			[]*benchutil.TimingResult{r})
 
-		os.Remove(cPath)
-		os.Remove(dPath)
+		_ = os.Remove(cPath)
+		_ = os.Remove(dPath)
 	}
 
 	report.AddFileSection("Purpose", filepath.Join(benchDir, "purpose.md"))
@@ -334,7 +334,7 @@ func generateSCV(ctx context.Context, pool *pgxpool.Pool, cPath, dPath string) e
 	if err != nil {
 		return err
 	}
-	defer cFile.Close()
+	defer func() { _ = cFile.Close() }()
 	cBuf := bufio.NewWriter(cFile)
 
 	// Write D file (customer aggregates).
@@ -342,7 +342,7 @@ func generateSCV(ctx context.Context, pool *pgxpool.Pool, cPath, dPath string) e
 	if err != nil {
 		return err
 	}
-	defer dFile.Close()
+	defer func() { _ = dFile.Close() }()
 	dBuf := bufio.NewWriter(dFile)
 
 	recNum := 1
@@ -350,19 +350,19 @@ func generateSCV(ctx context.Context, pool *pgxpool.Pool, cPath, dPath string) e
 		cd := customers[custID]
 		for _, a := range cd.accounts {
 			bal := formatPence(a.balance)
-			fmt.Fprintf(cBuf, "%d|%s|%d|000000|%s|1|A|0|UK|N|N|%s|0|%s|%s|1.000000|%s|Y\n",
+			_, _ = fmt.Fprintf(cBuf, "%d|%s|%d|000000|%s|1|A|0|UK|N|N|%s|0|%s|%s|1.000000|%s|Y\n",
 				recNum, custID, a.id, a.product, bal, a.currency, bal, bal)
 		}
 
 		aggBal := formatPence(cd.total)
 		comp := min(cd.total, compensationCap)
-		fmt.Fprintf(dBuf, "%d|%s|%s\n", recNum, aggBal, formatPence(comp))
+		_, _ = fmt.Fprintf(dBuf, "%d|%s|%s\n", recNum, aggBal, formatPence(comp))
 		recNum++
 	}
 
 	// FSCS footer.
-	fmt.Fprintln(cBuf, fscsFooter)
-	fmt.Fprintln(dBuf, fscsFooter)
+	_, _ = fmt.Fprintln(cBuf, fscsFooter)
+	_, _ = fmt.Fprintln(dBuf, fscsFooter)
 
 	if err := cBuf.Flush(); err != nil {
 		return fmt.Errorf("flush C: %w", err)

@@ -11,7 +11,7 @@ func TestCreateSchema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLedger: %v", err)
 	}
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 }
 
 func TestCreateSchemaDB(t *testing.T) {
@@ -19,7 +19,7 @@ func TestCreateSchemaDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateSchemaDB: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Verify sample accounts were created
 	var count int

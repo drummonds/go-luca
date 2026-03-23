@@ -27,7 +27,7 @@ func (l *SQLLedger) ListMovements() ([]MovementWithPaths, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list movements: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []MovementWithPaths
 	for rows.Next() {

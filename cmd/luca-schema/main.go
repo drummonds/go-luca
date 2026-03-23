@@ -30,13 +30,13 @@ func main() {
 	}
 
 	// Remove existing file so we get a clean schema
-	os.Remove(*dbPath)
+	_ = os.Remove(*dbPath)
 
 	db, err := luca.CreateSchemaDB(*dbPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
-	db.Close()
+	_ = db.Close()
 	fmt.Printf("Schema database created at %s\n", *dbPath)
 }

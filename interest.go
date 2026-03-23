@@ -142,7 +142,7 @@ func (l *SQLLedger) RunDailyInterest(date time.Time) ([]InterestResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list interest accounts: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var accountIDs []string
 	for rows.Next() {

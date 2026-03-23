@@ -35,7 +35,7 @@ func NewLedger(dsn string) (*SQLLedger, error) {
 func NewSQLLedger(db *sql.DB) (*SQLLedger, error) {
 	l := &SQLLedger{db: db}
 	if err := l.createSchema(); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("create schema: %w", err)
 	}
 	return l, nil

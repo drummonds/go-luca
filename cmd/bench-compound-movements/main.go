@@ -277,7 +277,7 @@ func runSimple(ctx context.Context, pool *pgxpool.Pool, acctID int, vt time.Time
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var batchID int
 	if err := tx.QueryRow(ctx, "SELECT COALESCE(MAX(batch_id), 0) + 1 FROM movements").Scan(&batchID); err != nil {
@@ -310,7 +310,7 @@ func runCompound(ctx context.Context, pool *pgxpool.Pool, acctID int, vt time.Ti
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var batchID int
 	if err := tx.QueryRow(ctx, "SELECT COALESCE(MAX(batch_id), 0) + 1 FROM movements").Scan(&batchID); err != nil {

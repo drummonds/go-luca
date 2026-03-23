@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"html/template"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -140,7 +141,9 @@ func main() {
 		}
 
 		outDir := filepath.Join(*docsDir, "benchmarks")
-		os.MkdirAll(outDir, 0o755)
+		if err := os.MkdirAll(outDir, 0o755); err != nil {
+			log.Fatalf("mkdir %s: %v", outDir, err)
+		}
 		outPath := filepath.Join(outDir, topic+".html")
 
 		if err := renderMarkdown(tmpl, src, outPath, "../"); err != nil {
@@ -155,7 +158,9 @@ func main() {
 	researchMDs, _ := filepath.Glob(filepath.Join(*researchDir, "*.md"))
 	if len(researchMDs) > 0 {
 		outDir := filepath.Join(*docsDir, "research")
-		os.MkdirAll(outDir, 0o755)
+		if err := os.MkdirAll(outDir, 0o755); err != nil {
+			log.Fatalf("mkdir %s: %v", outDir, err)
+		}
 		for _, mdPath := range researchMDs {
 			base := strings.TrimSuffix(filepath.Base(mdPath), ".md")
 			outPath := filepath.Join(outDir, base+".html")
@@ -232,7 +237,7 @@ func renderMarkdown(tmpl *template.Template, src []byte, outPath, rootPath strin
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	return tmpl.Execute(f, pageData{
 		Title:      title,
@@ -248,7 +253,7 @@ func extractTitle(src []byte) string {
 	doc := p.Parse(reader)
 
 	var title string
-	ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
 			return ast.WalkContinue, nil
 		}

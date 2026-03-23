@@ -130,7 +130,7 @@ func (l *SQLLedger) DataPointRange(paramName string, from, to time.Time) ([]DBDa
 	if err != nil {
 		return nil, fmt.Errorf("data point range: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []DBDataPoint
 	for rows.Next() {
@@ -190,7 +190,7 @@ func (l *SQLLedger) ListDataPoints() ([]DBDataPoint, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list data points: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []DBDataPoint
 	for rows.Next() {
