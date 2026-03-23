@@ -3,8 +3,8 @@ module github.com/drummonds/go-luca
 go 1.26.0
 
 require (
+	codeberg.org/hum3/gotreesitter v0.6.6
 	github.com/drummonds/go-postgres v0.5.0
-	github.com/drummonds/gotreesitter v0.6.1
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/shopspring/decimal v1.4.0
@@ -22,7 +22,3 @@ require (
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 )
-
-replace github.com/drummonds/gotreesitter v0.6.1 => /home/hum3/nibble/gotreesitter
-
-replace github.com/ncruces/go-sqlite3 v0.32.0 => github.com/ncruces/go-sqlite3 v0.30.6-0.20260318175627-361fdc52faa5

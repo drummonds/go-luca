@@ -5,8 +5,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/drummonds/gotreesitter"
-	"github.com/drummonds/gotreesitter/grammars"
+	"codeberg.org/hum3/gotreesitter"
+	"codeberg.org/hum3/gotreesitter/grammars"
 )
 
 // Transaction is an in-memory representation of a .goluca transaction,
