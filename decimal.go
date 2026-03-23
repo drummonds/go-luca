@@ -45,7 +45,7 @@ func ScaleAmount(amount Amount, fromExponent, toExponent int) Amount {
 // (accumulator is at 4dp, postable at 2dp, remainder keeps sub-unit fraction).
 func ExtractPostable(accumulator Amount, extraDigits int) (postable Amount, remainder Amount) {
 	scale := Amount(1)
-	for i := 0; i < extraDigits; i++ {
+	for range extraDigits {
 		scale *= 10
 	}
 	postable = accumulator / scale

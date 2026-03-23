@@ -45,7 +45,7 @@ func (l *SQLLedger) ListOptions() ([]Option, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list options: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var opts []Option
 	for rows.Next() {
@@ -98,7 +98,7 @@ func (l *SQLLedger) ListCommodities() ([]CommodityDef, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list commodities: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	type commodityRow struct {
 		id          string
@@ -122,7 +122,7 @@ func (l *SQLLedger) ListCommodities() ([]CommodityDef, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list commodity metadata: %w", err)
 	}
-	defer metaRows.Close()
+	defer func() { _ = metaRows.Close() }()
 
 	metaByID := make(map[string]map[string]string)
 	for metaRows.Next() {
@@ -194,7 +194,7 @@ func (l *SQLLedger) ListAliases() ([]AliasDef, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list aliases: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []AliasDef
 	for rows.Next() {
@@ -276,7 +276,7 @@ func (l *SQLLedger) ListCustomers() ([]CustomerDef, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list customers: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	type customerRow struct {
 		id                  string
@@ -301,7 +301,7 @@ func (l *SQLLedger) ListCustomers() ([]CustomerDef, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list customer accounts: %w", err)
 	}
-	defer acctRows.Close()
+	defer func() { _ = acctRows.Close() }()
 
 	acctByCustomer := make(map[string]string) // first account path per customer
 	for acctRows.Next() {
@@ -322,7 +322,7 @@ func (l *SQLLedger) ListCustomers() ([]CustomerDef, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list customer metadata: %w", err)
 	}
-	defer metaRows.Close()
+	defer func() { _ = metaRows.Close() }()
 
 	metaByID := make(map[string]map[string]string)
 	for metaRows.Next() {
@@ -383,7 +383,7 @@ func (l *SQLLedger) GetMovementMetadata(batchID string) (map[string]string, erro
 	if err != nil {
 		return nil, fmt.Errorf("get movement metadata: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	result := make(map[string]string)
 	for rows.Next() {

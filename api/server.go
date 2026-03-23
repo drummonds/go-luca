@@ -142,7 +142,7 @@ type MovementEvent struct {
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+	_ = json.NewEncoder(w).Encode(v)
 }
 
 func writeError(w http.ResponseWriter, status int, msg string) {
@@ -150,7 +150,7 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 }
 
 func decodeJSON(r *http.Request, v any) error {
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 	return json.NewDecoder(r.Body).Decode(v)
 }
 
@@ -716,7 +716,7 @@ func (s *Server) handleImport(w http.ResponseWriter, r *http.Request) {
 	if !s.requireSQLLedger(w) {
 		return
 	}
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "read body: "+err.Error())
@@ -737,6 +737,6 @@ func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	if err := s.sqlLedger.Export(w); err != nil {
 		// Headers already sent; best we can do is log/write error text
-		fmt.Fprintf(w, "\n\nERROR: %v\n", err)
+		_, _ = fmt.Fprintf(w, "\n\nERROR: %v\n", err)
 	}
 }

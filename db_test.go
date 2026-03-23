@@ -13,7 +13,7 @@ func newTestLedger(t *testing.T) *SQLLedger {
 	if err != nil {
 		t.Fatalf("NewLedger: %v", err)
 	}
-	t.Cleanup(func() { l.Close() })
+	t.Cleanup(func() { _ = l.Close() })
 	return l
 }
 
@@ -118,9 +118,15 @@ func TestGetAccountByID(t *testing.T) {
 func TestListAccounts(t *testing.T) {
 	l := newTestLedger(t)
 
-	l.CreateAccount("Asset:Cash", "GBP", -2, 0)
-	l.CreateAccount("Asset:Bank", "GBP", -2, 0)
-	l.CreateAccount("Liability:Savings:0001", "GBP", -2, 0.05)
+	if _, err := l.CreateAccount("Asset:Cash", "GBP", -2, 0); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	if _, err := l.CreateAccount("Asset:Bank", "GBP", -2, 0); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	if _, err := l.CreateAccount("Liability:Savings:0001", "GBP", -2, 0.05); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
 
 	// All accounts
 	all, err := l.ListAccounts("")

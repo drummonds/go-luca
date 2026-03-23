@@ -145,10 +145,10 @@ func redactDSN(dsn string) string {
 	// Simple password redaction: replace password between : and @ after ://
 	if idx := strings.Index(dsn, "://"); idx >= 0 {
 		rest := dsn[idx+3:]
-		if atIdx := strings.Index(rest, "@"); atIdx >= 0 {
-			userPass := rest[:atIdx]
-			if colonIdx := strings.Index(userPass, ":"); colonIdx >= 0 {
-				return dsn[:idx+3] + userPass[:colonIdx] + ":***@" + rest[atIdx+1:]
+		if before, after, ok := strings.Cut(rest, "@"); ok {
+			userPass := before
+			if before, _, ok := strings.Cut(userPass, ":"); ok {
+				return dsn[:idx+3] + before + ":***@" + after
 			}
 		}
 	}

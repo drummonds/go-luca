@@ -213,7 +213,7 @@ func (l *SQLLedger) ListAccounts(typeFilter AccountType) ([]*Account, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list accounts: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var accounts []*Account
 	for rows.Next() {
@@ -266,7 +266,7 @@ func (l *SQLLedger) RecordMovement(fromAccountID, toAccountID string, amount Amo
 	if err != nil {
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	batchID := uuid.New().String()
 	movID := uuid.New().String()
@@ -318,7 +318,7 @@ func (l *SQLLedger) RecordLinkedMovements(movements []MovementInput, valueTime t
 	if err != nil {
 		return "", fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	batchID := uuid.New().String()
 
@@ -447,7 +447,7 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID str
 	if err != nil {
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	batchID := uuid.New().String()
 	movID := uuid.New().String()

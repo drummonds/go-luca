@@ -314,7 +314,7 @@ func (c *Client) post(path string, body any, result any) error {
 	if err != nil {
 		return fmt.Errorf("post %s: %w", path, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	return decodeResponse(resp, result)
 }
 
@@ -327,7 +327,7 @@ func (c *Client) get(path string, params url.Values, result any) error {
 	if err != nil {
 		return fmt.Errorf("get %s: %w", path, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	return decodeResponse(resp, result)
 }
 
@@ -336,7 +336,7 @@ func decodeResponse(resp *http.Response, result any) error {
 		var errResp struct {
 			Error string `json:"error"`
 		}
-		json.NewDecoder(resp.Body).Decode(&errResp)
+		_ = json.NewDecoder(resp.Body).Decode(&errResp)
 		return &apiError{Status: resp.StatusCode, Message: errResp.Error}
 	}
 	return json.NewDecoder(resp.Body).Decode(result)

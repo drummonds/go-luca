@@ -89,7 +89,7 @@ func (dt DateTime) ToTime() (time.Time, error) {
 		for len(frac) < 9 {
 			frac += "0"
 		}
-		fmt.Sscanf(frac[:9], "%d", &nsec)
+		_, _ = fmt.Sscanf(frac[:9], "%d", &nsec)
 	}
 
 	loc := time.UTC
@@ -99,7 +99,7 @@ func (dt DateTime) ToTime() (time.Time, error) {
 			sign = -1
 		}
 		var tzH, tzM int
-		fmt.Sscanf(dt.Timezone[1:], "%d:%d", &tzH, &tzM)
+		_, _ = fmt.Sscanf(dt.Timezone[1:], "%d:%d", &tzH, &tzM)
 		offset := sign * (tzH*3600 + tzM*60)
 		loc = time.FixedZone(dt.Timezone, offset)
 	}

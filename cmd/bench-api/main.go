@@ -28,7 +28,7 @@ var backends = []backend{
 		if err != nil {
 			log.Fatalf("NewLedger: %v", err)
 		}
-		return l, func() { l.Close() }
+		return l, func() { _ = l.Close() }
 	}},
 	{"api", func() (luca.Ledger, func()) {
 		l, err := luca.NewLedger(":memory:")
@@ -38,7 +38,7 @@ var backends = []backend{
 		srv := api.NewServer(l)
 		ts := httptest.NewServer(srv)
 		client := api.NewClient(ts.URL)
-		return client, func() { ts.Close(); l.Close() }
+		return client, func() { ts.Close(); _ = l.Close() }
 	}},
 }
 
@@ -117,10 +117,18 @@ func benchRecordMovement(label string, accountCount int, setup func() (luca.Ledg
 	l, cleanup := setup()
 	defer cleanup()
 
-	from, _ := l.CreateAccount("Asset:Cash", "GBP", -2, 0)
-	to, _ := l.CreateAccount("Equity:Capital", "GBP", -2, 0)
+	from, err := l.CreateAccount("Asset:Cash", "GBP", -2, 0)
+	if err != nil {
+		log.Fatal(err)
+	}
+	to, err := l.CreateAccount("Equity:Capital", "GBP", -2, 0)
+	if err != nil {
+		log.Fatal(err)
+	}
 	for i := 2; i < accountCount; i++ {
-		l.CreateAccount(fmt.Sprintf("Asset:Acct%04d", i), "GBP", -2, 0)
+		if _, err := l.CreateAccount(fmt.Sprintf("Asset:Acct%04d", i), "GBP", -2, 0); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
@@ -137,15 +145,25 @@ func benchBalance(label string, accountCount, movementCount int, setup func() (l
 	l, cleanup := setup()
 	defer cleanup()
 
-	from, _ := l.CreateAccount("Asset:Cash", "GBP", -2, 0)
-	to, _ := l.CreateAccount("Equity:Capital", "GBP", -2, 0)
+	from, err := l.CreateAccount("Asset:Cash", "GBP", -2, 0)
+	if err != nil {
+		log.Fatal(err)
+	}
+	to, err := l.CreateAccount("Equity:Capital", "GBP", -2, 0)
+	if err != nil {
+		log.Fatal(err)
+	}
 	for i := 2; i < accountCount; i++ {
-		l.CreateAccount(fmt.Sprintf("Asset:Acct%04d", i), "GBP", -2, 0)
+		if _, err := l.CreateAccount(fmt.Sprintf("Asset:Acct%04d", i), "GBP", -2, 0); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	for i := range movementCount {
-		l.RecordMovement(from.ID, to.ID, 100, luca.CodeBookTransfer, now.Add(time.Duration(i)*time.Hour), "")
+		if _, err := l.RecordMovement(from.ID, to.ID, 100, luca.CodeBookTransfer, now.Add(time.Duration(i)*time.Hour), ""); err != nil {
+			log.Fatalf("RecordMovement: %v", err)
+		}
 	}
 
 	return benchutil.RunTimed(label, movementCount, accountCount, 0, func() error {

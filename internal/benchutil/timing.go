@@ -3,7 +3,7 @@ package benchutil
 import (
 	"fmt"
 	"os"
-	"sort"
+	"slices"
 	"strconv"
 	"time"
 )
@@ -37,7 +37,7 @@ func RunTimed(label string, n, m, iterations int, fn func() error) (*TimingResul
 		durations = append(durations, time.Since(start))
 	}
 
-	sort.Slice(durations, func(i, j int) bool { return durations[i] < durations[j] })
+	slices.Sort(durations)
 
 	var total time.Duration
 	for _, d := range durations {
