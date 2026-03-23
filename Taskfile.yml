@@ -10,6 +10,7 @@ tasks:
     desc: Format code
     cmds:
       - go fmt ./...
+      - go fix ./...
 
   vet:
     desc: Vet code
@@ -22,9 +23,9 @@ tasks:
       - go test ./...
 
   lint:
-    desc: Run staticcheck
+    desc: Run golangci-lint
     cmds:
-      - staticcheck ./...
+      - golangci-lint run ./...
 
   check:
     desc: Format, vet, lint, and test
