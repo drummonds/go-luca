@@ -33,7 +33,7 @@ Daily interest accrual using actual/365. See [research/interest/](research/inter
 ## Getting started
 
 ```go
-import "github.com/drummonds/go-luca"
+import "codeberg.org/hum3/go-luca"
 
 db, _ := sql.Open("pglike", "file:ledger.db")
 ledger, _ := luca.NewSQLLedger(db)

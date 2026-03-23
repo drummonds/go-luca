@@ -1,4 +1,4 @@
-module github.com/drummonds/go-luca
+module codeberg.org/hum3/go-luca
 
 go 1.26.0
 

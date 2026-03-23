@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"os"
 
-	luca "github.com/drummonds/go-luca"
+	luca "codeberg.org/hum3/go-luca"
 )
 
 func main() {

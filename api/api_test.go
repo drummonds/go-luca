@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/drummonds/go-luca"
-	"github.com/drummonds/go-luca/api"
+	"codeberg.org/hum3/go-luca"
+	"codeberg.org/hum3/go-luca/api"
 	_ "github.com/drummonds/go-postgres"
 )
 

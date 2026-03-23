@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/drummonds/go-luca"
+	"codeberg.org/hum3/go-luca"
 )
 
 // Server wraps a Ledger and exposes it as HTTP/JSON endpoints.

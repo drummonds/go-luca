@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/drummonds/go-luca"
+	"codeberg.org/hum3/go-luca"
 	_ "github.com/drummonds/go-postgres"
 )
 
