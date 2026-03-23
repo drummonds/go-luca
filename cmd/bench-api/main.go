@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/drummonds/go-luca"
-	"github.com/drummonds/go-luca/api"
-	"github.com/drummonds/go-luca/internal/benchutil"
+	"codeberg.org/hum3/go-luca"
+	"codeberg.org/hum3/go-luca/api"
+	"codeberg.org/hum3/go-luca/internal/benchutil"
 	_ "github.com/drummonds/go-postgres"
 )
 

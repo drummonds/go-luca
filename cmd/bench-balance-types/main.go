@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/drummonds/go-luca/internal/benchutil"
+	"codeberg.org/hum3/go-luca/internal/benchutil"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
