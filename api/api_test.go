@@ -7,7 +7,7 @@ import (
 
 	"codeberg.org/hum3/go-luca"
 	"codeberg.org/hum3/go-luca/api"
-	_ "github.com/drummonds/go-postgres"
+	_ "codeberg.org/hum3/go-postgres"
 )
 
 func setup(t *testing.T) luca.Ledger {

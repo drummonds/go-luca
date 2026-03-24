@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
-	_ "github.com/drummonds/go-postgres"
+	_ "codeberg.org/hum3/go-postgres"
 )
 
 // SchemaSQL is the DDL for the go-luca database schema.

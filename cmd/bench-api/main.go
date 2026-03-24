@@ -10,7 +10,7 @@ import (
 	"codeberg.org/hum3/go-luca"
 	"codeberg.org/hum3/go-luca/api"
 	"codeberg.org/hum3/go-luca/internal/benchutil"
-	_ "github.com/drummonds/go-postgres"
+	_ "codeberg.org/hum3/go-postgres"
 )
 
 // backend describes a Ledger backend to benchmark.

@@ -3,8 +3,8 @@ module codeberg.org/hum3/go-luca
 go 1.26.0
 
 require (
+	codeberg.org/hum3/go-postgres v0.5.2
 	codeberg.org/hum3/gotreesitter v0.6.6
-	github.com/drummonds/go-postgres v0.5.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/shopspring/decimal v1.4.0

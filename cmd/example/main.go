@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"codeberg.org/hum3/go-luca"
-	_ "github.com/drummonds/go-postgres"
+	_ "codeberg.org/hum3/go-postgres"
 )
 
 func main() {

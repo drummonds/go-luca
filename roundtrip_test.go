@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	_ "github.com/drummonds/go-postgres"
+	_ "codeberg.org/hum3/go-postgres"
 )
 
 // roundTrip is a test helper that imports goluca text, exports it, re-parses,

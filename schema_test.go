@@ -3,7 +3,7 @@ package luca
 import (
 	"testing"
 
-	_ "github.com/drummonds/go-postgres"
+	_ "codeberg.org/hum3/go-postgres"
 )
 
 func TestCreateSchema(t *testing.T) {

@@ -1,10 +1,10 @@
+codeberg.org/hum3/go-postgres v0.5.2 h1:M5UqsX1lUFqOjRD+l2ytGpLAYzMKnHdTv53/uiHsfyA=
+codeberg.org/hum3/go-postgres v0.5.2/go.mod h1:lK3yBzN6TnSmAqdPnwK6f463b6qKsb8E/d3j3nYlcCo=
 codeberg.org/hum3/gotreesitter v0.6.6 h1:Jlm2gW7h+wsplmktFFD5hWKYXrE/nL0tym+onIY7xIg=
 codeberg.org/hum3/gotreesitter v0.6.6/go.mod h1:8wUQjHmNb63u/bYrhUuAw0TreVRw/z2iwzvX2Y0P8Us=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/drummonds/go-postgres v0.5.0 h1:WInmlbHqoKieITQon/mZ7xI998voBLIxWRjJUuX4KGw=
-github.com/drummonds/go-postgres v0.5.0/go.mod h1:ebGAyvhzzcUHvS335dNtYKMQIZOB3Ao6soouAs7CgII=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/jackc/pgpassfile v1.0.0 h1:/6Hmqy13Ss2zCq62VdNG8tM1wchn8zjSGOBJ6icpsIM=

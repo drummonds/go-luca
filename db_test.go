@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/drummonds/go-postgres"
+	_ "codeberg.org/hum3/go-postgres"
 )
 
 func newTestLedger(t *testing.T) *SQLLedger {
