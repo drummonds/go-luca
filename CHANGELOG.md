@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.25] - 2026-03-24
+
+ - Updating links
+
 ## [0.2.24] - 2026-03-24
 
  - Fixing lint errors
