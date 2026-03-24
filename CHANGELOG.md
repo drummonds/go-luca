@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.24] - 2026-03-24
+
+ - Fixing lint errors
+
 ## [0.2.23] - 2026-03-22
 
  - Reorganising schema
