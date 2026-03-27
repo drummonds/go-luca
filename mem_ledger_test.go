@@ -263,9 +263,6 @@ func TestMemLedgerDailyBalances(t *testing.T) {
 func TestMemLedgerStubs(t *testing.T) {
 	m := NewMemLedger()
 
-	if err := m.EnsureInterestAccounts(); err != ErrNotImplemented {
-		t.Errorf("EnsureInterestAccounts = %v, want ErrNotImplemented", err)
-	}
 	if _, err := m.RecordMovementWithProjections("", "", 0, CodeBookTransfer, time.Now(), ""); err != ErrNotImplemented {
 		t.Errorf("RecordMovementWithProjections = %v, want ErrNotImplemented", err)
 	}

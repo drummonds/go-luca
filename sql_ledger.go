@@ -9,11 +9,6 @@ import (
 // Works with any database/sql driver (pglike, postgres, etc.).
 type SQLLedger struct {
 	db *sql.DB
-
-	// InterestFunc is called to compute daily interest. If nil, the built-in
-	// default (balance * rate / 365) is used. Products set this to implement
-	// methods like discrete_daily, actual_actual, etc.
-	InterestFunc InterestFunc
 }
 
 // Compile-time interface check.

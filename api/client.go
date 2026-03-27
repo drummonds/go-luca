@@ -254,22 +254,6 @@ func (c *Client) SetInterestMethod(accountID string, method luca.InterestMethod)
 	}, &resp)
 }
 
-func (c *Client) EnsureInterestAccounts() error {
-	return luca.ErrNotImplemented
-}
-
-func (c *Client) CalculateDailyInterest(accountID string, date time.Time) (*luca.InterestResult, error) {
-	return nil, luca.ErrNotImplemented
-}
-
-func (c *Client) RunDailyInterest(date time.Time) ([]luca.InterestResult, error) {
-	return nil, luca.ErrNotImplemented
-}
-
-func (c *Client) RunInterestForPeriod(from, to time.Time) ([]luca.InterestResult, error) {
-	return nil, luca.ErrNotImplemented
-}
-
 func (c *Client) ListMovements() ([]luca.MovementWithPaths, error) {
 	return nil, luca.ErrNotImplemented
 }

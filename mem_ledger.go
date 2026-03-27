@@ -254,22 +254,6 @@ func (m *MemLedger) SetInterestMethod(accountID string, method InterestMethod) e
 	return nil
 }
 
-func (m *MemLedger) EnsureInterestAccounts() error {
-	return ErrNotImplemented
-}
-
-func (m *MemLedger) CalculateDailyInterest(accountID string, date time.Time) (*InterestResult, error) {
-	return nil, ErrNotImplemented
-}
-
-func (m *MemLedger) RunDailyInterest(date time.Time) ([]InterestResult, error) {
-	return nil, ErrNotImplemented
-}
-
-func (m *MemLedger) RunInterestForPeriod(from, to time.Time) ([]InterestResult, error) {
-	return nil, ErrNotImplemented
-}
-
 func (m *MemLedger) ListMovements() ([]MovementWithPaths, error) {
 	return nil, ErrNotImplemented
 }

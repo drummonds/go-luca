@@ -206,9 +206,6 @@ func TestRecordLinkedMovementsEmpty(t *testing.T) {
 
 func TestRecordMovementWithProjections(t *testing.T) {
 	l := newTestLedger(t)
-	if err := l.EnsureInterestAccounts(); err != nil {
-		t.Fatalf("EnsureInterestAccounts: %v", err)
-	}
 
 	equity, _ := l.CreateAccount("Equity:Capital", "GBP", -2, 0)
 	savings, _ := l.CreateAccount("Liability:Savings:0001", "GBP", -2, 0.05)
@@ -233,17 +230,13 @@ func TestRecordMovementWithProjections(t *testing.T) {
 	if lb == nil {
 		t.Fatal("expected live balance, got nil")
 	}
-	// Balance should include both the deposit and interest accrual
-	if lb.Balance <= 100000 {
-		t.Errorf("live balance = %d, want > 100000 (should include interest)", lb.Balance)
+	if lb.Balance != 100000 {
+		t.Errorf("live balance = %d, want 100000", lb.Balance)
 	}
 }
 
 func TestRecordMovementWithProjectionsNoInterest(t *testing.T) {
 	l := newTestLedger(t)
-	if err := l.EnsureInterestAccounts(); err != nil {
-		t.Fatalf("EnsureInterestAccounts: %v", err)
-	}
 
 	equity, _ := l.CreateAccount("Equity:Capital", "GBP", -2, 0)
 	cash, _ := l.CreateAccount("Asset:Cash", "GBP", -2, 0) // 0% rate
@@ -262,46 +255,70 @@ func TestRecordMovementWithProjectionsNoInterest(t *testing.T) {
 		t.Fatal("expected live balance, got nil")
 	}
 	if lb.Balance != 50000 {
-		t.Errorf("live balance = %d, want 50000 (no interest)", lb.Balance)
+		t.Errorf("live balance = %d, want 50000", lb.Balance)
 	}
 }
 
-func TestCompoundMovementUpsertsInterest(t *testing.T) {
-	l := newTestLedger(t)
-	if err := l.EnsureInterestAccounts(); err != nil {
-		t.Fatalf("EnsureInterestAccounts: %v", err)
+// TestIssue1_BalanceAtCrossTimezone demonstrates the root cause of issue #1:
+// ncruces/go-sqlite3 stores time.Time as RFC3339 text with timezone offsets
+// preserved. SQLite's <= operator does string comparison, which gives wrong
+// results when stored and queried timestamps have different timezone offsets.
+//
+// Example: a deposit at 00:30 BST on June 16 (= 23:30 UTC June 15) is stored
+// as "2026-06-16T00:30:00+01:00". Querying with endOfDay UTC June 15
+// ("2026-06-15T23:59:59.999999999Z") misses it because "06-16" > "06-15"
+// in string comparison, even though the actual instant is earlier.
+func TestIssue1_BalanceAtCrossTimezone(t *testing.T) {
+	bst := time.FixedZone("BST", 1*60*60) // UTC+1
+
+	tests := []struct {
+		name       string
+		depositTZ  *time.Location
+		queryTZ    *time.Location
+		depositDay int
+		depositH   int
+	}{
+		// Deposit at 00:30 BST June 16 = 23:30 UTC June 15.
+		// Stored: "2026-06-16T00:30:00+01:00", query: "2026-06-15T23:59:59...Z"
+		// String "16" > "15" → movement excluded → balance = 0. BUG.
+		{"midnight_crossing_bst_utc", bst, time.UTC, 16, 0},
+		// Same-day deposit, cross-tz — works by coincidence (same date string).
+		{"same_day_bst_utc", bst, time.UTC, 15, 14},
+		// Same timezone — always works.
+		{"same_tz_utc", time.UTC, time.UTC, 15, 10},
 	}
 
-	equity, _ := l.CreateAccount("Equity:Capital", "GBP", -2, 0)
-	savings, _ := l.CreateAccount("Liability:Savings:0001", "GBP", -2, 0.05)
-	day := time.Date(2026, 3, 1, 10, 0, 0, 0, time.UTC)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := newTestLedger(t)
+			equity, _ := l.CreateAccount("Equity:Capital", "GBP", -2, 0)
+			savings, _ := l.CreateAccount("Liability:Savings:0001", "GBP", -2, 0)
 
-	// First deposit
-	_, err := l.RecordMovementWithProjections(equity.ID, savings.ID, 100000, CodeBookTransfer, day, "deposit 1")
-	if err != nil {
-		t.Fatalf("first deposit: %v", err)
-	}
+			depositTime := time.Date(2026, 6, tt.depositDay, tt.depositH, 30, 0, 0, tt.depositTZ)
+			if _, err := l.RecordMovement(equity.ID, savings.ID, 100000, CodeBookTransfer, depositTime, "deposit"); err != nil {
+				t.Fatalf("RecordMovement: %v", err)
+			}
 
-	// Second deposit same day — should upsert interest accrual, not duplicate
-	_, err = l.RecordMovementWithProjections(equity.ID, savings.ID, 50000, CodeBookTransfer, day.Add(2*time.Hour), "deposit 2")
-	if err != nil {
-		t.Fatalf("second deposit: %v", err)
-	}
+			// Query balance at end of June 15 in query timezone
+			endOfDay := time.Date(2026, 6, 15, 23, 59, 59, 999999999, tt.queryTZ)
 
-	// Count interest accrual movements for this account+day
-	eod := time.Date(day.Year(), day.Month(), day.Day(), 23, 59, 59, 999999999, day.Location())
-	bod := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, day.Location())
-	var count int
-	err = l.db.QueryRow(
-		`SELECT COUNT(*) FROM movements
-		 WHERE to_account_id = $1 AND code = $2
-		   AND value_time >= $3 AND value_time <= $4`,
-		savings.ID, CodeInterestAccrual, bod, eod,
-	).Scan(&count)
-	if err != nil {
-		t.Fatalf("count accruals: %v", err)
-	}
-	if count != 1 {
-		t.Errorf("interest accrual count = %d, want 1 (should be upserted, not duplicated)", count)
+			bal, err := l.BalanceAt(savings.ID, endOfDay)
+			if err != nil {
+				t.Fatalf("BalanceAt: %v", err)
+			}
+			if bal != 100000 {
+				var storedTime string
+				if err := l.db.QueryRow("SELECT value_time FROM movements LIMIT 1").Scan(&storedTime); err != nil {
+					t.Fatalf("Scan storedTime: %v", err)
+				}
+				t.Errorf("BalanceAt = %d, want 100000\n"+
+					"  stored:  %q\n"+
+					"  query:   %q\n"+
+					"  deposit UTC: %s",
+					bal, storedTime,
+					endOfDay.Format(time.RFC3339Nano),
+					depositTime.UTC().Format(time.RFC3339Nano))
+			}
+		})
 	}
 }

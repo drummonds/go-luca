@@ -4,6 +4,7 @@ go 1.26.0
 
 require (
 	codeberg.org/hum3/go-postgres v0.5.2
+	codeberg.org/hum3/gobank-db v0.0.0
 	codeberg.org/hum3/gotreesitter v0.6.6
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.8.0
@@ -22,3 +23,5 @@ require (
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 )
+
+replace codeberg.org/hum3/gobank-db => ../gobank-db

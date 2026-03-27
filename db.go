@@ -114,14 +114,6 @@ func (l *SQLLedger) SetInterestMethod(accountID string, method InterestMethod) e
 	return err
 }
 
-// updateAccumulator sets the interest accumulator value for an account.
-func (l *SQLLedger) updateAccumulator(accountID string, value Amount) error {
-	_, err := l.db.Exec(
-		`UPDATE accounts SET interest_accumulator = $1 WHERE id = $2`,
-		value, accountID,
-	)
-	return err
-}
 
 // SetAccountOpenedAt sets the opened_at timestamp for an account.
 func (l *SQLLedger) SetAccountOpenedAt(accountID string, openedAt time.Time) error {
@@ -418,29 +410,11 @@ func txBalance(tx *sql.Tx, accountID string, at time.Time) (Amount, error) {
 }
 
 // RecordMovementWithProjections records a movement and, in the same transaction,
-// pre-computes interest accrual and the end-of-day live balance for the
-// to-account. This avoids separate end-of-day batch processing.
+// upserts the end-of-day live balance for the to-account.
+// Interest computation (if needed) is handled by gobank-products.
 func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID string, amount Amount, code string, valueTime time.Time, description string) (*Movement, error) {
 	if err := l.validateSameExponent(fromAccountID, toAccountID); err != nil {
 		return nil, err
-	}
-
-	toAcct, err := l.GetAccountByID(toAccountID)
-	if err != nil {
-		return nil, fmt.Errorf("get to account: %w", err)
-	}
-
-	// Look up interest accounts before starting the transaction.
-	// With :memory: SQLite, l.db queries during an open tx may hit
-	// a different connection (and thus a different empty database).
-	hasInterest := toAcct.GrossInterestRate != 0 || toAcct.InterestMethod != InterestMethodNone
-	var expenseAcctID string
-	if hasInterest {
-		expenseAcct, err := l.GetAccount("Expense:Interest")
-		if err != nil || expenseAcct == nil {
-			return nil, fmt.Errorf("interest expense account not found, call EnsureInterestAccounts first")
-		}
-		expenseAcctID = expenseAcct.ID
 	}
 
 	tx, err := l.db.Begin()
@@ -452,7 +426,7 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID str
 	batchID := uuid.New().String()
 	movID := uuid.New().String()
 
-	// 1. Insert the real movement
+	// 1. Insert the movement
 	_, err = tx.Exec(
 		`INSERT INTO movements (id, batch_id, from_account_id, to_account_id, amount, code, value_time, description)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
@@ -464,53 +438,13 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID str
 
 	eod := endOfDayTime(valueTime)
 
-	// 2. Compute new balance for toAccountID as of end-of-day (tx sees own writes)
+	// 2. Compute end-of-day balance (tx sees own writes)
 	balance, err := txBalance(tx, toAccountID, eod)
 	if err != nil {
 		return nil, fmt.Errorf("compute balance: %w", err)
 	}
 
-	// 3. If account has interest, compute and upsert the accrual
-	var interestAmount Amount
-	if hasInterest {
-		interest, newAccum := l.computeInterest(balance, toAcct, valueTime)
-		interestAmount = interest
-
-		// Update accumulator if changed
-		if newAccum != toAcct.InterestAccumulator {
-			_, err = tx.Exec(`UPDATE accounts SET interest_accumulator = $1 WHERE id = $2`, newAccum, toAccountID)
-			if err != nil {
-				return nil, fmt.Errorf("update accumulator: %w", err)
-			}
-		}
-
-		if interestAmount != 0 {
-			// Delete old accrual for this account+date, then insert the new one
-			_, err = tx.Exec(
-				`DELETE FROM movements
-				 WHERE to_account_id = $1 AND code = $2
-				   AND value_time >= $3 AND value_time <= $4`,
-				toAccountID, CodeInterestAccrual,
-				utc(time.Date(valueTime.Year(), valueTime.Month(), valueTime.Day(), 0, 0, 0, 0, valueTime.Location())),
-				utc(eod),
-			)
-			if err != nil {
-				return nil, fmt.Errorf("delete old accrual: %w", err)
-			}
-
-			desc := fmt.Sprintf("Daily interest for %s", valueTime.Format("2006-01-02"))
-			_, err = tx.Exec(
-				`INSERT INTO movements (id, batch_id, from_account_id, to_account_id, amount, code, value_time, description)
-				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-				uuid.New().String(), batchID, expenseAcctID, toAccountID, interestAmount, CodeInterestAccrual, utc(eod), desc,
-			)
-			if err != nil {
-				return nil, fmt.Errorf("insert interest accrual: %w", err)
-			}
-		}
-	}
-
-	// 4. Upsert live balance (delete+insert for pglike compatibility)
+	// 3. Upsert live balance (delete+insert for pglike compatibility)
 	balanceDate := time.Date(valueTime.Year(), valueTime.Month(), valueTime.Day(), 0, 0, 0, 0, valueTime.Location())
 	_, err = tx.Exec(
 		`DELETE FROM balances_live WHERE account_id = $1 AND balance_date = $2`,
@@ -520,16 +454,10 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID str
 		return nil, fmt.Errorf("delete old live balance: %w", err)
 	}
 
-	// Re-query balance after interest accrual was inserted
-	finalBalance, err := txBalance(tx, toAccountID, eod)
-	if err != nil {
-		return nil, fmt.Errorf("compute final balance: %w", err)
-	}
-
 	_, err = tx.Exec(
 		`INSERT INTO balances_live (id, account_id, balance_date, balance)
 		 VALUES ($1, $2, $3, $4)`,
-		uuid.New().String(), toAccountID, utc(balanceDate), finalBalance,
+		uuid.New().String(), toAccountID, utc(balanceDate), balance,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("insert live balance: %w", err)

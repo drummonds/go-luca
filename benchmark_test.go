@@ -64,9 +64,6 @@ func BenchmarkSimpleMovementAndBalance(b *testing.B) {
 		b.Fatal(err)
 	}
 	defer func() { _ = l.Close() }()
-	if err := l.EnsureInterestAccounts(); err != nil {
-		b.Fatal(err)
-	}
 
 	equity, _ := l.CreateAccount("Equity:Capital", "GBP", -2, 0)
 	savings, _ := l.CreateAccount("Liability:Savings:0001", "GBP", -2, 0.05)
@@ -97,9 +94,6 @@ func BenchmarkCompoundMovementWithProjections(b *testing.B) {
 		b.Fatal(err)
 	}
 	defer func() { _ = l.Close() }()
-	if err := l.EnsureInterestAccounts(); err != nil {
-		b.Fatal(err)
-	}
 
 	equity, _ := l.CreateAccount("Equity:Capital", "GBP", -2, 0)
 	savings, _ := l.CreateAccount("Liability:Savings:0001", "GBP", -2, 0.05)
@@ -120,37 +114,3 @@ func BenchmarkCompoundMovementWithProjections(b *testing.B) {
 	}
 }
 
-func BenchmarkInterestNAccounts(b *testing.B) {
-	for _, n := range []int{10, 100, 1000, 10000} {
-		b.Run(fmt.Sprintf("N=%d", n), func(b *testing.B) {
-			l, err := NewLedger(":memory:")
-			if err != nil {
-				b.Fatal(err)
-			}
-			defer func() { _ = l.Close() }()
-			if err := l.EnsureInterestAccounts(); err != nil {
-				b.Fatal(err)
-			}
-
-			equity, _ := l.CreateAccount("Equity:Capital", "GBP", -2, 0)
-
-			for i := range n {
-				path := fmt.Sprintf("Liability:Savings:%04d", i)
-				acct, _ := l.CreateAccount(path, "GBP", -2, 0.05)
-				if _, err := l.RecordMovement(equity.ID, acct.ID, 100000, CodeBookTransfer,
-					time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), "initial deposit"); err != nil {
-					b.Fatalf("RecordMovement: %v", err)
-				}
-			}
-
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				date := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC).AddDate(0, 0, i)
-				_, err := l.RunDailyInterest(date)
-				if err != nil {
-					b.Fatal(err)
-				}
-			}
-		})
-	}
-}

@@ -47,30 +47,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Run daily interest for January
-	if err := ledger.EnsureInterestAccounts(); err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("=== Daily Interest ===")
-	for day := 1; day <= 31; day++ {
-		date := time.Date(2026, 1, day, 0, 0, 0, 0, time.UTC)
-		results, err := ledger.RunDailyInterest(date)
-		if err != nil {
-			log.Fatalf("interest day %d: %v", day, err)
-		}
-		if day == 1 || day == 15 || day == 31 {
-			for _, r := range results {
-				acct, _ := ledger.GetAccountByID(r.AccountID)
-				balDec := luca.IntToDecimal(r.OpeningBalance, acct.Exponent)
-				intDec := luca.IntToDecimal(r.InterestAmount, acct.Exponent)
-				fmt.Printf("  Day %2d | %-30s | balance=%s | interest=%s\n",
-					day, acct.FullPath, balDec.StringFixed(2), intDec.StringFixed(2))
-			}
-		}
-	}
-
 	// Final balances
-	fmt.Println("\n=== Final Balances ===")
+	fmt.Println("=== Final Balances ===")
 	accounts := []*luca.Account{cash, equity, savings1, savings2}
 	for _, acct := range accounts {
 		bal, _ := ledger.Balance(acct.ID)

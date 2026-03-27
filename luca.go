@@ -17,26 +17,14 @@ type Amount int64
 
 // InterestMethod identifies how interest is calculated for an account.
 // go-luca stores this string but does not interpret it beyond the default.
-// Products (e.g. gobank-products) define the actual methods and register
-// an InterestFunc on the ledger to implement them.
+// Products (e.g. gobank-products) define the actual methods and implement them.
 type InterestMethod string
 
 // InterestMethodNone means no interest calculation.
 const InterestMethodNone InterestMethod = ""
 
-// InterestMethodDefault is the built-in simple daily method used when
-// no InterestFunc is registered. Formula: balance * rate / 365.
+// InterestMethodDefault is the simple daily method. Formula: balance * rate / 365.
 const InterestMethodDefault InterestMethod = "simple_daily"
-
-// InterestFunc computes one day's interest for an account.
-// It receives the current balance, the account (with method, accumulator,
-// rate, exponent), and the date. It returns:
-//   - interest: the amount to post as a movement (at account exponent)
-//   - newAccumulator: the updated accumulator value (for methods that use it)
-//
-// The default (nil) uses simple daily: balance * rate / 365, truncated to
-// account exponent, with no accumulator.
-type InterestFunc func(balance Amount, acct *Account, date time.Time) (interest Amount, newAccumulator Amount)
 
 // Movement code constants — ISO 20022 BTC mnemonics in DOMAIN:FAMILY:SUBFAMILY format.
 const (
@@ -70,12 +58,8 @@ type Ledger interface {
 	DailyBalances(accountID string, from, to time.Time) ([]DailyBalance, error)
 	GetLiveBalance(accountID string, date time.Time) (*LiveBalance, error)
 
-	// Interest
+	// Interest (account metadata only; computation lives in gobank-products)
 	SetInterestMethod(accountID string, method InterestMethod) error
-	EnsureInterestAccounts() error
-	CalculateDailyInterest(accountID string, date time.Time) (*InterestResult, error)
-	RunDailyInterest(date time.Time) ([]InterestResult, error)
-	RunInterestForPeriod(from, to time.Time) ([]InterestResult, error)
 
 	// Import/Export
 	ListMovements() ([]MovementWithPaths, error)
