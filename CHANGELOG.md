@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.26] - 2026-03-27
+
+ - Move interest computation to gobank-products, extract DB helpers to gobank-db
+
 ## [0.2.25] - 2026-03-24
 
  - Updating links
