@@ -113,4 +113,3 @@ func BenchmarkCompoundMovementWithProjections(b *testing.B) {
 		}
 	}
 }
-

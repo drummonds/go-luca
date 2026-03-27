@@ -114,7 +114,6 @@ func (l *SQLLedger) SetInterestMethod(accountID string, method InterestMethod) e
 	return err
 }
 
-
 // SetAccountOpenedAt sets the opened_at timestamp for an account.
 func (l *SQLLedger) SetAccountOpenedAt(accountID string, openedAt time.Time) error {
 	_, err := l.db.Exec(
