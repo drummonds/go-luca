@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.29] - 2026-05-04
+
+ - Updating versions
+
 ## [0.2.28] - 2026-05-04
 
  - Update CHANGELOG for v0.2.26
