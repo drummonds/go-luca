@@ -1,6 +1,7 @@
 package luca
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -131,7 +132,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_movement_metadata_unique ON movement_metad
 
 // createSchema executes the DDL statements to create tables and indexes.
 func (l *SQLLedger) createSchema() error {
-	return gdb.ExecStatements(l.db, SchemaSQL)
+	return gdb.Migrate(context.Background(), l.db, SchemaSQL)
 }
 
 // CreateSchemaDB creates a pglike (SQLite) database at path with the go-luca
@@ -142,7 +143,7 @@ func CreateSchemaDB(path string) (*sql.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
-	if err := gdb.ExecStatements(db, SchemaSQL); err != nil {
+	if err := gdb.Migrate(context.Background(), db, SchemaSQL); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("create schema: %w", err)
 	}

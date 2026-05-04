@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.2.27] - 2026-05-04
+
+ - Track gobank-db v0.1.1 API rename: `ExecStatements` → `Migrate(ctx, db, schema)`
+ - Drop local `replace` directive for gobank-db; depend on tagged release
+
 ## [0.2.26] - 2026-03-27
 
  - Move interest computation to gobank-products, extract DB helpers to gobank-db
