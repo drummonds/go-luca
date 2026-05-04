@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.28] - 2026-05-04
+
+ - Update CHANGELOG for v0.2.26
+
 ## [0.2.27] - 2026-05-04
 
  - Track gobank-db v0.1.1 API rename: `ExecStatements` → `Migrate(ctx, db, schema)`
