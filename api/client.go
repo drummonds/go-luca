@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"time"
 
-	"codeberg.org/hum3/go-luca"
+	"git.bytestone.uk/hum3/go-luca"
 )
 
 // Client is an HTTP client that implements the Ledger interface.

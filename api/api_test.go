@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"codeberg.org/hum3/go-luca"
-	"codeberg.org/hum3/go-luca/api"
-	_ "codeberg.org/hum3/go-postgres"
+	"git.bytestone.uk/hum3/go-luca"
+	"git.bytestone.uk/hum3/go-luca/api"
+	_ "git.bytestone.uk/hum3/go-postgres"
 )
 
 func setup(t *testing.T) luca.Ledger {

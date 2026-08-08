@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"codeberg.org/hum3/go-luca/internal/benchutil"
+	"git.bytestone.uk/hum3/go-luca/internal/benchutil"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )

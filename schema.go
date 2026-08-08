@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	gdb "codeberg.org/hum3/gobank-db"
+	gdb "git.bytestone.uk/hum3/gobank-db"
 	"github.com/google/uuid"
 
-	_ "codeberg.org/hum3/go-postgres"
+	_ "git.bytestone.uk/hum3/go-postgres"
 )
 
 // SchemaSQL is the DDL for the go-luca database schema.

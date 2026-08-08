@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	"codeberg.org/hum3/go-luca"
-	_ "codeberg.org/hum3/go-postgres"
+	"git.bytestone.uk/hum3/go-luca"
+	_ "git.bytestone.uk/hum3/go-postgres"
 )
 
 func main() {

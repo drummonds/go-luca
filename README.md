@@ -33,7 +33,7 @@ Daily interest accrual using actual/365. See [research/interest/](research/inter
 ## Getting started
 
 ```go
-import "codeberg.org/hum3/go-luca"
+import "git.bytestone.uk/hum3/go-luca"
 
 db, _ := sql.Open("pglike", "file:ledger.db")
 ledger, _ := luca.NewSQLLedger(db)
@@ -67,6 +67,6 @@ See `cmd/example/main.go` for a working demo.
 | | |
 |---|---|
 | Documentation | https://h3-go-luca.statichost.page/ |
-| Source (Codeberg) | https://codeberg.org/hum3/go-luca |
+| Source (Codeberg) | https://git.bytestone.uk/hum3/go-luca |
 | Mirror (GitHub) | https://github.com/drummonds/go-luca |
-| Docs repo | https://codeberg.org/hum3/go-luca-docs |
+| Docs repo | https://git.bytestone.uk/hum3/go-luca-docs |

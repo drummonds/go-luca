@@ -8,8 +8,8 @@ import (
 	"io"
 	"os"
 
-	"codeberg.org/hum3/gotreesitter"
-	"codeberg.org/hum3/gotreesitter/grammars"
+	"git.bytestone.uk/hum3/gotreesitter"
+	"git.bytestone.uk/hum3/gotreesitter/grammars"
 )
 
 const highlightQuery = `

@@ -1,11 +1,11 @@
-module codeberg.org/hum3/go-luca
+module git.bytestone.uk/hum3/go-luca
 
 go 1.26.0
 
 require (
-	codeberg.org/hum3/go-postgres v0.5.3
-	codeberg.org/hum3/gobank-db v0.1.1
-	codeberg.org/hum3/gotreesitter v0.6.7
+	git.bytestone.uk/hum3/go-postgres v0.5.5
+	git.bytestone.uk/hum3/gobank-db v0.1.3
+	git.bytestone.uk/hum3/gotreesitter v0.6.8
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/shopspring/decimal v1.4.0

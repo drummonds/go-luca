@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"codeberg.org/hum3/go-luca"
-	"codeberg.org/hum3/go-luca/api"
-	"codeberg.org/hum3/go-luca/internal/benchutil"
-	_ "codeberg.org/hum3/go-postgres"
+	"git.bytestone.uk/hum3/go-luca"
+	"git.bytestone.uk/hum3/go-luca/api"
+	"git.bytestone.uk/hum3/go-luca/internal/benchutil"
+	_ "git.bytestone.uk/hum3/go-postgres"
 )
 
 // backend describes a Ledger backend to benchmark.

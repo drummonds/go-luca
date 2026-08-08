@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"os"
 
-	luca "codeberg.org/hum3/go-luca"
+	luca "git.bytestone.uk/hum3/go-luca"
 )
 
 func main() {
