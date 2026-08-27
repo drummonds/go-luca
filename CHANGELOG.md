@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+ - Update VS Code peacock colours (dev tooling only; no library changes)
+
 ## [0.2.32] - 2026-08-27
 
  - Add `SQLLedger.WithTx` so ledger operations can run inside a caller-owned
