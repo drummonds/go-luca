@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.33] - 2026-08-27
+
+ - Dev tooling update (VS Code colours); no library changes
+
  - Update VS Code peacock colours (dev tooling only; no library changes)
 
 ## [0.2.32] - 2026-08-27
