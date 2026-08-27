@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.2.32] - 2026-08-27
+
  - Add `SQLLedger.WithTx` so ledger operations can run inside a caller-owned
    `*sql.Tx`: `SQLLedger` now works over a `dbtx` interface satisfied by both
    `*sql.DB` and `*sql.Tx`, and methods that manage their own transaction
