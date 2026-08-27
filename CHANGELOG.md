@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+ - Add `SQLLedger.WithTx` so ledger operations can run inside a caller-owned
+   `*sql.Tx`: `SQLLedger` now works over a `dbtx` interface satisfied by both
+   `*sql.DB` and `*sql.Tx`, and methods that manage their own transaction
+   (RecordMovement, RecordLinkedMovements, RecordMovementWithProjections)
+   pass through to the enclosing transaction when tx-bound
+ - `Close` is a no-op on a tx-bound ledger view
+
 ## [0.2.30] - 2026-05-06
 
 ## [0.2.29] - 2026-05-04

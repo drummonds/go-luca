@@ -131,8 +131,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_movement_metadata_unique ON movement_metad
 `
 
 // createSchema executes the DDL statements to create tables and indexes.
-func (l *SQLLedger) createSchema() error {
-	return gdb.Migrate(context.Background(), l.db, SchemaSQL)
+func createSchema(db *sql.DB) error {
+	return gdb.Migrate(context.Background(), db, SchemaSQL)
 }
 
 // CreateSchemaDB creates a pglike (SQLite) database at path with the go-luca

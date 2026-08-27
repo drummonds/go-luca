@@ -253,11 +253,11 @@ func (l *SQLLedger) RecordMovement(fromAccountID, toAccountID string, amount Amo
 		return nil, err
 	}
 
-	tx, err := l.db.Begin()
+	tx, commit, rollback, err := l.begin()
 	if err != nil {
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
-	defer func() { _ = tx.Rollback() }()
+	defer func() { _ = rollback() }()
 
 	batchID := uuid.New().String()
 	movID := uuid.New().String()
@@ -271,7 +271,7 @@ func (l *SQLLedger) RecordMovement(fromAccountID, toAccountID string, amount Amo
 		return nil, fmt.Errorf("insert movement: %w", err)
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := commit(); err != nil {
 		return nil, fmt.Errorf("commit: %w", err)
 	}
 
@@ -305,11 +305,11 @@ func (l *SQLLedger) RecordLinkedMovements(movements []MovementInput, valueTime t
 		}
 	}
 
-	tx, err := l.db.Begin()
+	tx, commit, rollback, err := l.begin()
 	if err != nil {
 		return "", fmt.Errorf("begin tx: %w", err)
 	}
-	defer func() { _ = tx.Rollback() }()
+	defer func() { _ = rollback() }()
 
 	batchID := uuid.New().String()
 
@@ -336,7 +336,7 @@ func (l *SQLLedger) RecordLinkedMovements(movements []MovementInput, valueTime t
 		}
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := commit(); err != nil {
 		return "", fmt.Errorf("commit: %w", err)
 	}
 
@@ -397,7 +397,7 @@ func endOfDayTime(t time.Time) time.Time {
 
 // txBalance computes the balance for accountID within a transaction,
 // seeing all writes made so far in that tx.
-func txBalance(tx *sql.Tx, accountID string, at time.Time) (Amount, error) {
+func txBalance(tx dbtx, accountID string, at time.Time) (Amount, error) {
 	var balance Amount
 	err := tx.QueryRow(
 		`SELECT
@@ -416,11 +416,11 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID str
 		return nil, err
 	}
 
-	tx, err := l.db.Begin()
+	tx, commit, rollback, err := l.begin()
 	if err != nil {
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
-	defer func() { _ = tx.Rollback() }()
+	defer func() { _ = rollback() }()
 
 	batchID := uuid.New().String()
 	movID := uuid.New().String()
@@ -462,7 +462,7 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID str
 		return nil, fmt.Errorf("insert live balance: %w", err)
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := commit(); err != nil {
 		return nil, fmt.Errorf("commit: %w", err)
 	}
 
