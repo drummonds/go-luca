@@ -66,7 +66,7 @@ See `cmd/example/main.go` for a working demo.
 
 | | |
 |---|---|
-| Documentation | https://h3-go-luca.statichost.page/ |
+| Documentation | https://go-luca.docs.bytestone.uk/ |
 | Source (Codeberg) | https://git.bytestone.uk/hum3/go-luca |
 | Mirror (GitHub) | https://github.com/drummonds/go-luca |
 | Docs repo | https://git.bytestone.uk/hum3/go-luca-docs |
