@@ -3,6 +3,7 @@ package luca
 import (
 	"database/sql"
 	"fmt"
+	"sync"
 )
 
 // dbtx is the subset of database operations SQLLedger uses, satisfied by
@@ -21,7 +22,8 @@ type beginner interface {
 // SQLLedger is the SQL-backed Ledger implementation.
 // Works with any database/sql driver (pglike, postgres, etc.).
 type SQLLedger struct {
-	db dbtx
+	db     dbtx
+	scales *sync.Map // account ID → *accountScale, shared with WithTx views
 }
 
 // Compile-time interface check.
@@ -32,7 +34,7 @@ var _ Ledger = (*SQLLedger)(nil)
 // run directly on tx instead, nothing is committed by the ledger, and on
 // error the caller should roll tx back.
 func (l *SQLLedger) WithTx(tx *sql.Tx) *SQLLedger {
-	return &SQLLedger{db: tx}
+	return &SQLLedger{db: tx, scales: l.scales}
 }
 
 // begin starts a transaction when the ledger owns a *sql.DB. When the ledger
@@ -64,7 +66,7 @@ func NewLedger(dsn string) (*SQLLedger, error) {
 // NewSQLLedger wraps a pre-opened *sql.DB and ensures the schema exists.
 // Use this to connect with any database/sql driver (e.g. real postgres).
 func NewSQLLedger(db *sql.DB) (*SQLLedger, error) {
-	l := &SQLLedger{db: db}
+	l := &SQLLedger{db: db, scales: &sync.Map{}}
 	if err := createSchema(db); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("create schema: %w", err)

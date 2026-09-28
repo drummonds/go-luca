@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+ - `SQLLedger` remembers each account's exponent once seen (shared with
+   `WithTx` views), so recording a movement no longer costs two account
+   lookups: ~2.7x movements/s on PostgreSQL. Exponents never change through
+   go-luca; an exponent edited directly in the database is only picked up by
+   a new ledger.
+
 ## [0.2.33] - 2026-08-27
 
  - Update VS Code peacock colours (dev tooling only; no library changes)

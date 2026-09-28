@@ -221,25 +221,48 @@ func (l *SQLLedger) ListAccounts(typeFilter AccountType) ([]*Account, error) {
 // Movements between accounts with different exponents are not allowed — that
 // is treated as a currency conversion requiring explicit handling.
 func (l *SQLLedger) validateSameExponent(fromAccountID, toAccountID string) error {
-	fromAcct, err := l.GetAccountByID(fromAccountID)
+	from, err := l.accountExponent(fromAccountID)
 	if err != nil {
 		return fmt.Errorf("get from account: %w", err)
 	}
-	if fromAcct == nil {
+	if from == nil {
 		return fmt.Errorf("from account %s not found", fromAccountID)
 	}
-	toAcct, err := l.GetAccountByID(toAccountID)
+	to, err := l.accountExponent(toAccountID)
 	if err != nil {
 		return fmt.Errorf("get to account: %w", err)
 	}
-	if toAcct == nil {
+	if to == nil {
 		return fmt.Errorf("to account %s not found", toAccountID)
 	}
-	if fromAcct.Exponent != toAcct.Exponent {
+	if from.exponent != to.exponent {
 		return fmt.Errorf("exponent mismatch: from account %q has exponent %d, to account %q has exponent %d (use currency conversion for cross-exponent transfers)",
-			fromAcct.FullPath, fromAcct.Exponent, toAcct.FullPath, toAcct.Exponent)
+			from.fullPath, from.exponent, to.fullPath, to.exponent)
 	}
 	return nil
+}
+
+// accountScale is what movement validation needs to know about an account.
+type accountScale struct {
+	exponent int
+	fullPath string
+}
+
+// accountExponent returns the account's exponent, or nil if it does not
+// exist. An account's exponent never changes once created, so a found
+// account is remembered and later movements need no lookup; a change made
+// to the accounts table outside go-luca is only seen by a new ledger.
+func (l *SQLLedger) accountExponent(id string) (*accountScale, error) {
+	if v, ok := l.scales.Load(id); ok {
+		return v.(*accountScale), nil
+	}
+	acct, err := l.GetAccountByID(id)
+	if err != nil || acct == nil {
+		return nil, err
+	}
+	s := &accountScale{exponent: acct.Exponent, fullPath: acct.FullPath}
+	l.scales.Store(id, s)
+	return s, nil
 }
 
 // RecordMovement inserts a single movement and returns it.

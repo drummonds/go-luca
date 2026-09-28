@@ -1,6 +1,7 @@
 package luca
 
 import (
+	"database/sql"
 	"testing"
 	"time"
 
@@ -215,6 +216,59 @@ func TestCrossExponentLinkedMovementRejected(t *testing.T) {
 	}, now)
 	if err == nil {
 		t.Fatal("expected error for cross-exponent linked movement, got nil")
+	}
+}
+
+// TestMovementToUnknownAccountRejected verifies movements naming an account
+// that does not exist are rejected, including once the other side is known
+// from earlier movements.
+func TestMovementToUnknownAccountRejected(t *testing.T) {
+	l := newTestLedger(t)
+
+	a, _ := l.CreateAccount("Asset:A", "GBP", -2, 0)
+	b, _ := l.CreateAccount("Asset:B", "GBP", -2, 0)
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	if _, err := l.RecordMovement(a.ID, b.ID, 100, CodeBookTransfer, now, "ok"); err != nil {
+		t.Fatalf("RecordMovement: %v", err)
+	}
+
+	if _, err := l.RecordMovement(a.ID, "no-such-account", 100, CodeBookTransfer, now, ""); err == nil {
+		t.Error("expected error for unknown to-account")
+	}
+	if _, err := l.RecordLinkedMovements([]MovementInput{
+		{FromAccountID: a.ID, ToAccountID: b.ID, Amount: 1, Code: CodeBookTransfer},
+		{FromAccountID: "no-such-account", ToAccountID: b.ID, Amount: 1, Code: CodeBookTransfer},
+	}, now); err == nil {
+		t.Error("expected error for unknown from-account in a linked batch")
+	}
+}
+
+// TestCrossExponentRejectedAcrossTxViews verifies the exponent check holds for
+// accounts created through a transaction view and used through the ledger.
+func TestCrossExponentRejectedAcrossTxViews(t *testing.T) {
+	l := newTestLedger(t)
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	tx, err := l.db.(*sql.DB).Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tl := l.WithTx(tx)
+	std, _ := tl.CreateAccount("Asset:Standard", "GBP", -2, 0)
+	hip, _ := tl.CreateAccount("Asset:HiPrec", "GBPHP", -5, 0)
+	other, _ := tl.CreateAccount("Asset:Other", "GBP", -2, 0)
+	if _, err := tl.RecordMovement(std.ID, other.ID, 100, CodeBookTransfer, now, "ok"); err != nil {
+		t.Fatalf("RecordMovement in tx: %v", err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := l.RecordMovement(std.ID, hip.ID, 100, CodeBookTransfer, now, ""); err == nil {
+		t.Error("expected error for cross-exponent movement")
+	}
+	if _, err := l.RecordMovement(std.ID, other.ID, 100, CodeBookTransfer, now, "ok"); err != nil {
+		t.Errorf("same-exponent movement: %v", err)
 	}
 }
 
