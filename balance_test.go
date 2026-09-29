@@ -272,6 +272,35 @@ func TestCrossExponentRejectedAcrossTxViews(t *testing.T) {
 	}
 }
 
+// TestAccountFromRolledBackTxRejected verifies an account created in a
+// transaction that is rolled back cannot be used afterwards, even once a
+// movement inside that transaction has validated against it.
+func TestAccountFromRolledBackTxRejected(t *testing.T) {
+	l := newTestLedger(t)
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	a, _ := l.CreateAccount("Asset:A", "GBP", -2, 0)
+
+	tx, err := l.db.(*sql.DB).Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tl := l.WithTx(tx)
+	ghost, err := tl.CreateAccount("Asset:Ghost", "GBP", -2, 0)
+	if err != nil {
+		t.Fatalf("CreateAccount in tx: %v", err)
+	}
+	if _, err := tl.RecordMovement(a.ID, ghost.ID, 100, CodeBookTransfer, now, "in tx"); err != nil {
+		t.Fatalf("RecordMovement in tx: %v", err)
+	}
+	if err := tx.Rollback(); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := l.RecordMovement(a.ID, ghost.ID, 100, CodeBookTransfer, now, ""); err == nil {
+		t.Error("expected error for account from rolled-back transaction")
+	}
+}
+
 // TestMixedExponentBalanceByPath verifies BalanceByPath scales correctly when
 // reporting across accounts with different exponents (different ledger partitions).
 func TestMixedExponentBalanceByPath(t *testing.T) {
