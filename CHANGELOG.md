@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.2.34] - 2026-09-29
+
+ - Release prep
+
  - `SQLLedger` remembers each account's exponent once seen (shared with
    `WithTx` views), so recording a movement no longer costs two account
    lookups: ~2.7x movements/s on PostgreSQL. Exponents never change through
