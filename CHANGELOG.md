@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-05
+
+ - Release prep
+
 ### Added
 - Positions (gobank ADR-0002 stage 3, story b). A position is an account's
   end-of-day balance plus its accrued-but-unapplied interest as an exact
