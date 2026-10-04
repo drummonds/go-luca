@@ -239,7 +239,11 @@ func (m *MemLedger) BalanceByPath(pathPrefix string, at time.Time) (Amount, int,
 	return 0, 0, ErrNotImplemented
 }
 
-func (m *MemLedger) GetLiveBalance(accountID string, date time.Time) (*LiveBalance, error) {
+func (m *MemLedger) Project(accountID string, day time.Time, accrued Fraction) (*Position, error) {
+	return nil, ErrNotImplemented
+}
+
+func (m *MemLedger) PositionAt(accountID string, day time.Time) (*Position, error) {
 	return nil, ErrNotImplemented
 }
 

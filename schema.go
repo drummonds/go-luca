@@ -128,6 +128,70 @@ CREATE TABLE IF NOT EXISTS movement_metadata (
     value VARCHAR(500) NOT NULL DEFAULT ''
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_movement_metadata_unique ON movement_metadata(batch_id, key);
+
+-- Expand-only additions for positions (see positions.go). A commodity's
+-- unit is its minor units per major unit (100 for GBP), so a view can turn
+-- stored integers into NUMERIC money without a power function.
+ALTER TABLE commodities ADD COLUMN IF NOT EXISTS unit BIGINT NOT NULL DEFAULT 0;
+UPDATE commodities SET unit = CASE exponent
+    WHEN 0 THEN 1 WHEN -1 THEN 10 WHEN -2 THEN 100 WHEN -3 THEN 1000 WHEN -4 THEN 10000
+    WHEN -5 THEN 100000 WHEN -6 THEN 1000000 WHEN -7 THEN 10000000 WHEN -8 THEN 100000000
+    ELSE 1 END WHERE unit = 0;
+ALTER TABLE balances_live ADD COLUMN IF NOT EXISTS accrued_num BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE balances_live ADD COLUMN IF NOT EXISTS accrued_den BIGINT NOT NULL DEFAULT 1;
+-- next_day is the midnight after balance_date, stored so the live view can
+-- find the movements a position does not yet include without date
+-- arithmetic (which pglike cannot yet translate on a qualified column).
+ALTER TABLE balances_live ADD COLUMN IF NOT EXISTS next_day TIMESTAMP;
+UPDATE balances_live SET next_day = balance_date + INTERVAL '1 day' WHERE next_day IS NULL;
+
+-- Contract views (gobank ADR-0001): what other components may read. Money
+-- crosses as NUMERIC in major units and how it is stored stays in here.
+-- (No semicolons in these comments: the schema runner splits on them.)
+DROP VIEW IF EXISTS contract_ledger_movements;
+CREATE VIEW contract_ledger_movements AS
+    SELECT m.id, m.from_account_id, m.to_account_id, fa.full_path AS from_path, ta.full_path AS to_path,
+           m.amount, m.code, m.value_time, m.knowledge_time, m.description
+    FROM movements m
+    JOIN accounts fa ON fa.id = m.from_account_id
+    JOIN accounts ta ON ta.id = m.to_account_id;
+
+-- End-of-day positions: one row per account per projected day, from the
+-- stored projections. The cheap view.
+DROP VIEW IF EXISTS contract_ledger_eod_positions;
+CREATE VIEW contract_ledger_eod_positions AS
+    SELECT p.account_id, a.full_path, a.commodity, p.balance_date AS day,
+           round(p.balance::numeric / c.unit, -c.exponent) AS balance,
+           round(p.accrued_num::numeric / p.accrued_den / c.unit, 7) AS accrued
+    FROM balances_live p
+    JOIN accounts a ON a.id = p.account_id
+    JOIN commodities c ON c.code = a.commodity;
+
+-- Live positions: the latest projection plus every movement valued after
+-- its day, for every account. Three correlated sums per account, so the
+-- dearer view: use the end-of-day one when a day will do.
+DROP VIEW IF EXISTS contract_ledger_live_positions;
+CREATE VIEW contract_ledger_live_positions AS
+    SELECT l.account_id, l.full_path, l.commodity,
+           round(l.balance_minor::numeric / l.unit, -l.exponent) AS balance,
+           round(l.accrued_num::numeric / l.accrued_den / l.unit, 7) AS accrued
+    FROM (
+        SELECT a.id AS account_id, a.full_path, a.commodity, c.unit, c.exponent,
+               COALESCE(p.balance, 0)
+               + COALESCE((SELECT SUM(m.amount) FROM movements m
+                           WHERE m.to_account_id = a.id
+                             AND m.value_time >= COALESCE(p.next_day, '0001-01-01')), 0)
+               - COALESCE((SELECT SUM(m.amount) FROM movements m
+                           WHERE m.from_account_id = a.id
+                             AND m.value_time >= COALESCE(p.next_day, '0001-01-01')), 0)
+                 AS balance_minor,
+               COALESCE(p.accrued_num, 0) AS accrued_num,
+               COALESCE(p.accrued_den, 1) AS accrued_den
+        FROM accounts a
+        JOIN commodities c ON c.code = a.commodity
+        LEFT JOIN balances_live p ON p.account_id = a.id
+             AND p.balance_date = (SELECT MAX(q.balance_date) FROM balances_live q WHERE q.account_id = a.id)
+    ) l;
 `
 
 // createSchema executes the DDL statements to create tables and indexes.
@@ -162,8 +226,8 @@ func insertSampleData(db *sql.DB) error {
 
 	// Sample commodity (must exist before accounts due to FK)
 	_, err := db.Exec(
-		`INSERT INTO commodities (id, code, exponent) VALUES ($1, $2, $3)`,
-		uuid.New().String(), "GBP", -2,
+		`INSERT INTO commodities (id, code, exponent, unit) VALUES ($1, $2, $3, $4)`,
+		uuid.New().String(), "GBP", -2, commodityUnit(-2),
 	)
 	if err != nil {
 		return fmt.Errorf("insert commodity GBP: %w", err)

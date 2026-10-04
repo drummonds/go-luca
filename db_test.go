@@ -222,16 +222,16 @@ func TestRecordMovementWithProjections(t *testing.T) {
 		t.Errorf("Code = %q, want %q", m.Code, CodeBookTransfer)
 	}
 
-	// Verify live balance was created
-	lb, err := l.GetLiveBalance(savings.ID, now)
+	// Verify the position was written
+	p, err := l.PositionAt(savings.ID, now)
 	if err != nil {
-		t.Fatalf("GetLiveBalance: %v", err)
+		t.Fatalf("PositionAt: %v", err)
 	}
-	if lb == nil {
-		t.Fatal("expected live balance, got nil")
+	if p == nil {
+		t.Fatal("expected position, got nil")
 	}
-	if lb.Balance != 100000 {
-		t.Errorf("live balance = %d, want 100000", lb.Balance)
+	if p.Balance != 100000 {
+		t.Errorf("position balance = %d, want 100000", p.Balance)
 	}
 }
 
@@ -247,15 +247,15 @@ func TestRecordMovementWithProjectionsNoInterest(t *testing.T) {
 		t.Fatalf("RecordMovementWithProjections: %v", err)
 	}
 
-	lb, err := l.GetLiveBalance(cash.ID, now)
+	p, err := l.PositionAt(cash.ID, now)
 	if err != nil {
-		t.Fatalf("GetLiveBalance: %v", err)
+		t.Fatalf("PositionAt: %v", err)
 	}
-	if lb == nil {
-		t.Fatal("expected live balance, got nil")
+	if p == nil {
+		t.Fatal("expected position, got nil")
 	}
-	if lb.Balance != 50000 {
-		t.Errorf("live balance = %d, want 50000", lb.Balance)
+	if p.Balance != 50000 {
+		t.Errorf("position balance = %d, want 50000", p.Balance)
 	}
 }
 

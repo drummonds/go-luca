@@ -242,7 +242,11 @@ func (c *Client) BalanceByPath(pathPrefix string, at time.Time) (luca.Amount, in
 	return 0, 0, luca.ErrNotImplemented
 }
 
-func (c *Client) GetLiveBalance(accountID string, date time.Time) (*luca.LiveBalance, error) {
+func (c *Client) Project(accountID string, day time.Time, accrued luca.Fraction) (*luca.Position, error) {
+	return nil, luca.ErrNotImplemented
+}
+
+func (c *Client) PositionAt(accountID string, day time.Time) (*luca.Position, error) {
 	return nil, luca.ErrNotImplemented
 }
 

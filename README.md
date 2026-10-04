@@ -26,6 +26,29 @@ Ledger (interface)
 
 Accounts follow a colon-separated path: `Type:Product:AccountID:Address`. Balances can be queried at any level of the hierarchy.
 
+### Positions and contract views
+
+A position is an account's end-of-day state: its balance and the interest
+accrued but not yet applied, kept as an exact fraction. Positions are stored
+projections, written for both accounts of `RecordMovementWithProjections`
+and by `Project` for a day with no movement, and rebuilt from the previous
+position plus the movements between, so a backdated movement corrects every
+later day. `PositionAt` reads the latest on or before a day.
+
+Other components read the ledger only through its contract views, with
+money as NUMERIC in major units:
+
+| View | Rows | Cost |
+|---|---|---|
+| `contract_ledger_movements` | every movement with both account paths | a join |
+| `contract_ledger_eod_positions` | one per account per projected day | cheap: stored rows |
+| `contract_ledger_live_positions` | one per account: latest position plus movements since | dearer: correlated sums per account |
+
+How the figures are stored (integers at the commodity exponent, a
+numerator and denominator for accruals) stays inside the ledger. On pglike
+the NUMERIC conversion needs go-postgres ≥ 0.7.0. `BenchmarkPositions`
+measures the daily pass and both views.
+
 ### Interest
 
 Daily interest accrual using actual/365. See [research/interest/](research/interest/) for the design rationale covering AER, day-count conventions, rounding strategies, and the discrete-interest formula.

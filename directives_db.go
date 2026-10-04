@@ -64,8 +64,8 @@ func (l *SQLLedger) ListOptions() ([]Option, error) {
 func (l *SQLLedger) CreateCommodity(code string, exponent int, datetime *time.Time) (string, error) {
 	id := uuid.New().String()
 	_, err := l.db.Exec(
-		`INSERT INTO commodities (id, code, exponent, datetime) VALUES ($1, $2, $3, $4)`,
-		id, code, exponent, datetime,
+		`INSERT INTO commodities (id, code, exponent, datetime, unit) VALUES ($1, $2, $3, $4, $5)`,
+		id, code, exponent, datetime, commodityUnit(exponent),
 	)
 	if err != nil {
 		return "", fmt.Errorf("insert commodity: %w", err)

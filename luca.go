@@ -56,7 +56,11 @@ type Ledger interface {
 	BalanceAt(accountID string, at time.Time) (Amount, error)
 	BalanceByPath(pathPrefix string, at time.Time) (Amount, int, error)
 	DailyBalances(accountID string, from, to time.Time) ([]DailyBalance, error)
-	GetLiveBalance(accountID string, date time.Time) (*LiveBalance, error)
+
+	// Positions: stored end-of-day projections (balance and accrued
+	// interest), published through the contract views in SchemaSQL.
+	Project(accountID string, day time.Time, accrued Fraction) (*Position, error)
+	PositionAt(accountID string, day time.Time) (*Position, error)
 
 	// Interest (account metadata only; computation lives in gobank-products)
 	SetInterestMethod(accountID string, method InterestMethod) error
@@ -68,11 +72,25 @@ type Ledger interface {
 	ImportString(s string, opts *ImportOptions) error
 }
 
-// LiveBalance is a pre-computed end-of-day balance snapshot stored in balances_live.
-type LiveBalance struct {
-	AccountID   string
-	BalanceDate time.Time
-	Balance     Amount
+// Position is an account's state at the end of Day: the balance, and the
+// interest accrued but not yet applied, carried into the next day. It is a
+// stored projection (table balances_live): written by
+// RecordMovementWithProjections for both accounts of a movement and by
+// Project for a day with no movement, and rewritten from a backdated
+// movement's day onwards.
+type Position struct {
+	AccountID string
+	Day       time.Time // midnight, UTC
+	Balance   Amount
+	Accrued   Fraction // in minor units of the account's commodity
+}
+
+// Fraction is an exact rational, Num/Den. Accrued interest is one: the
+// product rules sum balance × rate over days and divide once, so the
+// ledger keeps the numerator and denominator rather than a rounded value.
+type Fraction struct {
+	Num int64
+	Den int64
 }
 
 // AccountType represents one of the five fundamental account categories.

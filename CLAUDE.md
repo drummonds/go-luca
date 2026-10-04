@@ -11,7 +11,7 @@ integers. This section documents how to make that migration as cheap as possible
 
 ### Current state
 - `type Amount int64` is defined in `luca.go` and used across all amount-carrying fields
-- `Movement.Amount`, `MovementInput.Amount`, `LiveBalance.Balance`, `DailyBalance.Balance`,
+- `Movement.Amount`, `MovementInput.Amount`, `Position.Balance`, `DailyBalance.Balance`,
   `InterestResult.OpeningBalance/InterestAmount/ClosingBalance` all use `Amount`
 - `Ledger` interface methods use `Amount` for amount params/returns
 - `decimal.go` helpers (`IntToDecimal`, `DecimalToInt`, `ScaleAmount`) use `Amount`
@@ -23,7 +23,10 @@ integers. This section documents how to make that migration as cheap as possible
 2. **Keep amount arithmetic in `decimal.go`** — don't scatter raw `+`, `-`, `*` on amounts
    across files. Centralised helpers become a single migration point.
 3. **No amount logic in SQL** — keep `SUM(amount)` as the only SQL-side arithmetic. Avoid
-   SQL expressions like `amount * rate` that would need type-aware rewriting.
+   SQL expressions like `amount * rate` that would need type-aware rewriting. The one
+   exception is the contract views in `schema.go`, which convert stored integers to
+   NUMERIC money (`balance::numeric / unit`) at the boundary other components read;
+   they are the single place a wider `Amount` would change the SQL.
 4. **Don't widen the Ledger interface unnecessarily** — every new method that takes/returns
    `Amount` is another signature to change later.
 

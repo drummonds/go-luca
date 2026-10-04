@@ -20,7 +20,18 @@ The `Ledger` interface decouples accounting operations from storage backends.
 - `BalanceAt` — balance at a point in time (value_time <= t)
 - `BalanceByPath` — aggregate balance across accounts matching a path prefix
 - `DailyBalances` — day-by-day closing balances over a date range
-- `GetLiveBalance` — pre-computed end-of-day balance snapshot
+
+### Positions
+Stored end-of-day projections: an account's balance and its accrued-but-unapplied
+interest (an exact `Fraction`) per day. `RecordMovementWithProjections` rewrites
+both accounts' positions from the movement's day onwards; a backdated movement
+corrects every later day. Published as the contract views
+`contract_ledger_eod_positions` (one row per account per day; cheap) and
+`contract_ledger_live_positions` (latest position plus movements since; dearer),
+with money as NUMERIC in major units.
+
+- `Project` — write a day's position with no movement: the ledger's balance for that day and the caller's accrued interest
+- `PositionAt` — the latest position on or before a day
 
 ### Interest
 - `EnsureInterestAccounts` — create system accounts for interest processing
@@ -44,7 +55,7 @@ Import and export operate on journals — the plain text record of accounting mo
 | RecordMovementWithProjections | Full | Stub |
 | Balances (basic) | Full | Full |
 | BalanceByPath | Full | Stub |
-| GetLiveBalance | Full | Stub |
+| Positions (Project, PositionAt) | Full | Stub |
 | Interest | Full | Stub |
 | Import/Export | Full | Stub |
 

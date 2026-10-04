@@ -2,6 +2,43 @@
 
 ## [Unreleased]
 
+### Added
+- Positions (gobank ADR-0002 stage 3, story b). A position is an account's
+  end-of-day balance plus its accrued-but-unapplied interest as an exact
+  `Fraction`, stored in `balances_live`. `RecordMovementWithProjections`
+  now rewrites the positions of *both* accounts from the movement's value
+  day onwards, each day rebuilt from the previous position plus the
+  movements between (a range sum, not the whole history), so a backdated
+  movement corrects every later day. `Project(account, day, accrued)`
+  writes a day with no movement — the daily pass's next-day projection —
+  and `PositionAt(account, day)` reads the latest position on or before a
+  day. `LiveBalance`/`GetLiveBalance` are replaced by `Position`/`PositionAt`.
+- Contract views, so other components read the ledger without knowing how
+  it stores figures: `contract_ledger_movements` (moved in from the gobank
+  demo), `contract_ledger_eod_positions` (one row per account per projected
+  day) and `contract_ledger_live_positions` (latest position plus movements
+  since). Money is NUMERIC in major units, converted in the view from the
+  stored integers and the commodity's new `unit` column (minor units per
+  major unit); on pglike this needs go-postgres ≥ 0.7.0, now required.
+- `knowledge_time` is written explicitly on every write path and the
+  returned `Movement.KnowledgeTime` is the stored value (gobank cold
+  review, go-luca #6: the column default gave second precision on pglike
+  in a form that compared wrongly against bound times).
+
+### Cost (BenchmarkPositions, pglike :memory:, 1,000 accounts × 31 days)
+| What | Cost |
+|---|---|
+| daily pass, one position per account plus a deposit on one in ten | 0.55 ms per account |
+| end-of-day view, every account for one day | 11 ms |
+| end-of-day view, one account | 0.1–0.6 ms |
+| live view, every account | 13 ms |
+| live view, one account | 0.34 ms |
+| `PositionAt` | 0.08 ms |
+
+Storage is one row per account per projected day: at the Hetzner demo's
+300k accounts that is 300k rows a day, which is what ADR-0002's deferred
+data-management work will have to bound.
+
 ## [0.2.35] - 2026-09-29
 
 ## [0.2.34] - 2026-09-29

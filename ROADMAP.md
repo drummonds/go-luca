@@ -8,6 +8,15 @@
 - `MemLedger` — pure Go in-memory backend (core ops, stubs for advanced)
 - `NewSQLLedger(db)` for bring-your-own-driver
 
+### Positions and contract views (unreleased)
+- Stored end-of-day projections for both accounts of a movement, rebuilt
+  incrementally from the previous position, and `Project` for a day with no
+  movement (gobank ADR-0002 stage 3's daily pass)
+- Accrued-but-unapplied interest kept on the position as an exact fraction
+- Contract views `contract_ledger_movements`, `contract_ledger_eod_positions`
+  and `contract_ledger_live_positions`, money as NUMERIC in major units
+- `knowledge_time` stored on every write path
+
 ## In Progress
 
 ### API Layer
@@ -52,7 +61,6 @@ Compare performance of direct method calls against the HTTP/JSON API layer.
 - Compound interest (daily, monthly, annual compounding)
 - Tiered/banded interest rates (different rate above/below thresholds)
 - Interest on overdrawn balances (debit interest)
-- Accrued-but-not-yet-posted interest reporting
 - Period-end interest capitalisation
 
 ### Parameter Hierarchies

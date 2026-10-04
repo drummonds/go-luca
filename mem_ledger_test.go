@@ -269,8 +269,8 @@ func TestMemLedgerStubs(t *testing.T) {
 	if _, _, err := m.BalanceByPath("", time.Now()); err != ErrNotImplemented {
 		t.Errorf("BalanceByPath = %v, want ErrNotImplemented", err)
 	}
-	if _, err := m.GetLiveBalance("", time.Now()); err != ErrNotImplemented {
-		t.Errorf("GetLiveBalance = %v, want ErrNotImplemented", err)
+	if _, err := m.PositionAt("", time.Now()); err != ErrNotImplemented {
+		t.Errorf("PositionAt = %v, want ErrNotImplemented", err)
 	}
 	if _, err := m.ListMovements(); err != ErrNotImplemented {
 		t.Errorf("ListMovements = %v, want ErrNotImplemented", err)
