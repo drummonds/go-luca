@@ -4,6 +4,10 @@ vars:
   BENCH_PG_CONTAINER: go-luca-bench-pg
   BENCH_PG_PORT: 15432
   BENCH_PG_PASSWORD: benchpass
+  # Separate container for schema docs so a running benchmark is not disturbed
+  DOCS_PG_CONTAINER: go-luca-docs-pg
+  DOCS_PG_PORT: 15433
+  DOCS_PG_DSN: "postgres://bench:{{.BENCH_PG_PASSWORD}}@localhost:{{.DOCS_PG_PORT}}/bench?sslmode=disable"
 
 tasks:
   fmt:
@@ -52,28 +56,33 @@ tasks:
       - go test -bench=. -benchmem ./...
 
   bench:pg:start:
-    desc: Start PostgreSQL in podman for benchmarks
+    desc: Start PostgreSQL in podman (CONTAINER and PORT default to the benchmark ones)
+    vars:
+      CONTAINER: '{{.CONTAINER | default .BENCH_PG_CONTAINER}}'
+      PORT: '{{.PORT | default .BENCH_PG_PORT}}'
     cmds:
       - |
         podman run --rm -d \
-          --name {{.BENCH_PG_CONTAINER}} \
+          --name {{.CONTAINER}} \
           -e POSTGRES_USER=bench \
           -e POSTGRES_PASSWORD={{.BENCH_PG_PASSWORD}} \
           -e POSTGRES_DB=bench \
-          -p {{.BENCH_PG_PORT}}:5432 \
+          -p {{.PORT}}:5432 \
           docker.io/library/postgres:16-alpine
       - echo "Waiting for PG to be ready..."
       - |
         for i in $(seq 1 30); do
-          podman exec {{.BENCH_PG_CONTAINER}} pg_isready -U bench -d bench 2>/dev/null && break
+          podman exec {{.CONTAINER}} pg_isready -U bench -d bench 2>/dev/null && break
           sleep 0.5
         done
-      - echo "PostgreSQL ready on port {{.BENCH_PG_PORT}}"
+      - echo "PostgreSQL ready on port {{.PORT}}"
 
   bench:pg:stop:
-    desc: Stop PostgreSQL podman container
+    desc: Stop a PostgreSQL podman container (CONTAINER defaults to the benchmark one)
+    vars:
+      CONTAINER: '{{.CONTAINER | default .BENCH_PG_CONTAINER}}'
     cmds:
-      - podman stop {{.BENCH_PG_CONTAINER}} || true
+      - podman stop {{.CONTAINER}} || true
 
   bench:balance-types:
     desc: Run balance type comparison benchmark
@@ -107,22 +116,36 @@ tasks:
     cmds:
       - go run ./cmd/luca-docs
 
+  # Schema docs come from a real PostgreSQL, not the pglike file: the
+  # contract views use ::numeric, which pglike evaluates with functions
+  # registered on its own connections, so tbls's SQLite cannot compile them.
   tbls:setup:
-    desc: Create schema database for tbls documentation
+    desc: Load the schema and sample data into a throwaway PostgreSQL for tbls
+    internal: true
     cmds:
-      - go run ./cmd/luca-schema -db /tmp/go-luca-schema.db
+      - go run ./cmd/luca-schema -pg "{{.DOCS_PG_DSN}}"
 
   tbls:doc:
-    desc: Generate schema documentation with tbls
-    deps: [tbls:setup]
+    desc: Generate schema documentation with tbls (starts and stops a podman PostgreSQL)
+    env:
+      TBLS_DSN: '{{.DOCS_PG_DSN}}'
     cmds:
-      - tbls doc --rm-dist
+      - task: bench:pg:start
+        vars: { CONTAINER: '{{.DOCS_PG_CONTAINER}}', PORT: '{{.DOCS_PG_PORT}}' }
+      - defer: { task: bench:pg:stop, vars: { CONTAINER: '{{.DOCS_PG_CONTAINER}}' } }
+      - task: tbls:setup
+      - tbls doc --rm-dist -c .tbls.yml
 
   tbls:diff:
     desc: Check schema docs are up to date
-    deps: [tbls:setup]
+    env:
+      TBLS_DSN: '{{.DOCS_PG_DSN}}'
     cmds:
-      - tbls diff
+      - task: bench:pg:start
+        vars: { CONTAINER: '{{.DOCS_PG_CONTAINER}}', PORT: '{{.DOCS_PG_PORT}}' }
+      - defer: { task: bench:pg:stop, vars: { CONTAINER: '{{.DOCS_PG_CONTAINER}}' } }
+      - task: tbls:setup
+      - tbls diff -c .tbls.yml
 
   bench:all:
     desc: Run all benchmarks and regenerate docs

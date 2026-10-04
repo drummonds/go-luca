@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>options - go-luca</title>
+    <title>public.commodity_metadata - go-luca</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
     <style>
         pre {
@@ -37,23 +37,13 @@
             <nav class="breadcrumb" aria-label="breadcrumbs">
                 <ul>
                     <li><a href="../index.html">go-luca</a></li>
-                    <li class="is-active"><a href="#" aria-current="page">options</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">public.commodity_metadata</a></li>
                 </ul>
             </nav>
             <div class="content">
-<h1>options</h1>
+<h1>public.commodity_metadata</h1>
 <h2>Description</h2>
-<p>Ledger-wide key-value configuration. Stores directives imported from .goluca files (e.g. operating-currency, require-accounts) and runtime settings.</p>
-<details>
-<summary><strong>Table Definition</strong></summary>
-<pre><code class="language-sql">CREATE TABLE options (
-    id TEXT PRIMARY KEY,
-    key TEXT NOT NULL UNIQUE,
-    value TEXT NOT NULL DEFAULT '',
-    created_at TEXT DEFAULT (datetime('now'))
-)
-</code></pre>
-</details>
+<p>Key-value metadata for commodities.</p>
 <h2>Columns</h2>
 <table>
 <thead>
@@ -69,40 +59,40 @@
 </thead>
 <tbody>
 <tr>
-<td>created_at</td>
-<td>TEXT</td>
-<td>datetime('now')</td>
-<td>true</td>
+<td>commodity_id</td>
+<td>text</td>
 <td></td>
+<td>false</td>
 <td></td>
-<td>Timestamp when the option was created</td>
+<td><a href="public.commodities.html">public.commodities</a></td>
+<td>FK to commodities.id</td>
 </tr>
 <tr>
 <td>id</td>
-<td>TEXT</td>
+<td>text</td>
 <td></td>
-<td>true</td>
+<td>false</td>
 <td></td>
 <td></td>
 <td>UUID primary key</td>
 </tr>
 <tr>
 <td>key</td>
-<td>TEXT</td>
+<td>varchar(200)</td>
 <td></td>
 <td>false</td>
 <td></td>
 <td></td>
-<td>Option name (unique), e.g. operating-currency</td>
+<td>Metadata key</td>
 </tr>
 <tr>
 <td>value</td>
-<td>TEXT</td>
-<td>''</td>
+<td>varchar(500)</td>
+<td>''::character varying</td>
 <td>false</td>
 <td></td>
 <td></td>
-<td>Option value</td>
+<td>Metadata value</td>
 </tr>
 </tbody>
 </table>
@@ -117,19 +107,14 @@
 </thead>
 <tbody>
 <tr>
-<td>id</td>
-<td>PRIMARY KEY</td>
-<td>PRIMARY KEY (id)</td>
+<td>commodity_metadata_commodity_id_fkey</td>
+<td>FOREIGN KEY</td>
+<td>FOREIGN KEY (commodity_id) REFERENCES commodities(id)</td>
 </tr>
 <tr>
-<td>sqlite_autoindex_options_1</td>
+<td>commodity_metadata_pkey</td>
 <td>PRIMARY KEY</td>
 <td>PRIMARY KEY (id)</td>
-</tr>
-<tr>
-<td>sqlite_autoindex_options_2</td>
-<td>UNIQUE</td>
-<td>UNIQUE (key)</td>
 </tr>
 </tbody>
 </table>
@@ -143,24 +128,33 @@
 </thead>
 <tbody>
 <tr>
-<td>sqlite_autoindex_options_1</td>
-<td>PRIMARY KEY (id)</td>
+<td>commodity_metadata_pkey</td>
+<td>CREATE UNIQUE INDEX commodity_metadata_pkey ON public.commodity_metadata USING btree (id)</td>
 </tr>
 <tr>
-<td>sqlite_autoindex_options_2</td>
-<td>UNIQUE (key)</td>
+<td>idx_commodity_metadata_unique</td>
+<td>CREATE UNIQUE INDEX idx_commodity_metadata_unique ON public.commodity_metadata USING btree (commodity_id, key)</td>
 </tr>
 </tbody>
 </table>
 <h2>Relations</h2>
 <pre class="mermaid">erDiagram
 
+&quot;public.commodity_metadata&quot; }o--|| &quot;public.commodities&quot; : &quot;FOREIGN KEY (commodity_id) REFERENCES commodities(id)&quot;
 
-&quot;options&quot; {
-  TEXT created_at &quot;Timestamp when the option was created&quot;
-  TEXT id PK &quot;UUID primary key&quot;
-  TEXT key &quot;Option name (unique), e.g. operating-currency&quot;
-  TEXT value &quot;Option value&quot;
+&quot;public.commodity_metadata&quot; {
+  text commodity_id FK &quot;FK to commodities.id&quot;
+  text id &quot;UUID primary key&quot;
+  varchar_200_ key &quot;Metadata key&quot;
+  varchar_500_ value &quot;Metadata value&quot;
+}
+&quot;public.commodities&quot; {
+  varchar_50_ code &quot;Unique commodity code (e.g. GBP, USD, BTC)&quot;
+  timestamp_without_time_zone created_at &quot;Timestamp when the commodity was created&quot;
+  timestamp_without_time_zone datetime &quot;Optional date associated with the commodity definition&quot;
+  integer exponent &quot;Decimal exponent for amount precision (-2 = pence, -8 = satoshi)&quot;
+  text id &quot;UUID primary key&quot;
+  bigint unit &quot;&quot;
 }
 </pre>
 <hr>

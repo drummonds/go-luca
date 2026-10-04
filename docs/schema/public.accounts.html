@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>public.accounts - go-luca</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        pre {
+            background-color: #2b2b2b;
+            color: #f8f8f2;
+            padding: 1.25em 1.5em;
+            overflow-x: auto;
+        }
+        pre code {
+            color: inherit;
+            background: none;
+            padding: 0;
+            font-size: 0.875em;
+        }
+        code {
+            background-color: #f5f5f5;
+            color: #e83e8c;
+            padding: 0.125em 0.375em;
+            border-radius: 3px;
+        }
+        pre.mermaid {
+            background-color: #ffffff;
+            color: #333;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <section class="section">
+        <div class="container">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+                <ul>
+                    <li><a href="../index.html">go-luca</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">public.accounts</a></li>
+                </ul>
+            </nav>
+            <div class="content">
+<h1>public.accounts</h1>
+<h2>Description</h2>
+<p>Chart of accounts. Each account has a hierarchical path (Type:Product:AccountID:Address) and belongs to one of five fundamental types: Asset, Liability, Equity, Income, Expense. An account optionally belongs to a customer (many accounts per customer). Amounts are stored as integers at the precision defined by the commodity's exponent.</p>
+<h2>Columns</h2>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Default</th>
+<th>Nullable</th>
+<th>Children</th>
+<th>Parents</th>
+<th>Comment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>account_id</td>
+<td>varchar(100)</td>
+<td>''::character varying</td>
+<td>false</td>
+<td></td>
+<td></td>
+<td>Specific account identifier within the product</td>
+</tr>
+<tr>
+<td>account_type</td>
+<td>varchar(50)</td>
+<td></td>
+<td>false</td>
+<td></td>
+<td></td>
+<td>One of: Asset, Liability, Equity, Income, Expense</td>
+</tr>
+<tr>
+<td>address</td>
+<td>varchar(100)</td>
+<td>''::character varying</td>
+<td>false</td>
+<td></td>
+<td></td>
+<td>Sub-address within the account (e.g. branch). 'Pending' marks pending accounts</td>
+</tr>
+<tr>
+<td>commodity</td>
+<td>varchar(50)</td>
+<td>'GBP'::character varying</td>
+<td>false</td>
+<td></td>
+<td><a href="public.commodities.html">public.commodities</a></td>
+<td>Commodity code (FK to commodities.code)</td>
+</tr>
+<tr>
+<td>created_at</td>
+<td>timestamp without time zone</td>
+<td>now()</td>
+<td>true</td>
+<td></td>
+<td></td>
+<td>Timestamp when the account was created</td>
+</tr>
+<tr>
+<td>customer_id</td>
+<td>text</td>
+<td></td>
+<td>true</td>
+<td></td>
+<td><a href="public.customers.html">public.customers</a></td>
+<td>Optional owning customer (FK to customers.id). A customer may have many accounts</td>
+</tr>
+<tr>
+<td>full_path</td>
+<td>varchar(500)</td>
+<td></td>
+<td>false</td>
+<td><a href="public.aliases.html">public.aliases</a></td>
+<td></td>
+<td>Hierarchical account path, e.g. Asset:Bank:Current:Main</td>
+</tr>
+<tr>
+<td>gross_interest_rate</td>
+<td>numeric(10,6)</td>
+<td>0</td>
+<td>false</td>
+<td></td>
+<td></td>
+<td>Gross annual interest rate as a decimal (0.045 = 4.5%)</td>
+</tr>
+<tr>
+<td>id</td>
+<td>text</td>
+<td></td>
+<td>false</td>
+<td><a href="public.balances_live.html">public.balances_live</a> <a href="public.movements.html">public.movements</a></td>
+<td></td>
+<td>UUID primary key</td>
+</tr>
+<tr>
+<td>interest_accumulator</td>
+<td>bigint</td>
+<td>0</td>
+<td>false</td>
+<td></td>
+<td></td>
+<td>Sub-unit fractions at extended precision (method-dependent)</td>
+</tr>
+<tr>
+<td>interest_method</td>
+<td>varchar(20)</td>
+<td>''::character varying</td>
+<td>false</td>
+<td></td>
+<td></td>
+<td>Interest calculation method (e.g. simple_daily)</td>
+</tr>
+<tr>
+<td>is_pending</td>
+<td>boolean</td>
+<td>false</td>
+<td>true</td>
+<td></td>
+<td></td>
+<td>True if this is a pending/suspense account</td>
+</tr>
+<tr>
+<td>opened_at</td>
+<td>timestamp without time zone</td>
+<td></td>
+<td>true</td>
+<td></td>
+<td></td>
+<td>When the account was opened</td>
+</tr>
+<tr>
+<td>product</td>
+<td>varchar(100)</td>
+<td>''::character varying</td>
+<td>false</td>
+<td></td>
+<td></td>
+<td>Product category within the account type</td>
+</tr>
+</tbody>
+</table>
+<h2>Constraints</h2>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>accounts_commodity_fkey</td>
+<td>FOREIGN KEY</td>
+<td>FOREIGN KEY (commodity) REFERENCES commodities(code)</td>
+</tr>
+<tr>
+<td>accounts_customer_id_fkey</td>
+<td>FOREIGN KEY</td>
+<td>FOREIGN KEY (customer_id) REFERENCES customers(id)</td>
+</tr>
+<tr>
+<td>accounts_full_path_key</td>
+<td>UNIQUE</td>
+<td>UNIQUE (full_path)</td>
+</tr>
+<tr>
+<td>accounts_pkey</td>
+<td>PRIMARY KEY</td>
+<td>PRIMARY KEY (id)</td>
+</tr>
+</tbody>
+</table>
+<h2>Indexes</h2>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>accounts_full_path_key</td>
+<td>CREATE UNIQUE INDEX accounts_full_path_key ON public.accounts USING btree (full_path)</td>
+</tr>
+<tr>
+<td>accounts_pkey</td>
+<td>CREATE UNIQUE INDEX accounts_pkey ON public.accounts USING btree (id)</td>
+</tr>
+</tbody>
+</table>
+<h2>Relations</h2>
+<pre class="mermaid">erDiagram
+
+&quot;public.accounts&quot; }o--|| &quot;public.commodities&quot; : &quot;FOREIGN KEY (commodity) REFERENCES commodities(code)&quot;
+&quot;public.accounts&quot; }o--o| &quot;public.customers&quot; : &quot;FOREIGN KEY (customer_id) REFERENCES customers(id)&quot;
+&quot;public.aliases&quot; }o--|| &quot;public.accounts&quot; : &quot;FOREIGN KEY (account_path) REFERENCES accounts(full_path)&quot;
+&quot;public.balances_live&quot; }o--|| &quot;public.accounts&quot; : &quot;FOREIGN KEY (account_id) REFERENCES accounts(id)&quot;
+&quot;public.movements&quot; }o--|| &quot;public.accounts&quot; : &quot;FOREIGN KEY (from_account_id) REFERENCES accounts(id)&quot;
+&quot;public.movements&quot; }o--|| &quot;public.accounts&quot; : &quot;FOREIGN KEY (to_account_id) REFERENCES accounts(id)&quot;
+
+&quot;public.accounts&quot; {
+  varchar_100_ account_id &quot;Specific account identifier within the product&quot;
+  varchar_50_ account_type &quot;One of: Asset, Liability, Equity, Income, Expense&quot;
+  varchar_100_ address &quot;Sub-address within the account (e.g. branch). 'Pending' marks pending accounts&quot;
+  varchar_50_ commodity FK &quot;Commodity code (FK to commodities.code)&quot;
+  timestamp_without_time_zone created_at &quot;Timestamp when the account was created&quot;
+  text customer_id FK &quot;Optional owning customer (FK to customers.id). A customer may have many accounts&quot;
+  varchar_500_ full_path &quot;Hierarchical account path, e.g. Asset:Bank:Current:Main&quot;
+  numeric_10_6_ gross_interest_rate &quot;Gross annual interest rate as a decimal (0.045 = 4.5%)&quot;
+  text id &quot;UUID primary key&quot;
+  bigint interest_accumulator &quot;Sub-unit fractions at extended precision (method-dependent)&quot;
+  varchar_20_ interest_method &quot;Interest calculation method (e.g. simple_daily)&quot;
+  boolean is_pending &quot;True if this is a pending/suspense account&quot;
+  timestamp_without_time_zone opened_at &quot;When the account was opened&quot;
+  varchar_100_ product &quot;Product category within the account type&quot;
+}
+&quot;public.commodities&quot; {
+  varchar_50_ code &quot;Unique commodity code (e.g. GBP, USD, BTC)&quot;
+  timestamp_without_time_zone created_at &quot;Timestamp when the commodity was created&quot;
+  timestamp_without_time_zone datetime &quot;Optional date associated with the commodity definition&quot;
+  integer exponent &quot;Decimal exponent for amount precision (-2 = pence, -8 = satoshi)&quot;
+  text id &quot;UUID primary key&quot;
+  bigint unit &quot;&quot;
+}
+&quot;public.customers&quot; {
+  timestamp_without_time_zone created_at &quot;Timestamp when the customer was created&quot;
+  text id &quot;UUID primary key&quot;
+  varchar_50_ max_balance_amount &quot;Maximum allowed balance amount (empty = no limit)&quot;
+  varchar_50_ max_balance_commodity &quot;Commodity for the max balance constraint&quot;
+  varchar_200_ name &quot;Customer name (unique)&quot;
+}
+&quot;public.aliases&quot; {
+  varchar_500_ account_path FK &quot;Full account path (FK to accounts.full_path)&quot;
+  timestamp_without_time_zone created_at &quot;Timestamp when the alias was created&quot;
+  text id &quot;UUID primary key&quot;
+  varchar_200_ name &quot;Alias name (unique)&quot;
+}
+&quot;public.balances_live&quot; {
+  text account_id FK &quot;Account this balance belongs to (FK to accounts.id)&quot;
+  bigint accrued_den &quot;&quot;
+  bigint accrued_num &quot;&quot;
+  bigint balance &quot;End-of-day balance in smallest currency unit&quot;
+  timestamp_without_time_zone balance_date &quot;Date of the balance snapshot (start of day)&quot;
+  text id &quot;UUID primary key&quot;
+  timestamp_without_time_zone next_day &quot;&quot;
+  timestamp_without_time_zone updated_at &quot;When this balance was last recomputed&quot;
+}
+&quot;public.movements&quot; {
+  bigint amount &quot;Transfer amount in smallest currency unit (integer at commodity exponent)&quot;
+  text batch_id &quot;Groups related movements into a single atomic transaction&quot;
+  varchar_14_ code &quot;ISO 20022 BTC mnemonic (DOMAIN:FAMILY:SUBFAMILY)&quot;
+  varchar_500_ description &quot;Human-readable description of the movement&quot;
+  text from_account_id FK &quot;Source account (FK to accounts.id)&quot;
+  text id &quot;UUID primary key&quot;
+  timestamp_without_time_zone knowledge_time &quot;When the system recorded this movement (knowledge date)&quot;
+  integer ledger &quot;Partition identifier for multi-ledger setups (TigerBeetle-inspired)&quot;
+  bigint pending_id &quot;Two-phase commit: references pending movement to post/void (0=N/A)&quot;
+  varchar_1_ period_anchor &quot;Period anchor marker: ^ (start), $ (end), or empty&quot;
+  text to_account_id FK &quot;Destination account (FK to accounts.id)&quot;
+  bigint user_data_64 &quot;Arbitrary external reference for application use&quot;
+  timestamp_without_time_zone value_time &quot;When the movement economically occurred (value date)&quot;
+}
+</pre>
+<hr>
+<blockquote>
+<p>Generated by <a href="https://github.com/k1LoW/tbls">tbls</a></p>
+</blockquote>
+
+            </div>
+        </div>
+    </section>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+</body>
+</html>

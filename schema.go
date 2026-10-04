@@ -207,15 +207,25 @@ func CreateSchemaDB(path string) (*sql.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
-	if err := gdb.Migrate(context.Background(), db, SchemaSQL); err != nil {
+	if err := CreateSchema(db); err != nil {
 		_ = db.Close()
-		return nil, fmt.Errorf("create schema: %w", err)
-	}
-	if err := insertSampleData(db); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("insert sample data: %w", err)
+		return nil, err
 	}
 	return db, nil
+}
+
+// CreateSchema applies the go-luca schema to an empty database and fills it
+// with the sample data. It works on any database/sql connection the schema
+// runs on, pglike or PostgreSQL, so documentation can be generated from
+// either.
+func CreateSchema(db *sql.DB) error {
+	if err := gdb.Migrate(context.Background(), db, SchemaSQL); err != nil {
+		return fmt.Errorf("create schema: %w", err)
+	}
+	if err := insertSampleData(db); err != nil {
+		return fmt.Errorf("insert sample data: %w", err)
+	}
+	return nil
 }
 
 // insertSampleData populates the schema with representative sample data

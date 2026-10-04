@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>public.customers - go-luca</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        pre {
+            background-color: #2b2b2b;
+            color: #f8f8f2;
+            padding: 1.25em 1.5em;
+            overflow-x: auto;
+        }
+        pre code {
+            color: inherit;
+            background: none;
+            padding: 0;
+            font-size: 0.875em;
+        }
+        code {
+            background-color: #f5f5f5;
+            color: #e83e8c;
+            padding: 0.125em 0.375em;
+            border-radius: 3px;
+        }
+        pre.mermaid {
+            background-color: #ffffff;
+            color: #333;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <section class="section">
+        <div class="container">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+                <ul>
+                    <li><a href="../index.html">go-luca</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">public.customers</a></li>
+                </ul>
+            </nav>
+            <div class="content">
+<h1>public.customers</h1>
+<h2>Description</h2>
+<p>Customer records. A customer may have zero to many accounts (via accounts.customer_id). Supports max balance constraints and arbitrary key-value metadata.</p>
+<h2>Columns</h2>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Default</th>
+<th>Nullable</th>
+<th>Children</th>
+<th>Parents</th>
+<th>Comment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>created_at</td>
+<td>timestamp without time zone</td>
+<td>now()</td>
+<td>true</td>
+<td></td>
+<td></td>
+<td>Timestamp when the customer was created</td>
+</tr>
+<tr>
+<td>id</td>
+<td>text</td>
+<td></td>
+<td>false</td>
+<td><a href="public.accounts.html">public.accounts</a> <a href="public.customer_metadata.html">public.customer_metadata</a></td>
+<td></td>
+<td>UUID primary key</td>
+</tr>
+<tr>
+<td>max_balance_amount</td>
+<td>varchar(50)</td>
+<td>''::character varying</td>
+<td>false</td>
+<td></td>
+<td></td>
+<td>Maximum allowed balance amount (empty = no limit)</td>
+</tr>
+<tr>
+<td>max_balance_commodity</td>
+<td>varchar(50)</td>
+<td>''::character varying</td>
+<td>false</td>
+<td></td>
+<td></td>
+<td>Commodity for the max balance constraint</td>
+</tr>
+<tr>
+<td>name</td>
+<td>varchar(200)</td>
+<td></td>
+<td>false</td>
+<td></td>
+<td></td>
+<td>Customer name (unique)</td>
+</tr>
+</tbody>
+</table>
+<h2>Constraints</h2>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>customers_name_key</td>
+<td>UNIQUE</td>
+<td>UNIQUE (name)</td>
+</tr>
+<tr>
+<td>customers_pkey</td>
+<td>PRIMARY KEY</td>
+<td>PRIMARY KEY (id)</td>
+</tr>
+</tbody>
+</table>
+<h2>Indexes</h2>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>customers_name_key</td>
+<td>CREATE UNIQUE INDEX customers_name_key ON public.customers USING btree (name)</td>
+</tr>
+<tr>
+<td>customers_pkey</td>
+<td>CREATE UNIQUE INDEX customers_pkey ON public.customers USING btree (id)</td>
+</tr>
+</tbody>
+</table>
+<h2>Relations</h2>
+<pre class="mermaid">erDiagram
+
+&quot;public.accounts&quot; }o--o| &quot;public.customers&quot; : &quot;FOREIGN KEY (customer_id) REFERENCES customers(id)&quot;
+&quot;public.customer_metadata&quot; }o--|| &quot;public.customers&quot; : &quot;FOREIGN KEY (customer_id) REFERENCES customers(id)&quot;
+
+&quot;public.customers&quot; {
+  timestamp_without_time_zone created_at &quot;Timestamp when the customer was created&quot;
+  text id &quot;UUID primary key&quot;
+  varchar_50_ max_balance_amount &quot;Maximum allowed balance amount (empty = no limit)&quot;
+  varchar_50_ max_balance_commodity &quot;Commodity for the max balance constraint&quot;
+  varchar_200_ name &quot;Customer name (unique)&quot;
+}
+&quot;public.accounts&quot; {
+  varchar_100_ account_id &quot;Specific account identifier within the product&quot;
+  varchar_50_ account_type &quot;One of: Asset, Liability, Equity, Income, Expense&quot;
+  varchar_100_ address &quot;Sub-address within the account (e.g. branch). 'Pending' marks pending accounts&quot;
+  varchar_50_ commodity FK &quot;Commodity code (FK to commodities.code)&quot;
+  timestamp_without_time_zone created_at &quot;Timestamp when the account was created&quot;
+  text customer_id FK &quot;Optional owning customer (FK to customers.id). A customer may have many accounts&quot;
+  varchar_500_ full_path &quot;Hierarchical account path, e.g. Asset:Bank:Current:Main&quot;
+  numeric_10_6_ gross_interest_rate &quot;Gross annual interest rate as a decimal (0.045 = 4.5%)&quot;
+  text id &quot;UUID primary key&quot;
+  bigint interest_accumulator &quot;Sub-unit fractions at extended precision (method-dependent)&quot;
+  varchar_20_ interest_method &quot;Interest calculation method (e.g. simple_daily)&quot;
+  boolean is_pending &quot;True if this is a pending/suspense account&quot;
+  timestamp_without_time_zone opened_at &quot;When the account was opened&quot;
+  varchar_100_ product &quot;Product category within the account type&quot;
+}
+&quot;public.customer_metadata&quot; {
+  text customer_id FK &quot;FK to customers.id&quot;
+  text id &quot;UUID primary key&quot;
+  varchar_200_ key &quot;Metadata key&quot;
+  varchar_500_ value &quot;Metadata value&quot;
+}
+</pre>
+<hr>
+<blockquote>
+<p>Generated by <a href="https://github.com/k1LoW/tbls">tbls</a></p>
+</blockquote>
+
+            </div>
+        </div>
+    </section>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+</body>
+</html>

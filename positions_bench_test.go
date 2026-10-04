@@ -83,7 +83,7 @@ func BenchmarkPositions(b *testing.B) {
 					for rows.Next() {
 						n++
 					}
-					rows.Close()
+					_ = rows.Close()
 					if n == 0 {
 						b.Fatal("no rows")
 					}

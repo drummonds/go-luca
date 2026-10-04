@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>commodity_metadata - go-luca</title>
+    <title>public.customer_metadata - go-luca</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
     <style>
         pre {
@@ -37,23 +37,13 @@
             <nav class="breadcrumb" aria-label="breadcrumbs">
                 <ul>
                     <li><a href="../index.html">go-luca</a></li>
-                    <li class="is-active"><a href="#" aria-current="page">commodity_metadata</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">public.customer_metadata</a></li>
                 </ul>
             </nav>
             <div class="content">
-<h1>commodity_metadata</h1>
+<h1>public.customer_metadata</h1>
 <h2>Description</h2>
-<p>Key-value metadata for commodities.</p>
-<details>
-<summary><strong>Table Definition</strong></summary>
-<pre><code class="language-sql">CREATE TABLE commodity_metadata (
-    id TEXT PRIMARY KEY,
-    commodity_id TEXT NOT NULL REFERENCES commodities(id),
-    key TEXT NOT NULL,
-    value TEXT NOT NULL DEFAULT ''
-)
-</code></pre>
-</details>
+<p>Key-value metadata for customers.</p>
 <h2>Columns</h2>
 <table>
 <thead>
@@ -69,26 +59,26 @@
 </thead>
 <tbody>
 <tr>
-<td>commodity_id</td>
-<td>TEXT</td>
+<td>customer_id</td>
+<td>text</td>
 <td></td>
 <td>false</td>
 <td></td>
-<td><a href="commodities.html">commodities</a></td>
-<td>FK to commodities.id</td>
+<td><a href="public.customers.html">public.customers</a></td>
+<td>FK to customers.id</td>
 </tr>
 <tr>
 <td>id</td>
-<td>TEXT</td>
+<td>text</td>
 <td></td>
-<td>true</td>
+<td>false</td>
 <td></td>
 <td></td>
 <td>UUID primary key</td>
 </tr>
 <tr>
 <td>key</td>
-<td>TEXT</td>
+<td>varchar(200)</td>
 <td></td>
 <td>false</td>
 <td></td>
@@ -97,8 +87,8 @@
 </tr>
 <tr>
 <td>value</td>
-<td>TEXT</td>
-<td>''</td>
+<td>varchar(500)</td>
+<td>''::character varying</td>
 <td>false</td>
 <td></td>
 <td></td>
@@ -117,17 +107,12 @@
 </thead>
 <tbody>
 <tr>
-<td>- (Foreign key ID: 0)</td>
+<td>customer_metadata_customer_id_fkey</td>
 <td>FOREIGN KEY</td>
-<td>FOREIGN KEY (commodity_id) REFERENCES commodities (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE</td>
+<td>FOREIGN KEY (customer_id) REFERENCES customers(id)</td>
 </tr>
 <tr>
-<td>id</td>
-<td>PRIMARY KEY</td>
-<td>PRIMARY KEY (id)</td>
-</tr>
-<tr>
-<td>sqlite_autoindex_commodity_metadata_1</td>
+<td>customer_metadata_pkey</td>
 <td>PRIMARY KEY</td>
 <td>PRIMARY KEY (id)</td>
 </tr>
@@ -143,33 +128,32 @@
 </thead>
 <tbody>
 <tr>
-<td>idx_commodity_metadata_unique</td>
-<td>CREATE UNIQUE INDEX idx_commodity_metadata_unique ON commodity_metadata(commodity_id, key)</td>
+<td>customer_metadata_pkey</td>
+<td>CREATE UNIQUE INDEX customer_metadata_pkey ON public.customer_metadata USING btree (id)</td>
 </tr>
 <tr>
-<td>sqlite_autoindex_commodity_metadata_1</td>
-<td>PRIMARY KEY (id)</td>
+<td>idx_customer_metadata_unique</td>
+<td>CREATE UNIQUE INDEX idx_customer_metadata_unique ON public.customer_metadata USING btree (customer_id, key)</td>
 </tr>
 </tbody>
 </table>
 <h2>Relations</h2>
 <pre class="mermaid">erDiagram
 
-&quot;commodity_metadata&quot; }o--|| &quot;commodities&quot; : &quot;FOREIGN KEY (commodity_id) REFERENCES commodities (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
-&quot;commodity_metadata&quot; }o--|| &quot;commodities&quot; : &quot;commodity_metadata.commodity_id -&gt; commodities.id&quot;
+&quot;public.customer_metadata&quot; }o--|| &quot;public.customers&quot; : &quot;FOREIGN KEY (customer_id) REFERENCES customers(id)&quot;
 
-&quot;commodity_metadata&quot; {
-  TEXT commodity_id FK &quot;FK to commodities.id&quot;
-  TEXT id PK &quot;UUID primary key&quot;
-  TEXT key &quot;Metadata key&quot;
-  TEXT value &quot;Metadata value&quot;
+&quot;public.customer_metadata&quot; {
+  text customer_id FK &quot;FK to customers.id&quot;
+  text id &quot;UUID primary key&quot;
+  varchar_200_ key &quot;Metadata key&quot;
+  varchar_500_ value &quot;Metadata value&quot;
 }
-&quot;commodities&quot; {
-  TEXT code &quot;Unique commodity code (e.g. GBP, USD, BTC)&quot;
-  TEXT created_at &quot;Timestamp when the commodity was created&quot;
-  TEXT datetime &quot;Optional date associated with the commodity definition&quot;
-  INTEGER exponent &quot;Decimal exponent for amount precision (-2 = pence, -8 = satoshi)&quot;
-  TEXT id PK &quot;UUID primary key&quot;
+&quot;public.customers&quot; {
+  timestamp_without_time_zone created_at &quot;Timestamp when the customer was created&quot;
+  text id &quot;UUID primary key&quot;
+  varchar_50_ max_balance_amount &quot;Maximum allowed balance amount (empty = no limit)&quot;
+  varchar_50_ max_balance_commodity &quot;Commodity for the max balance constraint&quot;
+  varchar_200_ name &quot;Customer name (unique)&quot;
 }
 </pre>
 <hr>

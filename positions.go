@@ -79,12 +79,12 @@ func reproject(tx dbtx, accountID string, day time.Time) error {
 	for rows.Next() {
 		var s string
 		if err := rows.Scan(&s); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return err
 		}
 		days = append(days, parseDBTime(s))
 	}
-	rows.Close()
+	_ = rows.Close()
 	if len(days) == 0 || !days[0].Equal(utc(day)) {
 		days = append([]time.Time{utc(day)}, days...)
 	}

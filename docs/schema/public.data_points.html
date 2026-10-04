@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>customer_metadata - go-luca</title>
+    <title>public.data_points - go-luca</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
     <style>
         pre {
@@ -37,23 +37,13 @@
             <nav class="breadcrumb" aria-label="breadcrumbs">
                 <ul>
                     <li><a href="../index.html">go-luca</a></li>
-                    <li class="is-active"><a href="#" aria-current="page">customer_metadata</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">public.data_points</a></li>
                 </ul>
             </nav>
             <div class="content">
-<h1>customer_metadata</h1>
+<h1>public.data_points</h1>
 <h2>Description</h2>
-<p>Key-value metadata for customers.</p>
-<details>
-<summary><strong>Table Definition</strong></summary>
-<pre><code class="language-sql">CREATE TABLE customer_metadata (
-    id TEXT PRIMARY KEY,
-    customer_id TEXT NOT NULL REFERENCES customers(id),
-    key TEXT NOT NULL,
-    value TEXT NOT NULL DEFAULT ''
-)
-</code></pre>
-</details>
+<p>Time-series parameter values. Stores named data points with value and knowledge timestamps for bitemporal queries (e.g. interest rate changes, exchange rates).</p>
 <h2>Columns</h2>
 <table>
 <thead>
@@ -69,40 +59,67 @@
 </thead>
 <tbody>
 <tr>
-<td>customer_id</td>
-<td>TEXT</td>
+<td>created_at</td>
+<td>timestamp without time zone</td>
+<td>now()</td>
+<td>true</td>
 <td></td>
-<td>false</td>
 <td></td>
-<td><a href="customers.html">customers</a></td>
-<td>FK to customers.id</td>
+<td>Timestamp when the data point was created</td>
 </tr>
 <tr>
 <td>id</td>
-<td>TEXT</td>
+<td>text</td>
 <td></td>
-<td>true</td>
+<td>false</td>
 <td></td>
 <td></td>
 <td>UUID primary key</td>
 </tr>
 <tr>
-<td>key</td>
-<td>TEXT</td>
+<td>knowledge_time</td>
+<td>timestamp without time zone</td>
+<td>now()</td>
+<td>true</td>
 <td></td>
-<td>false</td>
 <td></td>
-<td></td>
-<td>Metadata key</td>
+<td>When the system learned about this value</td>
 </tr>
 <tr>
-<td>value</td>
-<td>TEXT</td>
-<td>''</td>
+<td>param_name</td>
+<td>varchar(200)</td>
+<td></td>
 <td>false</td>
 <td></td>
 <td></td>
-<td>Metadata value</td>
+<td>Parameter name (e.g. base-rate)</td>
+</tr>
+<tr>
+<td>param_type</td>
+<td>varchar(20)</td>
+<td>'string'::character varying</td>
+<td>false</td>
+<td></td>
+<td></td>
+<td>Value type: string, number, or bool</td>
+</tr>
+<tr>
+<td>param_value</td>
+<td>varchar(500)</td>
+<td>''::character varying</td>
+<td>false</td>
+<td></td>
+<td></td>
+<td>The parameter value as a string</td>
+</tr>
+<tr>
+<td>value_time</td>
+<td>timestamp without time zone</td>
+<td></td>
+<td>false</td>
+<td></td>
+<td></td>
+<td>When this value became effective</td>
 </tr>
 </tbody>
 </table>
@@ -117,17 +134,7 @@
 </thead>
 <tbody>
 <tr>
-<td>- (Foreign key ID: 0)</td>
-<td>FOREIGN KEY</td>
-<td>FOREIGN KEY (customer_id) REFERENCES customers (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE</td>
-</tr>
-<tr>
-<td>id</td>
-<td>PRIMARY KEY</td>
-<td>PRIMARY KEY (id)</td>
-</tr>
-<tr>
-<td>sqlite_autoindex_customer_metadata_1</td>
+<td>data_points_pkey</td>
 <td>PRIMARY KEY</td>
 <td>PRIMARY KEY (id)</td>
 </tr>
@@ -143,33 +150,27 @@
 </thead>
 <tbody>
 <tr>
-<td>idx_customer_metadata_unique</td>
-<td>CREATE UNIQUE INDEX idx_customer_metadata_unique ON customer_metadata(customer_id, key)</td>
+<td>data_points_pkey</td>
+<td>CREATE UNIQUE INDEX data_points_pkey ON public.data_points USING btree (id)</td>
 </tr>
 <tr>
-<td>sqlite_autoindex_customer_metadata_1</td>
-<td>PRIMARY KEY (id)</td>
+<td>idx_data_points_name_time</td>
+<td>CREATE INDEX idx_data_points_name_time ON public.data_points USING btree (param_name, value_time)</td>
 </tr>
 </tbody>
 </table>
 <h2>Relations</h2>
 <pre class="mermaid">erDiagram
 
-&quot;customer_metadata&quot; }o--|| &quot;customers&quot; : &quot;FOREIGN KEY (customer_id) REFERENCES customers (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE&quot;
-&quot;customer_metadata&quot; }o--|| &quot;customers&quot; : &quot;customer_metadata.customer_id -&gt; customers.id&quot;
 
-&quot;customer_metadata&quot; {
-  TEXT customer_id FK &quot;FK to customers.id&quot;
-  TEXT id PK &quot;UUID primary key&quot;
-  TEXT key &quot;Metadata key&quot;
-  TEXT value &quot;Metadata value&quot;
-}
-&quot;customers&quot; {
-  TEXT created_at &quot;Timestamp when the customer was created&quot;
-  TEXT id PK &quot;UUID primary key&quot;
-  TEXT max_balance_amount &quot;Maximum allowed balance amount (empty = no limit)&quot;
-  TEXT max_balance_commodity &quot;Commodity for the max balance constraint&quot;
-  TEXT name &quot;Customer name (unique)&quot;
+&quot;public.data_points&quot; {
+  timestamp_without_time_zone created_at &quot;Timestamp when the data point was created&quot;
+  text id &quot;UUID primary key&quot;
+  timestamp_without_time_zone knowledge_time &quot;When the system learned about this value&quot;
+  varchar_200_ param_name &quot;Parameter name (e.g. base-rate)&quot;
+  varchar_20_ param_type &quot;Value type: string, number, or bool&quot;
+  varchar_500_ param_value &quot;The parameter value as a string&quot;
+  timestamp_without_time_zone value_time &quot;When this value became effective&quot;
 }
 </pre>
 <hr>

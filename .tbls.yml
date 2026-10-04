@@ -1,15 +1,13 @@
 name: go-luca
 desc: Movement-based double-entry bookkeeping database schema
 
-dsn: "sqlite:///tmp/go-luca-schema.db"
+# Set by the tbls:doc task to the throwaway PostgreSQL it starts.
+dsn: ${TBLS_DSN}
 docPath: docs/schema
 
 er:
   format: mermaid
   comment: true
-
-exclude:
-  - _sequences
 
 format:
   adjust: true
@@ -151,61 +149,3 @@ comments:
       param_type: "Value type: string, number, or bool"
       param_value: "The parameter value as a string"
       created_at: "Timestamp when the data point was created"
-
-relations:
-  - table: accounts
-    columns:
-      - commodity
-    parentTable: commodities
-    parentColumns:
-      - code
-    def: "accounts.commodity -> commodities.code"
-  - table: accounts
-    columns:
-      - customer_id
-    parentTable: customers
-    parentColumns:
-      - id
-    def: "accounts.customer_id -> customers.id"
-  - table: movements
-    columns:
-      - from_account_id
-    parentTable: accounts
-    parentColumns:
-      - id
-    def: "movements.from_account_id -> accounts.id"
-  - table: movements
-    columns:
-      - to_account_id
-    parentTable: accounts
-    parentColumns:
-      - id
-    def: "movements.to_account_id -> accounts.id"
-  - table: balances_live
-    columns:
-      - account_id
-    parentTable: accounts
-    parentColumns:
-      - id
-    def: "balances_live.account_id -> accounts.id"
-  - table: commodity_metadata
-    columns:
-      - commodity_id
-    parentTable: commodities
-    parentColumns:
-      - id
-    def: "commodity_metadata.commodity_id -> commodities.id"
-  - table: aliases
-    columns:
-      - account_path
-    parentTable: accounts
-    parentColumns:
-      - full_path
-    def: "aliases.account_path -> accounts.full_path"
-  - table: customer_metadata
-    columns:
-      - customer_id
-    parentTable: customers
-    parentColumns:
-      - id
-    def: "customer_metadata.customer_id -> customers.id"

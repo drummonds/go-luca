@@ -180,7 +180,7 @@ func TestEODPositionsViewPublishesNumericMoney(t *testing.T) {
 	if err != nil {
 		t.Fatalf("eod view: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	want := [][3]string{{"Liability:Savings:0001", "1001.27", "0.0000000"}, {"Liability:Savings:0001", "1001.27", "0.4109589"}}
 	for i := 0; rows.Next(); i++ {
 		var path, balance, accrued string

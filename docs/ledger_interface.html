@@ -63,7 +63,18 @@
 <li><code>BalanceAt</code> — balance at a point in time (value_time &lt;= t)</li>
 <li><code>BalanceByPath</code> — aggregate balance across accounts matching a path prefix</li>
 <li><code>DailyBalances</code> — day-by-day closing balances over a date range</li>
-<li><code>GetLiveBalance</code> — pre-computed end-of-day balance snapshot</li>
+</ul>
+<h3>Positions</h3>
+<p>Stored end-of-day projections: an account's balance and its accrued-but-unapplied
+interest (an exact <code>Fraction</code>) per day. <code>RecordMovementWithProjections</code> rewrites
+both accounts' positions from the movement's day onwards; a backdated movement
+corrects every later day. Published as the contract views
+<code>contract_ledger_eod_positions</code> (one row per account per day; cheap) and
+<code>contract_ledger_live_positions</code> (latest position plus movements since; dearer),
+with money as NUMERIC in major units.</p>
+<ul>
+<li><code>Project</code> — write a day's position with no movement: the ledger's balance for that day and the caller's accrued interest</li>
+<li><code>PositionAt</code> — the latest position on or before a day</li>
 </ul>
 <h3>Interest</h3>
 <ul>
@@ -115,7 +126,7 @@
 <td>Stub</td>
 </tr>
 <tr>
-<td>GetLiveBalance</td>
+<td>Positions (Project, PositionAt)</td>
 <td>Full</td>
 <td>Stub</td>
 </tr>
