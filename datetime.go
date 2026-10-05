@@ -135,9 +135,7 @@ func DateTimeFromTime(t time.Time) DateTime {
 	if t.Hour() != 0 || t.Minute() != 0 || t.Second() != 0 || t.Nanosecond() != 0 {
 		dt.Time = t.Format("15:04:05")
 		if t.Nanosecond() != 0 {
-			ns := fmt.Sprintf(".%09d", t.Nanosecond())
-			ns = strings.TrimRight(ns, "0")
-			dt.Fractional = ns
+			dt.Fractional = fractionalSeconds(t.Nanosecond())
 		}
 		_, offset := t.Zone()
 		if offset == 0 {
@@ -152,4 +150,18 @@ func DateTimeFromTime(t time.Time) DateTime {
 		}
 	}
 	return dt
+}
+
+// fractionalSeconds formats a nanosecond count as the shortest of ".mmm",
+// ".mmmuuu" or ".mmmuuunnn" that loses no precision. The grammar's
+// fractional rule only accepts 3, 6 or 9 digits, so trimming to an
+// arbitrary width would make the exported text unparseable.
+func fractionalSeconds(nsec int) string {
+	ns := fmt.Sprintf("%09d", nsec)
+	for _, width := range []int{3, 6} {
+		if strings.TrimRight(ns[width:], "0") == "" {
+			return "." + ns[:width]
+		}
+	}
+	return "." + ns
 }

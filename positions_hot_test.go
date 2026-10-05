@@ -15,7 +15,7 @@ func TestHotAccountProjectionsStayExactUnderManyMovements(t *testing.T) {
 	day := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
 	const n = 200
 	var ids []string
-	for i := 0; i < n; i++ {
+	for i := range n {
 		a, err := l.CreateAccount("Liability:Savings:"+string(rune('a'+i%26))+string(rune('a'+i/26)), "GBP", -2, 0)
 		if err != nil {
 			t.Fatal(err)

@@ -16,6 +16,13 @@
   day is projected, so a restart mid-day reads the accrual as last
   projected rather than zero.
 
+### Fixed
+- Export writes fractional seconds as 3, 6 or 9 digits, the only widths
+  the grammar accepts. A knowledge time whose nanoseconds ended in a zero
+  was exported with 7 or 8 digits, and re-import silently dropped the
+  tail, so export → import → export was not stable (flaky
+  `TestImportExportRoundTrip`).
+
 ## [0.3.0] - 2026-10-05
 
  - Release prep

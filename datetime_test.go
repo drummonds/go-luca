@@ -221,6 +221,16 @@ func TestDateTimeFromTime(t *testing.T) {
 			time.Date(2026, 2, 7, 14, 30, 0, 123000000, time.UTC),
 			DateTime{Date: "2026-02-07", Time: "14:30:00", Fractional: ".123", Timezone: "Z"},
 		},
+		{
+			"fraction keeps a whole group of three (grammar accepts 3, 6 or 9 digits only)",
+			time.Date(2026, 2, 7, 14, 30, 0, 788639130, time.UTC),
+			DateTime{Date: "2026-02-07", Time: "14:30:00", Fractional: ".788639130", Timezone: "Z"},
+		},
+		{
+			"fraction rounds up to six digits",
+			time.Date(2026, 2, 7, 14, 30, 0, 123400000, time.UTC),
+			DateTime{Date: "2026-02-07", Time: "14:30:00", Fractional: ".123400", Timezone: "Z"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
