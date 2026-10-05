@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-05
+
 ### Added
 - `Positions(day)`: every account's latest position on or before a day in
   one query, for a process rebuilding its caches at start.
