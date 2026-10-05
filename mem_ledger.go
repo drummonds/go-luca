@@ -247,6 +247,10 @@ func (m *MemLedger) PositionAt(accountID string, day time.Time) (*Position, erro
 	return nil, ErrNotImplemented
 }
 
+func (m *MemLedger) Positions(day time.Time) ([]Position, error) {
+	return nil, ErrNotImplemented
+}
+
 func (m *MemLedger) SetInterestMethod(accountID string, method InterestMethod) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

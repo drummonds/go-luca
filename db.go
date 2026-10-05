@@ -455,10 +455,11 @@ func (l *SQLLedger) RecordMovementWithProjections(fromAccountID, toAccountID str
 		return nil, fmt.Errorf("insert movement: %w", err)
 	}
 
-	for _, accountID := range []string{fromAccountID, toAccountID} {
-		if err := reproject(tx, accountID, valueTime); err != nil {
-			return nil, err
-		}
+	if err := projectMovement(tx, fromAccountID, valueTime, -amount); err != nil {
+		return nil, err
+	}
+	if err := projectMovement(tx, toAccountID, valueTime, amount); err != nil {
+		return nil, err
 	}
 
 	if err := commit(); err != nil {

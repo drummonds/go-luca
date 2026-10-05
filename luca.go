@@ -61,6 +61,7 @@ type Ledger interface {
 	// interest), published through the contract views in SchemaSQL.
 	Project(accountID string, day time.Time, accrued Fraction) (*Position, error)
 	PositionAt(accountID string, day time.Time) (*Position, error)
+	Positions(day time.Time) ([]Position, error)
 
 	// Interest (account metadata only; computation lives in gobank-products)
 	SetInterestMethod(accountID string, method InterestMethod) error

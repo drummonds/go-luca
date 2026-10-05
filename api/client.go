@@ -250,6 +250,10 @@ func (c *Client) PositionAt(accountID string, day time.Time) (*luca.Position, er
 	return nil, luca.ErrNotImplemented
 }
 
+func (c *Client) Positions(day time.Time) ([]luca.Position, error) {
+	return nil, luca.ErrNotImplemented
+}
+
 func (c *Client) SetInterestMethod(accountID string, method luca.InterestMethod) error {
 	var resp map[string]string
 	return c.post("/accounts/set-interest-method", setInterestMethodReq{

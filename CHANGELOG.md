@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Added
+- `Positions(day)`: every account's latest position on or before a day in
+  one query, for a process rebuilding its caches at start.
+
+### Changed
+- Projecting a movement is constant cost: the positions on and after its
+  value day move by its amount (two statements), and only a day with no
+  position yet is built from the one before. A hot account such as cash
+  or a P&L account therefore costs the same per movement however many it
+  takes (`BenchmarkHotAccountProjection`). A day's row opened by a
+  movement carries the previous position's accrual forward until the
+  day is projected, so a restart mid-day reads the accrual as last
+  projected rather than zero.
+
 ## [0.3.0] - 2026-10-05
 
  - Release prep

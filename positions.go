@@ -104,6 +104,57 @@ func reproject(tx dbtx, accountID string, day time.Time) error {
 	return nil
 }
 
+// projectMovement folds one movement, already inserted, into the account's
+// positions: every position on or after its value day moves by amount,
+// and if the day has no position yet one is built from the position before
+// it and the movements between (the usual case for the first movement of a
+// day). Two statements for an account that already has the day's row, so
+// a hot account costs the same per movement however many it takes.
+func projectMovement(tx dbtx, accountID string, day time.Time, amount Amount) error {
+	day = dayStart(day)
+	if _, err := tx.Exec(
+		`UPDATE balances_live SET balance = balance + $1
+		 WHERE account_id = $2 AND balance_date >= $3`,
+		amount, accountID, utc(day)); err != nil {
+		return fmt.Errorf("move positions: %w", err)
+	}
+	var exists int
+	err := tx.QueryRow(
+		`SELECT 1 FROM balances_live WHERE account_id = $1 AND balance_date = $2`,
+		accountID, utc(day)).Scan(&exists)
+	switch {
+	case err == nil:
+		return nil
+	case err != sql.ErrNoRows:
+		return fmt.Errorf("day position: %w", err)
+	}
+	// No position for the day: build it from the one before, carrying
+	// that position's accrual forward until the day is projected. Later
+	// rows were already moved by the update above and stay correct.
+	var base Amount
+	var baseFrom time.Time
+	var baseDay string
+	accrued := Fraction{Num: 0, Den: 1}
+	err = tx.QueryRow(
+		`SELECT balance_date, balance, accrued_num, accrued_den FROM balances_live
+		 WHERE account_id = $1 AND balance_date < $2
+		 ORDER BY balance_date DESC LIMIT 1`,
+		accountID, utc(day),
+	).Scan(&baseDay, &base, &accrued.Num, &accrued.Den)
+	switch {
+	case err == sql.ErrNoRows:
+	case err != nil:
+		return fmt.Errorf("previous position: %w", err)
+	default:
+		baseFrom = parseDBTime(baseDay).AddDate(0, 0, 1)
+	}
+	delta, err := rangeDelta(tx, accountID, baseFrom, day.AddDate(0, 0, 1))
+	if err != nil {
+		return err
+	}
+	return upsertPosition(tx, accountID, day, base+delta, &accrued)
+}
+
 // upsertPosition writes a day's balance and, when accrued is given, its
 // accrual. Update first, insert when the day is new.
 func upsertPosition(tx dbtx, accountID string, day time.Time, balance Amount, accrued *Fraction) error {
@@ -170,6 +221,35 @@ func (l *SQLLedger) Project(accountID string, day time.Time, accrued Fraction) (
 		return nil, fmt.Errorf("commit: %w", err)
 	}
 	return &Position{AccountID: accountID, Day: utc(dayStart(day)), Balance: balance, Accrued: accrued}, nil
+}
+
+// Positions returns every account's latest position on or before day, in
+// one query, for a process rebuilding its caches at start.
+func (l *SQLLedger) Positions(day time.Time) ([]Position, error) {
+	rows, err := l.db.Query(
+		`SELECT p.account_id, p.balance_date, p.balance, p.accrued_num, p.accrued_den
+		 FROM balances_live p
+		 JOIN (SELECT account_id, MAX(balance_date) AS latest
+		       FROM balances_live WHERE balance_date <= $1 GROUP BY account_id) q
+		   ON q.account_id = p.account_id AND q.latest = p.balance_date
+		 ORDER BY p.account_id`,
+		utc(dayStart(day)),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("positions: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var out []Position
+	for rows.Next() {
+		var p Position
+		var dayStr string
+		if err := rows.Scan(&p.AccountID, &dayStr, &p.Balance, &p.Accrued.Num, &p.Accrued.Den); err != nil {
+			return nil, fmt.Errorf("positions: %w", err)
+		}
+		p.Day = parseDBTime(dayStr)
+		out = append(out, p)
+	}
+	return out, rows.Err()
 }
 
 // PositionAt returns the account's latest position on or before day, or
