@@ -8,7 +8,7 @@
 - `MemLedger` — pure Go in-memory backend (core ops, stubs for advanced)
 - `NewSQLLedger(db)` for bring-your-own-driver
 
-### Positions and contract views (unreleased)
+### Positions and contract views (v0.3.0, v0.3.1)
 - Stored end-of-day projections for both accounts of a movement, rebuilt
   incrementally from the previous position, and `Project` for a day with no
   movement (gobank ADR-0002 stage 3's daily pass)
@@ -17,31 +17,20 @@
   and `contract_ledger_live_positions`, money as NUMERIC in major units
 - `knowledge_time` stored on every write path
 
-## In Progress
-
-### API Layer
+### API Layer (v0.2.6)
 HTTP/JSON API wrapping the Ledger interface for decoupled access.
-
-**Packages:**
 - `api/` — server (HTTP handlers) and client (Go HTTP client implementing `Ledger`)
-- `cmd/luca-server/` — binary serving the API
+- Endpoints for accounts, movements, balances, options, commodities, aliases,
+  customers, data points and import/export. Interest endpoints went with the
+  interest logic in v0.2.26 (gobank-products owns it)
+- `api.Client` implements `Ledger` — callers can swap between direct library use
+  and the API transparently
+- Not built: `cmd/luca-server/` binary; the server is embedded by its consumers
 
-**Endpoints** (all JSON, POST for writes, GET for reads):
-- `/accounts` — create, get, list
-- `/movements` — record, record-linked, list
-- `/balances` — balance, balance-at, balance-by-path, daily-balances, live-balance
-- `/interest` — ensure-accounts, calculate, run-daily, run-period
-- `/import`, `/export` — journal import/export
-
-**Key design:** `api.Client` implements `Ledger` — callers can swap between direct library use and API transparently.
-
-### Direct vs API Benchmark
-Compare performance of direct method calls against the HTTP/JSON API layer.
-
+### Direct vs API Benchmark (v0.2.9)
 - `cmd/bench-api/` — standalone benchmark using `internal/benchutil`
-- Measures: single movement TPS, balance query latency, linked movement batch throughput
+- Single movement TPS, balance query latency, linked movement batch throughput
 - Reports and analysis in `benchmarks/ledger-backends/`
-- Appears in docs documentation table
 
 ## Planned
 
