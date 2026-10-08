@@ -92,6 +92,9 @@ CREATE INDEX IF NOT EXISTS idx_movements_from ON movements(from_account_id, valu
 CREATE INDEX IF NOT EXISTS idx_movements_to ON movements(to_account_id, value_time);
 CREATE INDEX IF NOT EXISTS idx_movements_batch ON movements(batch_id);
 CREATE INDEX IF NOT EXISTS idx_movements_code ON movements(to_account_id, code, value_time);
+-- A day's movements across every account (a general ledger's journal
+-- derives from them): bounded by the day, not the account.
+CREATE INDEX IF NOT EXISTS idx_movements_value_time ON movements(value_time);
 
 CREATE TABLE IF NOT EXISTS balances_live (
     id TEXT PRIMARY KEY,
@@ -102,6 +105,11 @@ CREATE TABLE IF NOT EXISTS balances_live (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_balances_live_unique
     ON balances_live(account_id, balance_date);
+-- A day's positions across every account (reconciliation, the pass's
+-- unprojected list, a business-day live read): the day first, then the
+-- account so a (day, account) probe is one lookup.
+CREATE INDEX IF NOT EXISTS idx_balances_live_day
+    ON balances_live(balance_date, account_id);
 
 CREATE TABLE IF NOT EXISTS aliases (
     id TEXT PRIMARY KEY,
