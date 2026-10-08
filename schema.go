@@ -231,8 +231,8 @@ CREATE VIEW contract_ledger_live_positions AS
 `
 
 // createSchema executes the DDL statements to create tables and indexes.
-func createSchema(db *sql.DB) error {
-	return gdb.Migrate(context.Background(), db, SchemaSQL)
+func createSchema(db *sql.DB, schema string) error {
+	return gdb.Migrate(context.Background(), db, schema)
 }
 
 // CreateSchemaDB creates a pglike (SQLite) database at path with the go-luca

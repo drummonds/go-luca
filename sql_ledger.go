@@ -23,6 +23,7 @@ type beginner interface {
 // Works with any database/sql driver (pglike, postgres, etc.).
 type SQLLedger struct {
 	db     dbtx
+	names  *names    // nil: the unprefixed ledger
 	scales *sync.Map // account ID → *accountScale, shared with WithTx views
 }
 
@@ -34,19 +35,19 @@ var _ Ledger = (*SQLLedger)(nil)
 // run directly on tx instead, nothing is committed by the ledger, and on
 // error the caller should roll tx back.
 func (l *SQLLedger) WithTx(tx *sql.Tx) *SQLLedger {
-	return &SQLLedger{db: tx, scales: l.scales}
+	return &SQLLedger{db: l.wrap(tx), names: l.names, scales: l.scales}
 }
 
 // begin starts a transaction when the ledger owns a *sql.DB. When the ledger
 // is bound to a caller's transaction (WithTx), it returns that transaction
 // with no-op commit and rollback — the caller owns the transaction's fate.
 func (l *SQLLedger) begin() (q dbtx, commit func() error, rollback func() error, err error) {
-	if b, ok := l.db.(beginner); ok {
+	if b, ok := unwrap(l.db).(beginner); ok {
 		tx, err := b.Begin()
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		return tx, tx.Commit, tx.Rollback, nil
+		return l.wrap(tx), tx.Commit, tx.Rollback, nil
 	}
 	noop := func() error { return nil }
 	return l.db, noop, noop, nil
@@ -65,9 +66,17 @@ func NewLedger(dsn string) (*SQLLedger, error) {
 
 // NewSQLLedger wraps a pre-opened *sql.DB and ensures the schema exists.
 // Use this to connect with any database/sql driver (e.g. real postgres).
-func NewSQLLedger(db *sql.DB) (*SQLLedger, error) {
-	l := &SQLLedger{db: db, scales: &sync.Map{}}
-	if err := createSchema(db); err != nil {
+// With Prefix, the ledger's tables and views are named apart so another
+// ledger can share the database.
+func NewSQLLedger(db *sql.DB, opts ...LedgerOption) (*SQLLedger, error) {
+	l := &SQLLedger{scales: &sync.Map{}}
+	for _, opt := range opts {
+		if err := opt(l); err != nil {
+			return nil, err
+		}
+	}
+	l.db = l.wrap(db)
+	if err := createSchema(db, l.names.sql(SchemaSQL)); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("create schema: %w", err)
 	}
@@ -77,7 +86,7 @@ func NewSQLLedger(db *sql.DB) (*SQLLedger, error) {
 // Close closes the underlying database connection. On a tx-bound ledger
 // (WithTx) it is a no-op — the transaction's owner closes the database.
 func (l *SQLLedger) Close() error {
-	if c, ok := l.db.(interface{ Close() error }); ok {
+	if c, ok := unwrap(l.db).(interface{ Close() error }); ok {
 		return c.Close()
 	}
 	return nil
