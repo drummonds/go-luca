@@ -230,6 +230,10 @@
 <td>CREATE INDEX idx_movements_to ON public.movements USING btree (to_account_id, value_time)</td>
 </tr>
 <tr>
+<td>idx_movements_value_time</td>
+<td>CREATE INDEX idx_movements_value_time ON public.movements USING btree (value_time)</td>
+</tr>
+<tr>
 <td>movements_pkey</td>
 <td>CREATE UNIQUE INDEX movements_pkey ON public.movements USING btree (id)</td>
 </tr>

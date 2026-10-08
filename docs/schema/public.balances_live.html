@@ -168,6 +168,10 @@
 <td>CREATE UNIQUE INDEX balances_live_pkey ON public.balances_live USING btree (id)</td>
 </tr>
 <tr>
+<td>idx_balances_live_day</td>
+<td>CREATE INDEX idx_balances_live_day ON public.balances_live USING btree (balance_date, account_id)</td>
+</tr>
+<tr>
 <td>idx_balances_live_unique</td>
 <td>CREATE UNIQUE INDEX idx_balances_live_unique ON public.balances_live USING btree (account_id, balance_date)</td>
 </tr>

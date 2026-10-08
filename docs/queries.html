@@ -255,7 +255,7 @@ grouping of it), <strong>correlated</strong> (a probe or range per account, A ti
 <td>P</td>
 <td>grouped <code>MAX(balance_date)</code> joined back (one scan of balances_live)</td>
 <td><code>DISTINCT ON</code>, <code>LATERAL</code> (Postgres only; views and queries must run on pglike); correlated MAX per account</td>
-<td>a <code>(balance_date, account_id)</code> index would bound the scan to days ≤ day (#9)</td>
+<td>the <code>(balance_date, account_id)</code> index (#9, shipped) bounds the scan to days ≤ day</td>
 </tr>
 <tr>
 <td><code>BalanceByPath(prefix, at)</code></td>
@@ -271,6 +271,22 @@ grouping of it), <strong>correlated</strong> (a probe or range per account, A ti
 <td>rows selected</td>
 <td>positions with paths and money in major units; the cheap view</td>
 <td></td>
+<td></td>
+</tr>
+<tr>
+<td>a day's movements or positions across every account (GL journal, reconciliation, <code>unprojected</code>)</td>
+<td>range</td>
+<td>rows of the day</td>
+<td><code>movements(value_time)</code> and <code>balances_live(balance_date, account_id)</code> indexes (#9)</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>a second ledger in the database</td>
+<td></td>
+<td></td>
+<td><code>Prefix</code> on <code>NewSQLLedger</code> rewrites every statement's names once (#8); cost per statement is a map lookup</td>
+<td>a Postgres schema per ledger (pglike has none)</td>
 <td></td>
 </tr>
 <tr>
@@ -339,7 +355,7 @@ budget is the dashboard's: every customer account summed within a poll
 <td>business-day row: today's else yesterday's row via <code>(balance_date, account_id)</code> index</td>
 <td>A × 2 probes</td>
 <td>likely: no scan of P; A probes</td>
-<td>a <code>ledger_day</code> row the pass advances; the index (#9); a stale account (neither day) falls back to a probe</td>
+<td>a <code>ledger_day</code> row the pass advances; the index (#9, shipped); a stale account (neither day) falls back to a probe</td>
 <td>spike in <code>cmd/bench-compound-movements</code></td>
 </tr>
 <tr>
@@ -360,7 +376,7 @@ budget is the dashboard's: every customer account summed within a poll
 </table>
 <p>Recommendation: the business-day row, because the pass already defines
 the day and the index is wanted for <code>Positions(day)</code> and the pass's
-<code>unprojected</code> anyway (#9); the latest-row table is the fallback if the
+<code>unprojected</code> (#9, shipped); the latest-row table is the fallback if the
 stale-account probe shows up in the figures. The grouped forms stay for
 <code>contract_ledger_latest_positions</code>, which is read once a day, not once a
 poll.</p>

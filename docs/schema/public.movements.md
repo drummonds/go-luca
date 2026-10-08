@@ -33,13 +33,14 @@ Core transaction records. Each movement transfers an integer amount from one acc
 
 ## Indexes
 
-| Name                | Definition                                                                                        |
-| ------------------- | ------------------------------------------------------------------------------------------------- |
-| idx_movements_batch | CREATE INDEX idx_movements_batch ON public.movements USING btree (batch_id)                       |
-| idx_movements_code  | CREATE INDEX idx_movements_code ON public.movements USING btree (to_account_id, code, value_time) |
-| idx_movements_from  | CREATE INDEX idx_movements_from ON public.movements USING btree (from_account_id, value_time)     |
-| idx_movements_to    | CREATE INDEX idx_movements_to ON public.movements USING btree (to_account_id, value_time)         |
-| movements_pkey      | CREATE UNIQUE INDEX movements_pkey ON public.movements USING btree (id)                           |
+| Name                     | Definition                                                                                        |
+| ------------------------ | ------------------------------------------------------------------------------------------------- |
+| idx_movements_batch      | CREATE INDEX idx_movements_batch ON public.movements USING btree (batch_id)                       |
+| idx_movements_code       | CREATE INDEX idx_movements_code ON public.movements USING btree (to_account_id, code, value_time) |
+| idx_movements_from       | CREATE INDEX idx_movements_from ON public.movements USING btree (from_account_id, value_time)     |
+| idx_movements_to         | CREATE INDEX idx_movements_to ON public.movements USING btree (to_account_id, value_time)         |
+| idx_movements_value_time | CREATE INDEX idx_movements_value_time ON public.movements USING btree (value_time)                |
+| movements_pkey           | CREATE UNIQUE INDEX movements_pkey ON public.movements USING btree (id)                           |
 
 ## Relations
 

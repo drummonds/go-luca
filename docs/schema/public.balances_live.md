@@ -30,6 +30,7 @@ Pre-computed end-of-day balance snapshots for today and tomorrow only. Holds at 
 | Name                     | Definition                                                                                                  |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------- |
 | balances_live_pkey       | CREATE UNIQUE INDEX balances_live_pkey ON public.balances_live USING btree (id)                             |
+| idx_balances_live_day    | CREATE INDEX idx_balances_live_day ON public.balances_live USING btree (balance_date, account_id)           |
 | idx_balances_live_unique | CREATE UNIQUE INDEX idx_balances_live_unique ON public.balances_live USING btree (account_id, balance_date) |
 
 ## Relations

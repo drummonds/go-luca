@@ -54,9 +54,11 @@ grouping of it), **correlated** (a probe or range per account, A times).
 
 | Query | Shape | Cost | Chosen | Not chosen | Open |
 |---|---|---|---|---|---|
-| `Positions(day)` | set | P | grouped `MAX(balance_date)` joined back (one scan of balances_live) | `DISTINCT ON`, `LATERAL` (Postgres only; views and queries must run on pglike); correlated MAX per account | a `(balance_date, account_id)` index would bound the scan to days ≤ day (#9) |
+| `Positions(day)` | set | P | grouped `MAX(balance_date)` joined back (one scan of balances_live) | `DISTINCT ON`, `LATERAL` (Postgres only; views and queries must run on pglike); correlated MAX per account | the `(balance_date, account_id)` index (#9, shipped) bounds the scan to days ≤ day |
 | `BalanceByPath(prefix, at)` | set | M matching | movements joined to accounts on an OR, LIKE on full_path | an account hierarchy table | reporting only; no screen reads it |
 | `contract_ledger_eod_positions` | pass-through | rows selected | positions with paths and money in major units; the cheap view | | |
+| a day's movements or positions across every account (GL journal, reconciliation, `unprojected`) | range | rows of the day | `movements(value_time)` and `balances_live(balance_date, account_id)` indexes (#9) | | |
+| a second ledger in the database | | | `Prefix` on `NewSQLLedger` rewrites every statement's names once (#8); cost per statement is a map lookup | a Postgres schema per ledger (pglike has none) | |
 | `contract_ledger_latest_positions` | set | P | grouped MAX, once, so consumers stop bolting their own correlated `MAX(day)` onto the eod view (#7, first part) | | |
 | `contract_ledger_live_positions` | correlated (v0.3.1) | A × (probe + 2 × (probe + s_a)) | latest row per account by correlated MAX, plus two correlated sums | | **does not meet the dashboard budget at prod scale** (12 to 31 s). Candidates below |
 | `contract_ledger_live_positions` (#7 grouped rewrite, measured and dropped) | set | 3P + M | | three evaluations of the latest-row set, one per LEFT JOIN: slower than v0.3.1 at 1k and 10k accounts on both drivers | |
@@ -72,13 +74,13 @@ budget is the dashboard's: every customer account summed within a poll
 | correlated MAX + 2 sums (v0.3.1) | A × 3 probes | no: 12 to 31 s measured at A = 84k | none | shipped |
 | grouped MAX, three times (#7 as written) | 3P + M | no: scans P three times | none | measured, rejected |
 | grouped MAX once, materialised CTE | P + M | no: one scan of P is seconds at 40M | none | measured (289 ms at P = 918k vs 773 ms), rejected for scale |
-| business-day row: today's else yesterday's row via `(balance_date, account_id)` index | A × 2 probes | likely: no scan of P; A probes | a `ledger_day` row the pass advances; the index (#9); a stale account (neither day) falls back to a probe | spike in `cmd/bench-compound-movements` |
+| business-day row: today's else yesterday's row via `(balance_date, account_id)` index | A × 2 probes | likely: no scan of P; A probes | a `ledger_day` row the pass advances; the index (#9, shipped); a stale account (neither day) falls back to a probe | spike in `cmd/bench-compound-movements` |
 | latest row kept on write: a `balances_latest` table or `is_latest` flag maintained by `Project` | A | yes | one extra write per projection; a backdated reproject must repair it | not built |
 | consumer cache: gobank's book refreshed in the background, requests never wait | 0 per request | yes for the screen; the read still runs once per refresh | staleness of one refresh; gobank story | planned on the gobank side |
 
 Recommendation: the business-day row, because the pass already defines
 the day and the index is wanted for `Positions(day)` and the pass's
-`unprojected` anyway (#9); the latest-row table is the fallback if the
+`unprojected` (#9, shipped); the latest-row table is the fallback if the
 stale-account probe shows up in the figures. The grouped forms stay for
 `contract_ledger_latest_positions`, which is read once a day, not once a
 poll.

@@ -317,6 +317,15 @@
           ]
         },
         {
+          "name": "idx_balances_live_day",
+          "def": "CREATE INDEX idx_balances_live_day ON public.balances_live USING btree (balance_date, account_id)",
+          "table": "public.balances_live",
+          "columns": [
+            "balance_date",
+            "account_id"
+          ]
+        },
+        {
           "name": "idx_balances_live_unique",
           "def": "CREATE UNIQUE INDEX idx_balances_live_unique ON public.balances_live USING btree (account_id, balance_date)",
           "table": "public.balances_live",
@@ -551,6 +560,48 @@
       "def": "CREATE VIEW contract_ledger_eod_positions AS (\n SELECT p.account_id,\n    a.full_path,\n    a.commodity,\n    p.balance_date AS day,\n    round(((p.balance)::numeric / (c.unit)::numeric), (- c.exponent)) AS balance,\n    round((((p.accrued_num)::numeric / (p.accrued_den)::numeric) / (c.unit)::numeric), 7) AS accrued\n   FROM ((balances_live p\n     JOIN accounts a ON ((a.id = p.account_id)))\n     JOIN commodities c ON (((c.code)::text = (a.commodity)::text)))\n)",
       "referenced_tables": [
         "public.balances_live",
+        "public.accounts",
+        "public.commodities"
+      ]
+    },
+    {
+      "name": "public.contract_ledger_latest_positions",
+      "type": "VIEW",
+      "columns": [
+        {
+          "name": "account_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "accrued",
+          "type": "numeric",
+          "nullable": true
+        },
+        {
+          "name": "balance",
+          "type": "numeric",
+          "nullable": true
+        },
+        {
+          "name": "commodity",
+          "type": "varchar(50)",
+          "nullable": true
+        },
+        {
+          "name": "day",
+          "type": "timestamp without time zone",
+          "nullable": true
+        },
+        {
+          "name": "full_path",
+          "type": "varchar(500)",
+          "nullable": true
+        }
+      ],
+      "def": "CREATE VIEW contract_ledger_latest_positions AS (\n SELECT p.account_id,\n    a.full_path,\n    a.commodity,\n    p.balance_date AS day,\n    round(((p.balance)::numeric / (c.unit)::numeric), (- c.exponent)) AS balance,\n    round((((p.accrued_num)::numeric / (p.accrued_den)::numeric) / (c.unit)::numeric), 7) AS accrued\n   FROM ((ledger_latest_projections p\n     JOIN accounts a ON ((a.id = p.account_id)))\n     JOIN commodities c ON (((c.code)::text = (a.commodity)::text)))\n)",
+      "referenced_tables": [
+        "public.ledger_latest_projections",
         "public.accounts",
         "public.commodities"
       ]
@@ -895,6 +946,46 @@
       ]
     },
     {
+      "name": "public.ledger_latest_projections",
+      "type": "VIEW",
+      "columns": [
+        {
+          "name": "account_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "accrued_den",
+          "type": "bigint",
+          "nullable": true
+        },
+        {
+          "name": "accrued_num",
+          "type": "bigint",
+          "nullable": true
+        },
+        {
+          "name": "balance",
+          "type": "bigint",
+          "nullable": true
+        },
+        {
+          "name": "balance_date",
+          "type": "timestamp without time zone",
+          "nullable": true
+        },
+        {
+          "name": "next_day",
+          "type": "timestamp without time zone",
+          "nullable": true
+        }
+      ],
+      "def": "CREATE VIEW ledger_latest_projections AS (\n SELECT p.account_id,\n    p.balance_date,\n    p.next_day,\n    p.balance,\n    p.accrued_num,\n    p.accrued_den\n   FROM (balances_live p\n     JOIN ( SELECT balances_live.account_id,\n            max(balances_live.balance_date) AS latest\n           FROM balances_live\n          GROUP BY balances_live.account_id) q ON (((q.account_id = p.account_id) AND (q.latest = p.balance_date))))\n)",
+      "referenced_tables": [
+        "public.balances_live"
+      ]
+    },
+    {
       "name": "public.movement_metadata",
       "type": "BASE TABLE",
       "comment": "Key-value metadata for movement batches.",
@@ -1081,6 +1172,14 @@
           "table": "public.movements",
           "columns": [
             "to_account_id",
+            "value_time"
+          ]
+        },
+        {
+          "name": "idx_movements_value_time",
+          "def": "CREATE INDEX idx_movements_value_time ON public.movements USING btree (value_time)",
+          "table": "public.movements",
+          "columns": [
             "value_time"
           ]
         },

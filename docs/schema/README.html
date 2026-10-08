@@ -92,6 +92,12 @@
 <td>VIEW</td>
 </tr>
 <tr>
+<td><a href="public.contract_ledger_latest_positions.html">public.contract_ledger_latest_positions</a></td>
+<td>6</td>
+<td></td>
+<td>VIEW</td>
+</tr>
+<tr>
 <td><a href="public.contract_ledger_live_positions.html">public.contract_ledger_live_positions</a></td>
 <td>5</td>
 <td></td>
@@ -120,6 +126,12 @@
 <td>7</td>
 <td>Time-series parameter values. Stores named data points with value and knowledge timestamps for bitemporal queries (e.g. interest rate changes, exchange rates).<br /></td>
 <td>BASE TABLE</td>
+</tr>
+<tr>
+<td><a href="public.ledger_latest_projections.html">public.ledger_latest_projections</a></td>
+<td>6</td>
+<td></td>
+<td>VIEW</td>
 </tr>
 <tr>
 <td><a href="public.movement_metadata.html">public.movement_metadata</a></td>
@@ -207,6 +219,14 @@
   timestamp_without_time_zone day &quot;&quot;
   varchar_500_ full_path &quot;&quot;
 }
+&quot;public.contract_ledger_latest_positions&quot; {
+  text account_id &quot;&quot;
+  numeric accrued &quot;&quot;
+  numeric balance &quot;&quot;
+  varchar_50_ commodity &quot;&quot;
+  timestamp_without_time_zone day &quot;&quot;
+  varchar_500_ full_path &quot;&quot;
+}
 &quot;public.contract_ledger_live_positions&quot; {
   text account_id &quot;&quot;
   numeric accrued &quot;&quot;
@@ -247,6 +267,14 @@
   varchar_20_ param_type &quot;Value type: string, number, or bool&quot;
   varchar_500_ param_value &quot;The parameter value as a string&quot;
   timestamp_without_time_zone value_time &quot;When this value became effective&quot;
+}
+&quot;public.ledger_latest_projections&quot; {
+  text account_id &quot;&quot;
+  bigint accrued_den &quot;&quot;
+  bigint accrued_num &quot;&quot;
+  bigint balance &quot;&quot;
+  timestamp_without_time_zone balance_date &quot;&quot;
+  timestamp_without_time_zone next_day &quot;&quot;
 }
 &quot;public.movement_metadata&quot; {
   text batch_id &quot;Movement batch ID&quot;
