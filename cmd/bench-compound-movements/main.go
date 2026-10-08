@@ -391,7 +391,7 @@ func resetAndSeed(ctx context.Context, pool *pgxpool.Pool, n, m int) error {
 	positions := make([][]any, 0, batchSize)
 	for acctIdx := range m {
 		acctID := firstSavingsID + acctIdx
-		for d := 0; d < days; d++ {
+		for d := range days {
 			day := baseDay.AddDate(0, 0, d)
 			positions = append(positions, []any{acctID, day, day.AddDate(0, 0, 1), int64(seedAmount) * int64(movementsThrough(n, d))})
 			if len(positions) >= batchSize {

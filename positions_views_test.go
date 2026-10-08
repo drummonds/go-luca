@@ -68,7 +68,7 @@ func fillPartiallyProjectedLedger(t testing.TB, l *SQLLedger, savers int) {
 		t.Fatal(err)
 	}
 	dayD := day1.AddDate(0, 0, 2)
-	for i := 0; i < savers; i++ {
+	for i := range savers {
 		from, commodity, exponent := equity, "GBP", -2
 		if i%7 == 3 {
 			from, commodity, exponent = yen, "JPY", 0
