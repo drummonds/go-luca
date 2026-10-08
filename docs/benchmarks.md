@@ -1,5 +1,8 @@
 # Benchmarks
 
+The shape and cost of every query, and the budget each reader gives it,
+are in [Queries](queries.html); figures measured here are recorded there.
+
 ## Running
 
 ```bash

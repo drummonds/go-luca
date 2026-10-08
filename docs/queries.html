@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Queries - go-luca</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        pre {
+            background-color: #2b2b2b;
+            color: #f8f8f2;
+            padding: 1.25em 1.5em;
+            overflow-x: auto;
+        }
+        pre code {
+            color: inherit;
+            background: none;
+            padding: 0;
+            font-size: 0.875em;
+        }
+        code {
+            background-color: #f5f5f5;
+            color: #e83e8c;
+            padding: 0.125em 0.375em;
+            border-radius: 3px;
+        }
+        pre.mermaid {
+            background-color: #ffffff;
+            color: #333;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <section class="section">
+        <div class="container">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+                <ul>
+                    <li><a href="index.html">go-luca</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">Queries</a></li>
+                </ul>
+            </nav>
+            <div class="content">
+<h1>Queries</h1>
+<p>Every query go-luca runs or publishes, the shape chosen for it, the
+shapes chosen against, and how each fits the budget of the screen or
+process that reads it. The figures and budgets are shared with the
+components that read the contract views (gobank's book, pass and
+statements), so a change on either side is measured against one table.</p>
+<p>Statement: a query's cost is written in the ledger's scale terms, not
+seconds, so it stays true as the data grows. The measured figures that
+give it seconds are in the last section, dated.</p>
+<h2>Scale terms</h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Meaning</th>
+<th>gobank prod 2026-10-07 (cx23)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>accounts</td>
+<td>84k customer accounts</td>
+</tr>
+<tr>
+<td>M</td>
+<td>movements</td>
+<td>about 2 per account per day when active</td>
+</tr>
+<tr>
+<td>D</td>
+<td>days projected</td>
+<td>404</td>
+</tr>
+<tr>
+<td>P</td>
+<td>position rows, A × D</td>
+<td>34M</td>
+</tr>
+<tr>
+<td>m_a</td>
+<td>one account's movements, all time</td>
+<td>tens to hundreds</td>
+</tr>
+<tr>
+<td>s_a</td>
+<td>one account's movements since its latest position</td>
+<td>0 to a few</td>
+</tr>
+<tr>
+<td>probe</td>
+<td>one index lookup, log of the table</td>
+<td>microseconds on PG, less on pglike</td>
+</tr>
+</tbody>
+</table>
+<p>Shapes, cheapest first: <strong>point</strong> (a probe), <strong>range</strong> (a probe then a
+scan of s_a or m_a rows), <strong>set</strong> (one scan of a whole table or
+grouping of it), <strong>correlated</strong> (a probe or range per account, A times).</p>
+<h2>Writes</h2>
+<table>
+<thead>
+<tr>
+<th>Query</th>
+<th>Shape</th>
+<th>Cost</th>
+<th>Chosen</th>
+<th>Not chosen</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RecordMovement</code></td>
+<td>insert</td>
+<td>1</td>
+<td>one insert, knowledge_time written by the ledger</td>
+<td>DB default for knowledge_time (#6: whole seconds on pglike)</td>
+</tr>
+<tr>
+<td><code>RecordLinkedMovements</code></td>
+<td>n inserts, one tx</td>
+<td>n</td>
+<td>shared batch id</td>
+<td>one tx per movement</td>
+</tr>
+<tr>
+<td><code>RecordMovementWithProjections</code></td>
+<td>insert + 2 position moves</td>
+<td>1 + 2 × (probe + s_a)</td>
+<td>positions on and after the day move by the amount (one UPDATE); only a day with no row yet is built from the one before plus a range sum (v0.3.1)</td>
+<td>rebuild every later day from the previous one (v0.3.0: cost grew with days after and with a hot account's movements); interest posted at write time (v0.2.x compound, removed: the product engine owns interest)</td>
+</tr>
+<tr>
+<td><code>Project(account, day, accrued)</code></td>
+<td>probe + range + upsert</td>
+<td>probe + s_a</td>
+<td>previous row, movements between, write the day's balance and accrual</td>
+<td>summing the account's history (m_a)</td>
+</tr>
+<tr>
+<td>backdated movement</td>
+<td>per later day: range</td>
+<td>days after × s</td>
+<td><code>reproject</code> rebuilds from the movement's day forward, so every later day is right</td>
+<td>refusing backdated value times</td>
+</tr>
+</tbody>
+</table>
+<h2>Reads of one account</h2>
+<table>
+<thead>
+<tr>
+<th>Query</th>
+<th>Shape</th>
+<th>Cost</th>
+<th>Chosen</th>
+<th>Not chosen</th>
+<th>Open</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Balance(account)</code></td>
+<td>2 range sums</td>
+<td>m_a</td>
+<td>two index range sums (to, from) over all time</td>
+<td></td>
+<td>position + movements since (probe + s_a); the pass calls <code>Balance</code> per account per day, so this is the pass's cost floor</td>
+</tr>
+<tr>
+<td><code>BalanceAt(account, t)</code></td>
+<td>2 range sums</td>
+<td>m_a to t</td>
+<td>as <code>Balance</code> with <code>value_time &lt;= t</code></td>
+<td></td>
+<td>nearest position before t + delta</td>
+</tr>
+<tr>
+<td><code>BalanceAsOf(account, value, knowledge)</code></td>
+<td>2 range sums + filter</td>
+<td>m_a</td>
+<td>the value_time index, knowledge_time filtered in the scan</td>
+<td>index on knowledge_time (no consumer yet)</td>
+<td></td>
+</tr>
+<tr>
+<td><code>DailyBalances(account, from, to)</code></td>
+<td>days × <code>BalanceAt</code></td>
+<td>days × m_a</td>
+<td>convenience over <code>BalanceAt</code>, predates positions</td>
+<td></td>
+<td>read <code>contract_ledger_eod_positions</code> (days × probe)</td>
+</tr>
+<tr>
+<td><code>PositionAt(account, day)</code></td>
+<td>point</td>
+<td>probe</td>
+<td>index backwards on (account, balance_date)</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>First/LastMovementTime(account)</code></td>
+<td>MIN/MAX over from OR to</td>
+<td>m_a</td>
+<td>two index ranges, OR-ed</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>SearchMovements</code> / <code>CountMovements</code></td>
+<td>filtered scan</td>
+<td>rows matched</td>
+<td>account filter is the OR of two indexed columns; path prefix joins accounts with LIKE</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>contract_ledger_movements WHERE account</code></td>
+<td>range + 2 joins</td>
+<td>m_a</td>
+<td>the movements table with both paths joined, filter pushed down on both drivers</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>contract_ledger_live_positions WHERE account</code></td>
+<td>see live view</td>
+<td>PG: probe + s_a; pglike: <strong>the whole view</strong></td>
+<td>the one-account read gobank's product engine makes</td>
+<td></td>
+<td>pglike cannot push the filter into grouped subqueries: the v0.3.1 correlated form is 0.6 ms, the #7 grouped rewrite 90 ms (1k accounts). Any grouped rewrite needs a one-account path of its own on pglike</td>
+</tr>
+</tbody>
+</table>
+<h2>Reads of the whole ledger</h2>
+<table>
+<thead>
+<tr>
+<th>Query</th>
+<th>Shape</th>
+<th>Cost</th>
+<th>Chosen</th>
+<th>Not chosen</th>
+<th>Open</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Positions(day)</code></td>
+<td>set</td>
+<td>P</td>
+<td>grouped <code>MAX(balance_date)</code> joined back (one scan of balances_live)</td>
+<td><code>DISTINCT ON</code>, <code>LATERAL</code> (Postgres only; views and queries must run on pglike); correlated MAX per account</td>
+<td>a <code>(balance_date, account_id)</code> index would bound the scan to days ≤ day (#9)</td>
+</tr>
+<tr>
+<td><code>BalanceByPath(prefix, at)</code></td>
+<td>set</td>
+<td>M matching</td>
+<td>movements joined to accounts on an OR, LIKE on full_path</td>
+<td>an account hierarchy table</td>
+<td>reporting only; no screen reads it</td>
+</tr>
+<tr>
+<td><code>contract_ledger_eod_positions</code></td>
+<td>pass-through</td>
+<td>rows selected</td>
+<td>positions with paths and money in major units; the cheap view</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>contract_ledger_latest_positions</code></td>
+<td>set</td>
+<td>P</td>
+<td>grouped MAX, once, so consumers stop bolting their own correlated <code>MAX(day)</code> onto the eod view (#7, first part)</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>contract_ledger_live_positions</code></td>
+<td>correlated (v0.3.1)</td>
+<td>A × (probe + 2 × (probe + s_a))</td>
+<td>latest row per account by correlated MAX, plus two correlated sums</td>
+<td></td>
+<td><strong>does not meet the dashboard budget at prod scale</strong> (12 to 31 s). Candidates below</td>
+</tr>
+<tr>
+<td><code>contract_ledger_live_positions</code> (#7 grouped rewrite, measured and dropped)</td>
+<td>set</td>
+<td>3P + M</td>
+<td></td>
+<td>three evaluations of the latest-row set, one per LEFT JOIN: slower than v0.3.1 at 1k and 10k accounts on both drivers</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3>Live positions: the candidates</h3>
+<p>The live view is the one query whose chosen shape is wrong at scale. The
+budget is the dashboard's: every customer account summed within a poll
+(1 s, behind a 2 s book cache) at 100k accounts and 400 days, P = 40M.</p>
+<table>
+<thead>
+<tr>
+<th>Candidate</th>
+<th>Cost</th>
+<th>Meets budget at P = 40M</th>
+<th>Cost elsewhere</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>correlated MAX + 2 sums (v0.3.1)</td>
+<td>A × 3 probes</td>
+<td>no: 12 to 31 s measured at A = 84k</td>
+<td>none</td>
+<td>shipped</td>
+</tr>
+<tr>
+<td>grouped MAX, three times (#7 as written)</td>
+<td>3P + M</td>
+<td>no: scans P three times</td>
+<td>none</td>
+<td>measured, rejected</td>
+</tr>
+<tr>
+<td>grouped MAX once, materialised CTE</td>
+<td>P + M</td>
+<td>no: one scan of P is seconds at 40M</td>
+<td>none</td>
+<td>measured (289 ms at P = 918k vs 773 ms), rejected for scale</td>
+</tr>
+<tr>
+<td>business-day row: today's else yesterday's row via <code>(balance_date, account_id)</code> index</td>
+<td>A × 2 probes</td>
+<td>likely: no scan of P; A probes</td>
+<td>a <code>ledger_day</code> row the pass advances; the index (#9); a stale account (neither day) falls back to a probe</td>
+<td>spike in <code>cmd/bench-compound-movements</code></td>
+</tr>
+<tr>
+<td>latest row kept on write: a <code>balances_latest</code> table or <code>is_latest</code> flag maintained by <code>Project</code></td>
+<td>A</td>
+<td>yes</td>
+<td>one extra write per projection; a backdated reproject must repair it</td>
+<td>not built</td>
+</tr>
+<tr>
+<td>consumer cache: gobank's book refreshed in the background, requests never wait</td>
+<td>0 per request</td>
+<td>yes for the screen; the read still runs once per refresh</td>
+<td>staleness of one refresh; gobank story</td>
+<td>planned on the gobank side</td>
+</tr>
+</tbody>
+</table>
+<p>Recommendation: the business-day row, because the pass already defines
+the day and the index is wanted for <code>Positions(day)</code> and the pass's
+<code>unprojected</code> anyway (#9); the latest-row table is the fallback if the
+stale-account probe shows up in the figures. The grouped forms stay for
+<code>contract_ledger_latest_positions</code>, which is read once a day, not once a
+poll.</p>
+<h2>Consumers and budgets</h2>
+<p>What each reader does with the queries above, and the time it has.</p>
+<table>
+<thead>
+<tr>
+<th>Reader</th>
+<th>Queries</th>
+<th>Cadence</th>
+<th>Budget</th>
+<th>Shape it needs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>gobank dashboard book (savings, lending per family)</td>
+<td><code>contract_ledger_live_positions</code> summed over every customer account</td>
+<td>1 s poll, 2 s cache</td>
+<td>under 1 s</td>
+<td>set or A probes</td>
+</tr>
+<tr>
+<td>gobank P&amp;L accrued interest</td>
+<td>eod view + correlated <code>MAX(day)</code> per account (<code>accruedByFamily</code>)</td>
+<td>per page</td>
+<td>under 1 s</td>
+<td><code>contract_ledger_latest_positions</code></td>
+</tr>
+<tr>
+<td>gobank product balances</td>
+<td>sum of every movement per product through <code>contract_ledger_movements</code></td>
+<td>per page</td>
+<td>under 1 s</td>
+<td>M scan today; latest positions once the view exists</td>
+</tr>
+<tr>
+<td>gobank start-of-day pass</td>
+<td><code>unprojected</code> (NOT EXISTS on eod view per account, paged), then per account <code>PositionAt</code>, <code>Balance</code>, <code>Project</code></td>
+<td>once a day, every account</td>
+<td>the account-days/12h figure</td>
+<td>per account: probes + s_a. <code>Balance</code> is m_a; see Open</td>
+</tr>
+<tr>
+<td>gobank product engine, one account</td>
+<td><code>contract_ledger_live_positions WHERE account_id</code></td>
+<td>per request</td>
+<td>ms</td>
+<td>point on both drivers</td>
+</tr>
+<tr>
+<td>gobank statements</td>
+<td><code>contract_ledger_movements WHERE account</code></td>
+<td>per request</td>
+<td>ms</td>
+<td>range</td>
+</tr>
+<tr>
+<td>gobank bank reserves</td>
+<td><code>PositionAt</code>, <code>Balance</code>, <code>Project</code> on one account</td>
+<td>per day</td>
+<td>ms</td>
+<td>point</td>
+</tr>
+<tr>
+<td>go-luca API (<code>/balances</code>)</td>
+<td><code>Balance</code>, <code>BalanceAt</code>, <code>DailyBalances</code></td>
+<td>per request</td>
+<td>ms</td>
+<td>range</td>
+</tr>
+</tbody>
+</table>
+<h2>Measured figures</h2>
+<p>Whole-ledger live read of the position views, this repo's
+<code>BenchmarkPositionViewsScale</code> (90 days of positions per account, a
+quarter of accounts mid-pass), 2026-10-08, laptop, PG 16 in podman:</p>
+<table>
+<thead>
+<tr>
+<th>Query</th>
+<th>A = 1k PG</th>
+<th>A = 10k PG</th>
+<th>A = 1k pglike</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>live view, v0.3.1 correlated</td>
+<td>9 ms</td>
+<td>504 ms</td>
+<td>16 ms</td>
+</tr>
+<tr>
+<td>live view, #7 grouped (dropped)</td>
+<td>51 ms</td>
+<td>1254 ms</td>
+<td>100 ms</td>
+</tr>
+<tr>
+<td>latest view, correlated MAX per account (what gobank bolts on)</td>
+<td>288 ms</td>
+<td>2922 ms</td>
+<td>113 ms</td>
+</tr>
+<tr>
+<td>latest view, grouped (shipped)</td>
+<td>17 ms</td>
+<td>292 ms</td>
+<td>35 ms</td>
+</tr>
+<tr>
+<td>live view one account, v0.3.1</td>
+<td>0.24 ms</td>
+<td>0.40 ms</td>
+<td>0.57 ms</td>
+</tr>
+<tr>
+<td>live view one account, #7 grouped</td>
+<td>0.40 ms</td>
+<td>0.44 ms</td>
+<td>90 ms</td>
+</tr>
+</tbody>
+</table>
+<p>Production, gobank v0.18 on cx23 (4 GB shared), A = 84k, D = 404,
+2026-10-07: dashboard 12 to 31 s when the book cache misses, 0.06 s
+when it hits; P&amp;L and Runtime pages over 90 s.</p>
+<p>Pass rate, gobank perf workflow (<code>benchmark.md</code> there): 18.4M
+account-days per 12 h on cx23, 40.9M on ccx33, at v0.12 with 120k
+accounts.</p>
+<p>Write path, in-process pglike (<code>task benchmark</code>): <code>RecordMovement</code>
+about 2,300/s; <code>RecordMovementWithProjections</code> constant per movement on
+a hot account (<code>BenchmarkHotAccountProjection</code>).</p>
+<h2>Keeping this true</h2>
+<p>A query is added here when it is added to the code, with its shape and
+cost in scale terms. A figure is added when it is measured, with the
+date and scale. A candidate moves to Chosen or Not chosen with the
+measurement that decided it, so the reason survives the code.</p>
+
+            </div>
+        </div>
+    </section>
+</body>
+</html>
