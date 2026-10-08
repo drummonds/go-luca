@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-08
+
+ - contract_ledger_latest_positions view, Prefix option for a second ledger in one database, indexes for day-bounded reads; queries doc
+
 ## [0.3.1] - 2026-10-05
 
 ### Added
