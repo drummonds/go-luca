@@ -16,9 +16,9 @@ import (
 // balance is the previous position plus the movements of the days between,
 // so a write costs a range sum, not the account's whole history.
 //
-// The views contract_ledger_eod_positions and contract_ledger_live_positions
-// publish them (see SchemaSQL); the live one adds the movements since the
-// latest position and is the dearer of the two.
+// The views contract_ledger_eod_positions, contract_ledger_latest_positions
+// and contract_ledger_live_positions publish them (see SchemaSQL); the live
+// one adds the movements since the latest position and is the dearest.
 
 // dayStart is midnight of t's date in t's location, the key of a position.
 func dayStart(t time.Time) time.Time {

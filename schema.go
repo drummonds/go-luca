@@ -156,9 +156,16 @@ CREATE VIEW contract_ledger_movements AS
     JOIN accounts fa ON fa.id = m.from_account_id
     JOIN accounts ta ON ta.id = m.to_account_id;
 
+-- The position views read one another, so every one is dropped first and
+-- they are created bottom-up: PostgreSQL will not drop a view another
+-- depends on.
+DROP VIEW IF EXISTS contract_ledger_live_positions;
+DROP VIEW IF EXISTS contract_ledger_latest_positions;
+DROP VIEW IF EXISTS contract_ledger_eod_positions;
+DROP VIEW IF EXISTS ledger_latest_projections;
+
 -- End-of-day positions: one row per account per projected day, from the
 -- stored projections. The cheap view.
-DROP VIEW IF EXISTS contract_ledger_eod_positions;
 CREATE VIEW contract_ledger_eod_positions AS
     SELECT p.account_id, a.full_path, a.commodity, p.balance_date AS day,
            round(p.balance::numeric / c.unit, -c.exponent) AS balance,
@@ -167,10 +174,39 @@ CREATE VIEW contract_ledger_eod_positions AS
     JOIN accounts a ON a.id = p.account_id
     JOIN commodities c ON c.code = a.commodity;
 
--- Live positions: the latest projection plus every movement valued after
--- its day, for every account. Three correlated sums per account, so the
--- dearer view: use the end-of-day one when a day will do.
-DROP VIEW IF EXISTS contract_ledger_live_positions;
+-- Each account's latest projection, in minor units, found with one grouped
+-- MAX rather than a correlated subquery per account. Internal: the latest
+-- view reads it. (Not DISTINCT ON or LATERAL: this runs on pglike.)
+CREATE VIEW ledger_latest_projections AS
+    SELECT p.account_id, p.balance_date, p.next_day, p.balance, p.accrued_num, p.accrued_den
+    FROM balances_live p
+    JOIN (SELECT account_id, MAX(balance_date) AS latest
+          FROM balances_live GROUP BY account_id) q
+      ON q.account_id = p.account_id AND q.latest = p.balance_date;
+
+-- Latest positions: the end-of-day row every consumer wanting "the latest
+-- day per account" used to find with its own correlated MAX(day).
+CREATE VIEW contract_ledger_latest_positions AS
+    SELECT p.account_id, a.full_path, a.commodity, p.balance_date AS day,
+           round(p.balance::numeric / c.unit, -c.exponent) AS balance,
+           round(p.accrued_num::numeric / p.accrued_den / c.unit, 7) AS accrued
+    FROM ledger_latest_projections p
+    JOIN accounts a ON a.id = p.account_id
+    JOIN commodities c ON c.code = a.commodity;
+
+-- Live positions: the latest projection plus every movement valued on or
+-- after its next_day, for every account. Three correlated probes per
+-- account, so the dearest view: use the end-of-day or latest one when a
+-- day will do. A whole-ledger read costs accounts × probes and misses
+-- the dashboard budget at scale (issue #7, docs/queries.md). A grouped
+-- rewrite was measured slower, and pglike cannot push a one-account
+-- filter into it. The shape that replaces it is a business-day row.
+-- Mid-pass, an account already projected to day D is projection(D) plus
+-- movements from D+1, one still on D-1 is projection(D-1) plus movements
+-- from D, and both are that account's exact live balance. Only accrued
+-- mixes: it is read off the latest projection, so during a pass the sum
+-- is part day D and part day D-1, which is the bank's actual accrual
+-- state until the pass completes.
 CREATE VIEW contract_ledger_live_positions AS
     SELECT l.account_id, l.full_path, l.commodity,
            round(l.balance_minor::numeric / l.unit, -l.exponent) AS balance,
