@@ -20,6 +20,7 @@ Movement-based double-entry bookkeeping database schema
 | [public.customer_metadata](public.customer_metadata.md)                               | 4       | Key-value metadata for customers.                                                                                                                                                                                                                                                                                                                      | BASE TABLE |
 | [public.customers](public.customers.md)                                               | 5       | Customer records. A customer may have zero to many accounts (via accounts.customer_id). Supports max balance constraints and arbitrary key-value metadata.<br />                                                                                                                                                                                       | BASE TABLE |
 | [public.data_points](public.data_points.md)                                           | 7       | Time-series parameter values. Stores named data points with value and knowledge timestamps for bitemporal queries (e.g. interest rate changes, exchange rates).<br />                                                                                                                                                                                  | BASE TABLE |
+| [public.ledger_day](public.ledger_day.md)                                             | 2       |                                                                                                                                                                                                                                                                                                                                                        | BASE TABLE |
 | [public.ledger_latest_projections](public.ledger_latest_projections.md)               | 6       |                                                                                                                                                                                                                                                                                                                                                        | VIEW       |
 | [public.movement_metadata](public.movement_metadata.md)                               | 4       | Key-value metadata for movement batches.                                                                                                                                                                                                                                                                                                               | BASE TABLE |
 | [public.movements](public.movements.md)                                               | 13      | Core transaction records. Each movement transfers an integer amount from one account to another. Movements with the same batch_id form a linked transaction (compound entry). Inspired by TigerBeetle's transfer model with code, ledger, and pending_id fields.<br />                                                                                 | BASE TABLE |
@@ -141,6 +142,10 @@ erDiagram
   varchar_20_ param_type "Value type: string, number, or bool"
   varchar_500_ param_value "The parameter value as a string"
   timestamp_without_time_zone value_time "When this value became effective"
+}
+"public.ledger_day" {
+  timestamp_without_time_zone day ""
+  timestamp_without_time_zone prev_day ""
 }
 "public.ledger_latest_projections" {
   text account_id ""

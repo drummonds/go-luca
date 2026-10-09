@@ -128,6 +128,12 @@
 <td>BASE TABLE</td>
 </tr>
 <tr>
+<td><a href="public.ledger_day.html">public.ledger_day</a></td>
+<td>2</td>
+<td></td>
+<td>BASE TABLE</td>
+</tr>
+<tr>
 <td><a href="public.ledger_latest_projections.html">public.ledger_latest_projections</a></td>
 <td>6</td>
 <td></td>
@@ -267,6 +273,10 @@
   varchar_20_ param_type &quot;Value type: string, number, or bool&quot;
   varchar_500_ param_value &quot;The parameter value as a string&quot;
   timestamp_without_time_zone value_time &quot;When this value became effective&quot;
+}
+&quot;public.ledger_day&quot; {
+  timestamp_without_time_zone day &quot;&quot;
+  timestamp_without_time_zone prev_day &quot;&quot;
 }
 &quot;public.ledger_latest_projections&quot; {
   text account_id &quot;&quot;

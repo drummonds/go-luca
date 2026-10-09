@@ -70,11 +70,13 @@ interest (an exact <code>Fraction</code>) per day. <code>RecordMovementWithProje
 both accounts' positions from the movement's day onwards; a backdated movement
 corrects every later day. Published as the contract views
 <code>contract_ledger_eod_positions</code> (one row per account per day; cheap) and
-<code>contract_ledger_live_positions</code> (latest position plus movements since; dearer),
-with money as NUMERIC in major units.</p>
+<code>contract_ledger_live_positions</code> (the position on the business day, else the
+previous one, plus movements since), with money as NUMERIC in major units.</p>
 <ul>
 <li><code>Project</code> — write a day's position with no movement: the ledger's balance for that day and the caller's accrued interest</li>
 <li><code>PositionAt</code> — the latest position on or before a day</li>
+<li><code>AdvanceDay</code> — move the business day on before the pass projects it (<code>SQLLedger</code> only); the live view reads the day's and the previous business day's positions as two slices of the day index</li>
+<li><code>BusinessDay</code> — the business day and the one it advanced from</li>
 </ul>
 <h3>Interest</h3>
 <ul>

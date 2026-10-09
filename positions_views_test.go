@@ -17,7 +17,8 @@ import (
 // it), which makes a whole-ledger read cost four index probes per account
 // (issue #7). These are those definitions, kept as the oracle: a view
 // written another way must publish the same rows. The latest view is
-// grouped; the live view is still the correlated form (docs/queries.md).
+// grouped; the live view reads the business day's and the previous
+// business day's slices of the day index (docs/queries.md).
 const (
 	referenceEODPositions = `
     SELECT p.account_id, a.full_path, a.commodity, p.balance_date AS day,
@@ -105,6 +106,10 @@ func fillPartiallyProjectedLedger(t testing.TB, l *SQLLedger, savers int) {
 			}
 		case 3: // never projected beyond the opening movement's own day
 		}
+	}
+	// The pass is on day D.
+	if err := l.AdvanceDay(dayD); err != nil {
+		t.Fatal(err)
 	}
 	// An account with no projection at all, live from its movements alone.
 	loose, err := l.CreateAccount("Asset:Suspense", "GBP", -2, 0)
@@ -361,6 +366,12 @@ func BenchmarkPositionViewsScale(b *testing.B) {
 			l := openBenchLedger(b)
 			fillPartiallyProjectedLedger(b, l, accounts)
 			backfillPositionHistory(b, l, 90)
+			// What autovacuum would have told the planner about the load:
+			// without it PostgreSQL priced the day index at twenty times
+			// its cost and scanned the positions table instead.
+			if _, err := l.db.Exec(`ANALYZE`); err != nil {
+				b.Fatal(err)
+			}
 			var one string
 			if err := l.db.QueryRow(`SELECT id FROM accounts WHERE full_path = 'Liability:Savings:000001'`).Scan(&one); err != nil {
 				b.Fatal(err)

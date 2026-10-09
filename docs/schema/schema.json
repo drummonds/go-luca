@@ -636,12 +636,13 @@
           "nullable": true
         }
       ],
-      "def": "CREATE VIEW contract_ledger_live_positions AS (\n SELECT account_id,\n    full_path,\n    commodity,\n    round((balance_minor / (unit)::numeric), (- exponent)) AS balance,\n    round((((accrued_num)::numeric / (accrued_den)::numeric) / (unit)::numeric), 7) AS accrued\n   FROM ( SELECT a.id AS account_id,\n            a.full_path,\n            a.commodity,\n            c.unit,\n            c.exponent,\n            (((COALESCE(p.balance, (0)::bigint))::numeric + COALESCE(( SELECT sum(m.amount) AS sum\n                   FROM movements m\n                  WHERE ((m.to_account_id = a.id) AND (m.value_time \u003e= COALESCE(p.next_day, '0001-01-01 00:00:00'::timestamp without time zone)))), (0)::numeric)) - COALESCE(( SELECT sum(m.amount) AS sum\n                   FROM movements m\n                  WHERE ((m.from_account_id = a.id) AND (m.value_time \u003e= COALESCE(p.next_day, '0001-01-01 00:00:00'::timestamp without time zone)))), (0)::numeric)) AS balance_minor,\n            COALESCE(p.accrued_num, (0)::bigint) AS accrued_num,\n            COALESCE(p.accrued_den, (1)::bigint) AS accrued_den\n           FROM ((accounts a\n             JOIN commodities c ON (((c.code)::text = (a.commodity)::text)))\n             LEFT JOIN balances_live p ON (((p.account_id = a.id) AND (p.balance_date = ( SELECT max(q.balance_date) AS max\n                   FROM balances_live q\n                  WHERE (q.account_id = a.id))))))) l\n)",
+      "def": "CREATE VIEW contract_ledger_live_positions AS (\n SELECT account_id,\n    full_path,\n    commodity,\n    round((balance_minor / (unit)::numeric), (- exponent)) AS balance,\n    round((((accrued_num)::numeric / (accrued_den)::numeric) / (unit)::numeric), 7) AS accrued\n   FROM ( SELECT l.account_id,\n            l.full_path,\n            l.commodity,\n            l.unit,\n            l.exponent,\n            l.accrued_num,\n            l.accrued_den,\n            (((l.balance)::numeric + COALESCE(( SELECT sum(m.amount) AS sum\n                   FROM movements m\n                  WHERE ((m.to_account_id = l.account_id) AND (m.value_time \u003e= l.next_day))), (0)::numeric)) - COALESCE(( SELECT sum(m.amount) AS sum\n                   FROM movements m\n                  WHERE ((m.from_account_id = l.account_id) AND (m.value_time \u003e= l.next_day))), (0)::numeric)) AS balance_minor\n           FROM ( SELECT a.id AS account_id,\n                    a.full_path,\n                    a.commodity,\n                    c.unit,\n                    c.exponent,\n                    COALESCE(p.balance, y.balance, ( SELECT z.balance\n                           FROM balances_live z\n                          WHERE (z.account_id = a.id)\n                          ORDER BY z.balance_date DESC\n                         LIMIT 1), (0)::bigint) AS balance,\n                    COALESCE(p.next_day, y.next_day, ( SELECT z.next_day\n                           FROM balances_live z\n                          WHERE (z.account_id = a.id)\n                          ORDER BY z.balance_date DESC\n                         LIMIT 1), '0001-01-01 00:00:00'::timestamp without time zone) AS next_day,\n                    COALESCE(p.accrued_num, y.accrued_num, ( SELECT z.accrued_num\n                           FROM balances_live z\n                          WHERE (z.account_id = a.id)\n                          ORDER BY z.balance_date DESC\n                         LIMIT 1), (0)::bigint) AS accrued_num,\n                    COALESCE(p.accrued_den, y.accrued_den, ( SELECT z.accrued_den\n                           FROM balances_live z\n                          WHERE (z.account_id = a.id)\n                          ORDER BY z.balance_date DESC\n                         LIMIT 1), (1)::bigint) AS accrued_den\n                   FROM (((accounts a\n                     JOIN commodities c ON (((c.code)::text = (a.commodity)::text)))\n                     LEFT JOIN balances_live p ON (((p.account_id = a.id) AND (p.balance_date = ( SELECT ledger_day.day\n                           FROM ledger_day)))))\n                     LEFT JOIN balances_live y ON (((y.account_id = a.id) AND (y.balance_date = ( SELECT ledger_day.prev_day\n                           FROM ledger_day)))))) l) b\n)",
       "referenced_tables": [
         "public.movements",
+        "public.balances_live",
         "public.accounts",
         "public.commodities",
-        "public.balances_live"
+        "public.ledger_day"
       ]
     },
     {
@@ -942,6 +943,22 @@
           "columns": [
             "id"
           ]
+        }
+      ]
+    },
+    {
+      "name": "public.ledger_day",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "day",
+          "type": "timestamp without time zone",
+          "nullable": false
+        },
+        {
+          "name": "prev_day",
+          "type": "timestamp without time zone",
+          "nullable": true
         }
       ]
     },

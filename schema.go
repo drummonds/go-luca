@@ -111,6 +111,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_balances_live_unique
 CREATE INDEX IF NOT EXISTS idx_balances_live_day
     ON balances_live(balance_date, account_id);
 
+-- The business day: the day the pass is projecting, and the business day
+-- it advanced from (NULL for the first). One row, moved by AdvanceDay.
+-- While the pass runs, every account's latest position is on one of the
+-- two, which is what makes the live view a read of two day slices.
+CREATE TABLE IF NOT EXISTS ledger_day (
+    day TIMESTAMP NOT NULL,
+    prev_day TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS aliases (
     id TEXT PRIMARY KEY,
     name VARCHAR(200) NOT NULL UNIQUE,
@@ -202,40 +211,55 @@ CREATE VIEW contract_ledger_latest_positions AS
     JOIN accounts a ON a.id = p.account_id
     JOIN commodities c ON c.code = a.commodity;
 
--- Live positions: the latest projection plus every movement valued on or
--- after its next_day, for every account. Three correlated probes per
--- account, so the dearest view: use the end-of-day or latest one when a
--- day will do. A whole-ledger read costs accounts × probes and misses
--- the dashboard budget at scale (issue #7, docs/queries.md). A grouped
--- rewrite was measured slower, and pglike cannot push a one-account
--- filter into it. The shape that replaces it is a business-day row.
--- Mid-pass, an account already projected to day D is projection(D) plus
--- movements from D+1, one still on D-1 is projection(D-1) plus movements
--- from D, and both are that account's exact live balance. Only accrued
--- mixes: it is read off the latest projection, so during a pass the sum
--- is part day D and part day D-1, which is the bank's actual accrual
--- state until the pass completes.
+-- Live positions: every account's position on the business day, else on
+-- the previous business day (the pass has not reached it), else its
+-- latest row (stale: the pass has skipped it or never advanced), plus
+-- every movement valued on or after that row's next_day. The two days
+-- are read as two slices of the day index, so a whole-ledger read costs
+-- the accounts, not the positions, and the one-account read is a probe
+-- on either driver (issue #7, docs/queries.md). The day is an
+-- uncorrelated scalar subquery, evaluated once: PostgreSQL plans it as
+-- the constant it is, where a join to the row made it hash the whole
+-- table, and pglike has no functions. Mid-pass, an account already
+-- projected to day D is projection(D) plus movements from D+1, one
+-- still on D-1 is projection(D-1) plus movements from D, and both are
+-- that account's exact live balance. Only accrued mixes: it is read off
+-- the position found, so during a pass the sum is part day D and part
+-- day D-1, which is the bank's actual accrual state until the pass
+-- completes.
 CREATE VIEW contract_ledger_live_positions AS
-    SELECT l.account_id, l.full_path, l.commodity,
-           round(l.balance_minor::numeric / l.unit, -l.exponent) AS balance,
-           round(l.accrued_num::numeric / l.accrued_den / l.unit, 7) AS accrued
+    SELECT b.account_id, b.full_path, b.commodity,
+           round(b.balance_minor::numeric / b.unit, -b.exponent) AS balance,
+           round(b.accrued_num::numeric / b.accrued_den / b.unit, 7) AS accrued
     FROM (
-        SELECT a.id AS account_id, a.full_path, a.commodity, c.unit, c.exponent,
-               COALESCE(p.balance, 0)
+        SELECT l.account_id, l.full_path, l.commodity, l.unit, l.exponent,
+               l.accrued_num, l.accrued_den,
+               l.balance
                + COALESCE((SELECT SUM(m.amount) FROM movements m
-                           WHERE m.to_account_id = a.id
-                             AND m.value_time >= COALESCE(p.next_day, '0001-01-01')), 0)
+                           WHERE m.to_account_id = l.account_id AND m.value_time >= l.next_day), 0)
                - COALESCE((SELECT SUM(m.amount) FROM movements m
-                           WHERE m.from_account_id = a.id
-                             AND m.value_time >= COALESCE(p.next_day, '0001-01-01')), 0)
-                 AS balance_minor,
-               COALESCE(p.accrued_num, 0) AS accrued_num,
-               COALESCE(p.accrued_den, 1) AS accrued_den
-        FROM accounts a
-        JOIN commodities c ON c.code = a.commodity
-        LEFT JOIN balances_live p ON p.account_id = a.id
-             AND p.balance_date = (SELECT MAX(q.balance_date) FROM balances_live q WHERE q.account_id = a.id)
-    ) l;
+                           WHERE m.from_account_id = l.account_id AND m.value_time >= l.next_day), 0)
+                 AS balance_minor
+        FROM (
+            SELECT a.id AS account_id, a.full_path, a.commodity, c.unit, c.exponent,
+                   COALESCE(p.balance, y.balance,
+                            (SELECT z.balance FROM balances_live z WHERE z.account_id = a.id ORDER BY z.balance_date DESC LIMIT 1),
+                            0) AS balance,
+                   COALESCE(p.next_day, y.next_day,
+                            (SELECT z.next_day FROM balances_live z WHERE z.account_id = a.id ORDER BY z.balance_date DESC LIMIT 1),
+                            '0001-01-01') AS next_day,
+                   COALESCE(p.accrued_num, y.accrued_num,
+                            (SELECT z.accrued_num FROM balances_live z WHERE z.account_id = a.id ORDER BY z.balance_date DESC LIMIT 1),
+                            0) AS accrued_num,
+                   COALESCE(p.accrued_den, y.accrued_den,
+                            (SELECT z.accrued_den FROM balances_live z WHERE z.account_id = a.id ORDER BY z.balance_date DESC LIMIT 1),
+                            1) AS accrued_den
+            FROM accounts a
+            JOIN commodities c ON c.code = a.commodity
+            LEFT JOIN balances_live p ON p.account_id = a.id AND p.balance_date = (SELECT day FROM ledger_day)
+            LEFT JOIN balances_live y ON y.account_id = a.id AND y.balance_date = (SELECT prev_day FROM ledger_day)
+        ) l
+    ) b;
 `
 
 // createSchema executes the DDL statements to create tables and indexes.

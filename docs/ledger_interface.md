@@ -27,11 +27,13 @@ interest (an exact `Fraction`) per day. `RecordMovementWithProjections` rewrites
 both accounts' positions from the movement's day onwards; a backdated movement
 corrects every later day. Published as the contract views
 `contract_ledger_eod_positions` (one row per account per day; cheap) and
-`contract_ledger_live_positions` (latest position plus movements since; dearer),
-with money as NUMERIC in major units.
+`contract_ledger_live_positions` (the position on the business day, else the
+previous one, plus movements since), with money as NUMERIC in major units.
 
 - `Project` — write a day's position with no movement: the ledger's balance for that day and the caller's accrued interest
 - `PositionAt` — the latest position on or before a day
+- `AdvanceDay` — move the business day on before the pass projects it (`SQLLedger` only); the live view reads the day's and the previous business day's positions as two slices of the day index
+- `BusinessDay` — the business day and the one it advanced from
 
 ### Interest
 - `EnsureInterestAccounts` — create system accounts for interest processing
