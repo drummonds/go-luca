@@ -74,16 +74,21 @@ budget is the dashboard's: every customer account summed within a poll
 | correlated MAX + 2 sums (v0.3.1) | A × 3 probes | no: 12 to 31 s measured at A = 84k | none | shipped |
 | grouped MAX, three times (#7 as written) | 3P + M | no: scans P three times | none | measured, rejected |
 | grouped MAX once, materialised CTE | P + M | no: one scan of P is seconds at 40M | none | measured (289 ms at P = 918k vs 773 ms), rejected for scale |
-| business-day row: today's else yesterday's row via `(balance_date, account_id)` index | A × 2 probes | likely: no scan of P; A probes | a `ledger_day` row the pass advances; the index (#9, shipped); a stale account (neither day) falls back to a probe | spike in `cmd/bench-compound-movements` |
-| latest row kept on write: a `balances_latest` table or `is_latest` flag maintained by `Project` | A | yes | one extra write per projection; a backdated reproject must repair it | not built |
+| business-day row: today's else yesterday's row via `(balance_date, account_id)` index, the day read through STABLE functions | 2 day-slices of P (A rows each) + A × 2 probes | yes: 7.5 µs per account at A = 20k, no probe into the account-ordered position index | a `ledger_day` row the pass advances; the index (#9, shipped); a stale account (neither day) falls back to a probe | measured: 150 ms vs 320 ms shipped at A = 20k, D = 200. **Chosen.** The same view with `ledger_day` joined instead of read through functions hashes all of P twice (1.4 s): the planner cannot see the join column as one value |
+| latest row kept on write: a `balances_latest` table or `is_latest` flag maintained by `Project` | A | no: the planner hash-joins the pointer set to all of P rather than probing (790 ms at A = 20k, 2.5x the shipped view) | one extra write per projection; a backdated reproject must repair it | measured, rejected |
 | consumer cache: gobank's book refreshed in the background, requests never wait | 0 per request | yes for the screen; the read still runs once per refresh | staleness of one refresh; gobank story | planned on the gobank side |
 
-Recommendation: the business-day row, because the pass already defines
-the day and the index is wanted for `Positions(day)` and the pass's
-`unprojected` (#9, shipped); the latest-row table is the fallback if the
-stale-account probe shows up in the figures. The grouped forms stay for
-`contract_ledger_latest_positions`, which is read once a day, not once a
-poll.
+Decision (2026-10-09): the business-day row, read through STABLE
+functions `business_day()` and `business_prev_day()` over a one-row
+`ledger_day` table the pass advances. It is the only form whose cost
+is in A alone: two bitmap scans of the day index take the two days'
+slices of P (A rows each, physically clustered by day on a ledger that
+projects day by day), then two movement probes per account. The shipped
+view probes the account-ordered position index once per account, which
+is random I/O across the whole index at prod scale, where the day
+slices are a few thousand pages. The latest-row table was measured and
+rejected. The grouped forms stay for `contract_ledger_latest_positions`,
+which is read once a day, not once a poll.
 
 ## Consumers and budgets
 
@@ -114,6 +119,33 @@ quarter of accounts mid-pass), 2026-10-08, laptop, PG 16 in podman:
 | latest view, grouped (shipped) | 17 ms | 292 ms | 35 ms |
 | live view one account, v0.3.1 | 0.24 ms | 0.40 ms | 0.57 ms |
 | live view one account, #7 grouped | 0.40 ms | 0.44 ms | 90 ms |
+
+Whole-ledger live read, the candidates above at A = 20k, D = 200
+(P = 4M, 600 MB table, 294 MB primary key, 258 MB per secondary index),
+fixture and scripts in `research/live-positions/`, 2026-10-09, laptop,
+PG 16 in podman with 8 GB, warm cache, JIT off, median of three:
+
+| Query | A = 20k PG | per account | one account |
+|---|---|---|---|
+| live view, shipped correlated | 320 ms | 16 µs | 0.2 ms |
+| business-day row, functions (chosen) | 150 ms | 7.5 µs | 0.2 ms |
+| business-day row, `ledger_day` joined | 1,400 ms | 70 µs | 0.2 ms |
+| latest pointer table (`balances_latest`) | 790 ms | 40 µs | |
+| latest view, grouped (shipped) | 300 ms | 15 µs | |
+
+All three live forms agree with the shipped view on every account's
+balance and accrued, mid-pass (odd accounts a day behind) and with
+movements after the projection.
+
+A fixture whose every movement comes from one Equity account made all
+three live forms 6 to 9 s: with one distinct `from_account_id` the
+planner took the `movements(value_time)` index (#9) for the from-side
+sum and filtered 5,000 rows per account instead of probing
+`idx_movements_from`. Withdrawals from a quarter of the accounts
+restored the composite probe. A ledger whose movements all leave one
+account would see the same plan, so the from-side sum is worth watching
+on any ledger where the day index is present and `from_account_id` has
+few distinct values.
 
 Production, gobank v0.18 on cx23 (4 GB shared), A = 84k, D = 404,
 2026-10-07: dashboard 12 to 31 s when the book cache misses, 0.06 s
