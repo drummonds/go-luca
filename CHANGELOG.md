@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-09
+
+ - Live positions by business day: AdvanceDay, a ledger_day row, and the live view reading two day slices (#7)
+
 ## [0.4.0] - 2026-10-08
 
  - contract_ledger_latest_positions view, Prefix option for a second ledger in one database, indexes for day-bounded reads; queries doc
